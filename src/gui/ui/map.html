@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>TPI GPS Map</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            background-color: #20222a;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+    <!-- Leaflet CSS/JS CDN -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+</head>
+<body>
+<div id="map"></div>
+<script>
+    // 기본 중심 (예: 서울)
+    var map = L.map('map').setView([37.55, 126.98], 13);
+
+    // OSM 타일 레이어
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+    }).addTo(map);
+
+    // 전체 궤적 polyline & 현재 위치 marker
+    var trackLatLngs = [];
+    var trackLine = L.polyline(trackLatLngs, {color: 'red'}).addTo(map);
+    var currentMarker = null;
+
+    // ✅ 파이썬에서 호출: GPS 전체 궤적 갱신
+    window.setFullTrack = function(latList, lonList) {
+        trackLatLngs = [];
+        for (var i = 0; i < latList.length; i++) {
+            trackLatLngs.push([latList[i], lonList[i]]);
+        }
+        trackLine.setLatLngs(trackLatLngs);
+
+        if (trackLatLngs.length > 0) {
+            map.fitBounds(trackLine.getBounds());
+            var currentZoom = map.getZoom();
+            map.setZoom(currentZoom - 2);   // 여기서 “한 단계 더 넓게”
+        }
+    }
+
+    // ✅ 파이썬에서 호출: 현재 위치 갱신
+    window.updateGps = function(lat, lon) {
+        var latlng = [lat, lon];
+
+        if (currentMarker === null) {
+            currentMarker = L.circleMarker(latlng, {
+                radius: 6,
+                color: '#00ff00',
+                fillColor: '#00ff00',
+                fillOpacity: 1.0
+            }).addTo(map);
+        } else {
+            currentMarker.setLatLng(latlng);
+        }
+    }
+</script>
+</body>
+</html>
