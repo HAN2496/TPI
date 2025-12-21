@@ -1,61 +1,57 @@
-import torch
 import torch.nn as nn
 
-from src.model.base import BaseModel
+from .base import BaseModel, build_mlp
 
 class OnlineMLP(BaseModel):
-    def __init__(self, input_dim, hidden_dims, dropout_rate, act_name, use_batchnorm=False):
-        super().__init__()
+    def __init__(self, input_dim, hidden_dims, dropout_rate, act_name, use_batchnorm=False, reduce='mean'):
+        super().__init__(reduce=reduce)
 
-        self.input_dim = input_dim
+        act = self._get_activation(act_name)
+        self.net = build_mlp(input_dim, hidden_dims, act, dropout_rate, use_batchnorm)
 
-        if act_name == "relu":
-            act = nn.ReLU()
-        elif act_name == "tanh":
-            act = nn.Tanh()
-        else:
-            act = nn.GELU()
-
-        layers = []
-        in_dim = input_dim
-        for hidden_dim in hidden_dims:
-            layers.append(nn.Linear(in_dim, hidden_dim))
-
-            if use_batchnorm:
-                layers.append(nn.BatchNorm1d(hidden_dim))
-
-            layers.append(act)
-
-            if dropout_rate > 0:
-                layers.append(nn.Dropout(dropout_rate))
-
-            in_dim = hidden_dim
-
-        layers.append(nn.Linear(in_dim, 1))
-        self.network = nn.Sequential(*layers)
+    def step_rewards(self, x, detach=False):
+        b, t, d = x.shape # (Batch size, Seq len, Dim)
+        r = self.net(x.reshape(-1, d)).squeeze(-1).reshape(b, t)  # (B,T)
+        if detach:
+            r = r.detach().cpu().numpy()
+        return r.reshape(b, t)
 
     def forward(self, x):
-        batch_size, seq_len, feat_dim = x.shape
+        r = self.step_rewards(x)  # (B,T)
+        if self.reduce == 'sum':
+            return r.sum(dim=1)
+        if self.reduce == 'mean':
+            return r.mean(dim=1)
+        raise ValueError(f"Unknown reduce: {self.reduce}")
 
-        x_flat = x.reshape(-1, feat_dim)
-        reward_flat = self.network(x_flat).squeeze(-1)
-        rewards = reward_flat.reshape(batch_size, seq_len)
-        total_reward = rewards.sum(dim=1)
+class OnlineLSTM(BaseModel):
+    def __init__(self, input_dim,
+                 lstm_hidden_dim, lstm_layers,
+                 hidden_dims, dropout_rate, act_name, use_batchnorm=False, reduce='mean'):
+        super().__init__(reduce=reduce)
 
-        return total_reward
+        self.lstm = nn.LSTM(
+            input_size=input_dim,
+            hidden_size=lstm_hidden_dim,
+            num_layers=lstm_layers,
+            batch_first=True
+        )
 
-    def get_step_rewards(self, x):
-        batch_size, seq_len, feat_dim = x.shape
+        act = self._get_activation(act_name)
+        self.head = build_mlp(lstm_hidden_dim, hidden_dims, act, dropout_rate, use_batchnorm)
 
-        x_flat = x.reshape(-1, feat_dim)
-        reward_flat = self.network(x_flat).squeeze(-1)
-        rewards = reward_flat.reshape(batch_size, seq_len)
+    def step_rewards(self, x, detach=False):
+        h, _ = self.lstm(x) # (Batch size, Seq len, Dim)
+        b, t, hdim = h.shape
+        r = self.head(h.reshape(-1, hdim)).squeeze(-1).reshape(b, t)  # (B,T)
+        if detach:
+            r = r.detach().cpu().numpy()
+        return r
 
-        return rewards
-
-    def predict(self, x):
-        self.eval()
-        with torch.no_grad():
-            total_reward = self.forward(x)
-            probs = torch.sigmoid(total_reward)
-        return (probs > 0.5).long()
+    def forward(self, x):
+        r = self.step_rewards(x)
+        if self.reduce == 'sum':
+            return r.sum(dim=1)
+        if self.reduce == 'mean':
+            return r.mean(dim=1)
+        raise ValueError(f"Unknown reduce: {self.reduce}")

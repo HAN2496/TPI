@@ -1,7 +1,6 @@
 import sys
 
 def run_gui():
-    """Launch GUI application"""
     from PySide6.QtGui import QIcon
     from PySide6.QtWidgets import QApplication
     from src.gui.gui_main import MainWindow

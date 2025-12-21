@@ -130,6 +130,8 @@ class Dataset:
 
         idx = 0
         for dirpath, dirnames, filenames in os.walk(self.base_folder):
+            dirnames.sort()
+            filenames.sort()
             # Only load non-smooth CSV files (raw data)
             csv_files = [f for f in filenames if f.lower().endswith(".csv") and "_state_" in f and not f.lower().endswith("_smooth.csv")]
             txt_files = [f for f in filenames if f.lower().endswith(".txt") and "_info_" in f]
@@ -138,7 +140,7 @@ class Dataset:
 
             common_ts = set(csv_by_ts.keys()) & set(txt_by_ts.keys())
 
-            for ts in common_ts:
+            for ts in sorted(common_ts):
                 info_path = os.path.join(dirpath, txt_by_ts[ts])
                 with open(info_path, "r", encoding="utf-8") as f:
                     info = json.load(f)
@@ -199,12 +201,12 @@ class Dataset:
         self._ensure_loaded()
         return iter(self.data.values())
 
-    def to_sequences(self, feature_cols, time_range=(5, 8), fill_value=0.0, pad=False):
+    def to_sequences(self, feature_cols=None, time_range=(5, 8), fill_value=0.0, pad=False):
         """
         Convert dataset to sequences for ML training
 
         Args:
-            feature_cols: List of column names to use as features
+            feature_cols: List of column names to use as features (if None, use all columns except Time)
             time_range: Tuple of (start_time, end_time) to extract
             fill_value: Value to use for fillna and padding
             pad: If True, pad sequences to expected length based on dt
@@ -235,8 +237,11 @@ class Dataset:
             # Extract time values
             time_vals = seg["Time"].values.astype(np.float32)
 
+            # Use all columns except Time if feature_cols is None
+            cols = feature_cols if feature_cols is not None else [col for col in seg.columns if col != "Time"]
+
             # Select features and fill NaN
-            seg_features = seg[feature_cols].fillna(fill_value)
+            seg_features = seg[cols].fillna(fill_value)
             v = seg_features.values.astype(np.float32)
 
             # Apply padding if requested
@@ -288,6 +293,8 @@ class DatasetManager:
         drivers = set()
 
         for dirpath, dirnames, filenames in os.walk(self.base_folder):
+            dirnames.sort()
+            filenames.sort()
             # Only scan non-smooth CSV files (raw data)
             csv_files = [f for f in filenames if f.lower().endswith(".csv") and "_state_" in f and not f.lower().endswith("_smooth.csv")]
             txt_files = [f for f in filenames if f.lower().endswith(".txt") and "_info_" in f]
@@ -303,7 +310,7 @@ class DatasetManager:
             if folder_key not in self._folder_index:
                 self._folder_index[folder_key] = {}
 
-            for ts in common_ts:
+            for ts in sorted(common_ts):
                 info_path = os.path.join(dirpath, txt_by_ts[ts])
                 csv_path = os.path.join(dirpath, csv_by_ts[ts])
 
@@ -339,14 +346,14 @@ class DatasetManager:
                     drivers.add(driver)
 
         # Create Dataset for each driver
-        for driver in drivers:
+        for driver in sorted(drivers):
             self.datasets[driver] = Dataset(driver, self.base_folder, lazy=self.lazy,
                                            downsample=self.downsample, smooth=self.smooth,
                                            normalize=self.normalize, **self.kwargs)
 
     # --- Driver-based access ---
-    def get(self, name):
-        return self.datasets.get(name)
+    def get(self, driver_name):
+        return self.datasets.get(driver_name)
 
     def keys(self):
         return list(self.datasets.keys())

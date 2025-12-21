@@ -1,12 +1,15 @@
 from pathlib import Path
 
 class ExperimentPaths:
-    def __init__(self, driver_name, model_name, feature_version, time_range, tag=None):
+    def __init__(self, driver_name, model_name, feature_version, time_range, tag=None, tag_as_subdir=False):
         run_id = f"{feature_version}_t{time_range[0]}-{time_range[1]}"
-        if tag:
-            run_id += f"_{tag}"
-
         self.run_dir = Path("artifacts") / driver_name / model_name / run_id
+
+        if tag:
+            if tag_as_subdir:
+                self.run_dir = self.run_dir / tag
+            else:
+                self.run_dir = Path("artifacts") / driver_name / model_name / f"{run_id}_{tag}"
 
     def get(self, filename, create=False):
         if create:

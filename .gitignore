@@ -1,5 +1,8 @@
 artifacts/
 datasets/
+
+CLAUDE.md
+
 .python-version
 .venv/
 __pycache__/
@@ -16,5 +19,3 @@ uv.lock
 *.spec
 
 uv.lock
-
-.venv

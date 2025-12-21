@@ -66,8 +66,14 @@ v0_1:
 v1:
 - IMU_VerAccelVal
 - Bounce_rate_6D
-- Pitch_rate_6D
+- Pitch_rate_6D 
 - IMU_LongAccelVal
+
+v2:
+- IMU_VerAccelVal
+- Bounce_rate_6D
+- IMU_LongAccelVal
+
 
 v2:
 - IMU_VerAccelVal
