@@ -8,7 +8,7 @@ def optimize_model(driver_name, model_name, time_range, feature_version, downsam
     driver_name = convert_driver_name(driver_name)
     optimizer = create_optimizer(driver_name, model_name, time_range, feature_version, downsample,
                                  use_feature_selection=use_feature_selection, device=device)
-    study = optimizer.optimize(n_trials=n_trials, tag=tag)
+    study, new_model_name = optimizer.optimize(n_trials=n_trials, tag=tag)
 
     if verbose > 0:
         print(f"\nOptimization completed!")
@@ -16,11 +16,9 @@ def optimize_model(driver_name, model_name, time_range, feature_version, downsam
         print(f"Best params: {study.best_params}")
 
         print(f"\nTraining final model with best configuration...")
-    paths = ExperimentPaths(driver_name, model_name, feature_version, time_range, tag=tag)
-    best_config_path = paths.get("best_config.yaml")
 
-    train_model(driver_name, model_name, time_range, feature_version, downsample, None,
-                device=device, tag=tag, config_path=best_config_path, verbose=verbose)
+    train_model(driver_name, new_model_name, time_range, feature_version, downsample, None,
+                device=device, tag=tag, verbose=verbose)
 
     return study
 

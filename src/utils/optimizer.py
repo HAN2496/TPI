@@ -51,10 +51,10 @@ class BaseOptimizer(ABC):
     def _load_data(self):
         self.train_loader, self.val_loader = prepare_training_data(
             self.driver_name,
+            self.feature_version,
             self.base_config,
             self.time_range,
-            self.downsample,
-            feature_version=self.feature_version
+            self.downsample
         )
         X_val, y_val = self.val_loader.dataset.tensors
         self.X_val = X_val.to(self.device)
@@ -140,14 +140,17 @@ class BaseOptimizer(ABC):
             json.dump(study.best_params, f, indent=2)
 
         best_config = self._create_trial_config(study.best_trial)
-        best_config_path = paths.get("best_config.yaml", create=True)
-        save_config(best_config, self.driver_name, self.model_name, best_config_path)
+
+        suffix = '_bo_fs' if self.use_feature_selection else '_bo'
+        new_model_name = f"{self.model_name}{suffix}"
+
+        save_config(best_config, self.driver_name, new_model_name)
 
         print(f"\nBest AUROC: {study.best_value:.4f}")
         print(f"Best params saved to: {best_params_path}")
-        print(f"Best config saved to: {best_config_path}")
+        print(f"Best config saved to: src/configs/config.yaml under {self.driver_name}/{new_model_name}")
 
-        return study
+        return study, new_model_name
 
 
 class MLPOptimizer(BaseOptimizer):
@@ -195,10 +198,10 @@ class LinearCombinationOptimizer(BaseOptimizer):
     def _load_data(self):
         self.train_loader, self.val_loader = prepare_training_data(
             self.driver_name,
+            self.feature_version,
             self.base_config,
             self.time_range,
-            self.downsample,
-            feature_version=self.feature_version
+            self.downsample
         )
 
         X_train, y_train = self.train_loader.dataset.tensors

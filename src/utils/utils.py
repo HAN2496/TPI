@@ -18,14 +18,16 @@ def convert_driver_name(driver_name):
     return driver_name
 
 
-def save_config(config, driver_name, model_name, save_path):
-    wrapped_config = {
-        driver_name: {model_name: config}
-    }
+def save_config(config, driver_name, model_name, save_path='src/configs/config.yaml'):
+    with open(save_path, 'r', encoding='utf-8') as f:
+        all_configs = yaml.safe_load(f)
 
-    Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+    if driver_name not in all_configs:
+        all_configs[driver_name] = {}
+    all_configs[driver_name][model_name] = config
+
     with open(save_path, 'w', encoding='utf-8') as f:
-        yaml.dump(wrapped_config, f, default_flow_style=False, allow_unicode=True)
+        yaml.dump(all_configs, f, default_flow_style=False, allow_unicode=True)
 
 
 def _load_dataset_sequences(driver_name, time_range, downsample, feature_version):
@@ -52,7 +54,7 @@ def _create_data_loaders(X_train, X_val, y_train, y_val, batch_size):
     return train_loader, val_loader
 
 
-def prepare_training_data(driver_name, config, time_range, train_downsample=1, val_downsample=None, feature_version='v1'):
+def prepare_training_data(driver_name, feature_version, config, time_range, train_downsample=1, val_downsample=None):
     if val_downsample is None:
         val_downsample = train_downsample
         X, y = _load_dataset_sequences(driver_name, time_range, train_downsample, feature_version)
@@ -84,7 +86,7 @@ def prepare_training_data(driver_name, config, time_range, train_downsample=1, v
     return _create_data_loaders(X_train, X_val, y_train, y_val, batch_size)
 
 
-def prepare_training_data_kfold(driver_name, config, time_range, train_downsample=1, val_downsample=None, n_splits=5, random_state=42, feature_version='v1'):
+def prepare_training_data_kfold(driver_name, feature_version, config, time_range, train_downsample=1, val_downsample=None, n_splits=5, random_state=42):
     if val_downsample is None:
         val_downsample = train_downsample
         X, y = _load_dataset_sequences(driver_name, time_range, train_downsample, feature_version)

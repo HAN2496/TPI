@@ -15,7 +15,7 @@ def train_model(driver_name, model_name, time_range, feature_version, train_down
     is_combination = config['model_type'] == 'online_combination'
     feature_cols = load_features(feature_version)
 
-    train_loader, val_loader = prepare_training_data(driver_name, config, time_range, train_downsample, val_downsample, feature_version)
+    train_loader, val_loader = prepare_training_data(driver_name, feature_version, config, time_range, train_downsample, val_downsample)
 
     paths = ExperimentPaths(driver_name, model_name, feature_version, time_range, tag)
 

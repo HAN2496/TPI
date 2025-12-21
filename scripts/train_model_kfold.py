@@ -25,7 +25,7 @@ def train_model_kfold(driver_name, model_name, time_range, feature_version, trai
     fold_predictions = []
 
     for fold_idx, train_loader, val_loader in prepare_training_data_kfold(
-        driver_name, config, time_range, train_downsample, val_downsample, n_splits=n_splits, feature_version=feature_version
+        driver_name, feature_version, config, time_range, train_downsample, val_downsample, n_splits=n_splits
     ):
         if verbose:
             print(f"Fold {fold_idx + 1}/{n_splits} - Train: {len(train_loader.dataset)}, Val: {len(val_loader.dataset)}")
