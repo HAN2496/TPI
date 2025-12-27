@@ -3,38 +3,57 @@ from sklearn.model_selection import train_test_split, StratifiedKFold
 import torch
 import yaml
 from pathlib import Path
+from ruamel.yaml import YAML
 
 from .data_loader import DatasetManager
-from ..configs.utils import load_features
 
 
 def convert_driver_name(driver_name):
-    if driver_name == "a":
+    if driver_name == "a" or driver_name == "kang":
         return "강신길"
-    elif driver_name == "b":
+    elif driver_name == "b" or driver_name == "park":
         return "박재일"
-    elif driver_name == "c":
+    elif driver_name == "c" or driver_name == "han":
         return "한규택"
     return driver_name
 
 
-def save_config(config, driver_name, model_name, save_path='src/configs/config.yaml'):
-    with open(save_path, 'r', encoding='utf-8') as f:
-        all_configs = yaml.safe_load(f)
+def _get_driver_filename(driver_name):
+    mapping = {
+        "강신길": "kang",
+        "박재일": "park",
+        "한규택": "han"
+    }
+    return mapping[driver_name]
 
-    if driver_name not in all_configs:
-        all_configs[driver_name] = {}
-    all_configs[driver_name][model_name] = config
+def save_config(config, driver_name, model_type, model_name, save_path=None):
+    if save_path is None:
+        driver_file = _get_driver_filename(driver_name)
+        save_path = f'src/configs/drivers/{driver_file}.yaml'
+
+    ryaml = YAML()
+    ryaml.preserve_quotes = True
+    ryaml.default_flow_style = None
+    ryaml.width = 4096
+
+    with open(save_path, 'r', encoding='utf-8') as f:
+        all_configs = ryaml.load(f)
+
+    if model_type not in all_configs:
+        all_configs[model_type] = {}
+
+    config_to_save = {k: v for k, v in config.items() if k != 'model_type'}
+
+    all_configs[model_type][model_name] = config_to_save
 
     with open(save_path, 'w', encoding='utf-8') as f:
-        yaml.dump(all_configs, f, default_flow_style=False, allow_unicode=True)
+        ryaml.dump(all_configs, f)
 
 
-def _load_dataset_sequences(driver_name, time_range, downsample, feature_version):
+def _load_dataset_sequences(driver_name, time_range, downsample, config):
     manager = DatasetManager("datasets", downsample=downsample)
     dataset = manager.get(driver_name)
-    feature_cols = load_features(feature_version)
-    t, X, y = dataset.to_sequences(feature_cols, time_range, fill_value=0.0, pad=True)
+    t, X, y = dataset.to_sequences(config['features'], time_range, fill_value=0.0, pad=True)
     return X, y
 
 
@@ -54,10 +73,10 @@ def _create_data_loaders(X_train, X_val, y_train, y_val, batch_size):
     return train_loader, val_loader
 
 
-def prepare_training_data(driver_name, feature_version, config, time_range, train_downsample=1, val_downsample=None):
+def prepare_training_data(driver_name, config, time_range, train_downsample=1, val_downsample=None):
     if val_downsample is None:
         val_downsample = train_downsample
-        X, y = _load_dataset_sequences(driver_name, time_range, train_downsample, feature_version)
+        X, y = _load_dataset_sequences(driver_name, time_range, train_downsample, config)
 
         X_train, X_val, y_train, y_val = train_test_split(
             X, y,
@@ -66,7 +85,7 @@ def prepare_training_data(driver_name, feature_version, config, time_range, trai
             stratify=y
         )
     else:
-        X, y = _load_dataset_sequences(driver_name, time_range, 1, feature_version)
+        X, y = _load_dataset_sequences(driver_name, time_range, 1, config)
 
         X_train, X_val, y_train, y_val = train_test_split(
             X, y,
@@ -86,10 +105,10 @@ def prepare_training_data(driver_name, feature_version, config, time_range, trai
     return _create_data_loaders(X_train, X_val, y_train, y_val, batch_size)
 
 
-def prepare_training_data_kfold(driver_name, feature_version, config, time_range, train_downsample=1, val_downsample=None, n_splits=5, random_state=42):
+def prepare_training_data_kfold(driver_name, config, time_range, train_downsample=1, val_downsample=None, n_splits=5, random_state=42):
     if val_downsample is None:
         val_downsample = train_downsample
-        X, y = _load_dataset_sequences(driver_name, time_range, train_downsample, feature_version)
+        X, y = _load_dataset_sequences(driver_name, time_range, train_downsample, config)
 
         skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_state)
 
@@ -104,7 +123,7 @@ def prepare_training_data_kfold(driver_name, feature_version, config, time_range
 
             yield fold_idx, train_loader, val_loader
     else:
-        X, y = _load_dataset_sequences(driver_name, time_range, 1, feature_version)
+        X, y = _load_dataset_sequences(driver_name, time_range, 1, config)
 
         skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_state)
 

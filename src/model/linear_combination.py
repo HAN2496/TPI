@@ -6,9 +6,9 @@ from sklearn.metrics import roc_auc_score
 
 import torch
 import torch.nn as nn
-from .base import BaseModel, feature_map_torch, feature_map_np, feature_map_dim
+from .base import NeuralModel, RegressionModel, feature_map_torch, feature_map_np, feature_map_dim
 
-class NNOnlineCombination(BaseModel):
+class NNOnlineCombination(NeuralModel):
     def __init__(self, input_dim, form="quad_exp", reduce="mean"):
         super().__init__(reduce=reduce)
         self.input_dim = input_dim
@@ -43,16 +43,16 @@ def _to_numpy(x):
         return x.detach().cpu().numpy()
     return np.asarray(x)
 
-class OnlineCombination:
+class OnlineCombination(RegressionModel):
     def __init__(self, input_dim, form, w3=None, w4=None, reduce="mean",
                  max_iter=100, C=1.0, solver="lbfgs", random_state=None, clip=20.0):
+        super().__init__()
         self.input_dim = input_dim
         self.form = form
         self.w3 = w3
         self.w4 = w4
         self.reduce = reduce
         self.clip = clip
-        self.best_threshold = 0.5
 
         self.scaler = StandardScaler()
         self.model = LogisticRegression(
@@ -155,12 +155,6 @@ class OnlineCombination:
         self.w3 = sd["w3"]
         self.w4 = sd["w4"]
         self.reduce = sd["reduce"]
-        self.clip = sd.get("clip", 20.0)
-        self.best_threshold = sd.get("best_threshold", 0.5)
-        return self
-
-    def eval(self):
-        return self
-
-    def to(self, device):
+        self.clip = sd["clip"]
+        self.best_threshold = sd["best_threshold"]
         return self

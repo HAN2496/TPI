@@ -199,6 +199,14 @@ def save_combination_params(model, feature_cols, save_path):
 
 def plot_kfold_roc_curves(fold_results, save_path=None):
     plt.figure(figsize=(10, 8))
+    plt.rcParams.update({
+        'font.size': 16,          # 기본 글자 크기
+        'axes.titlesize': 18,     # 제목
+        'axes.labelsize': 16,     # x, y축 라벨
+        'xtick.labelsize': 16,    # x축 눈금
+        'ytick.labelsize': 16,    # y축 눈금
+        'legend.fontsize': 13    # 범례
+    })
 
     tprs = []
     aucs = []
@@ -222,8 +230,7 @@ def plot_kfold_roc_curves(fold_results, save_path=None):
     mean_auc = auc(mean_fpr, mean_tpr)
     std_auc = np.std(aucs)
 
-    plt.plot(mean_fpr, mean_tpr, color='darkorange', lw=2,
-             label=f'Mean ROC (AUC = {mean_auc:.4f} ± {std_auc:.4f})')
+    plt.plot(mean_fpr, mean_tpr, color='darkorange', lw=2, label = f"Mean ROC (AUC = {mean_auc:.4f}")
 
     std_tpr = np.std(tprs, axis=0)
     tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
@@ -231,12 +238,20 @@ def plot_kfold_roc_curves(fold_results, save_path=None):
     plt.fill_between(mean_fpr, tprs_lower, tprs_upper, color='grey', alpha=0.2,
                      label='± 1 std. dev.')
 
+    y_true_all = np.concatenate([y_true for y_true, _ in fold_results])
+    y_probs_all = np.concatenate([y_probs for _, y_probs in fold_results])
+    fpr_oof, tpr_oof, _ = roc_curve(y_true_all, y_probs_all)
+    oof_auc = auc(fpr_oof, tpr_oof)
+
+    plt.plot(fpr_oof, tpr_oof, color='red', lw=2.5, linestyle='-',
+             label=f'OOF ROC (AUC = {oof_auc:.4f})', alpha=0.9)
+
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
     plt.title('K-Fold Cross-Validation ROC Curves')
-    plt.legend(loc="lower right", fontsize=8)
+    plt.legend(loc="lower right")
     plt.grid(True)
 
     if save_path:
@@ -245,7 +260,7 @@ def plot_kfold_roc_curves(fold_results, save_path=None):
     else:
         plt.show()
 
-def save_all_plots(model, history, val_loader, paths, is_online=False, feature_cols=None):
+def save_all_plots(model, history, val_loader, paths, is_online=False, feature_cols=None, verbose=0):
     X_val, y_val = val_loader.dataset.tensors
     y_val_np = y_val.numpy()
 
@@ -262,4 +277,6 @@ def save_all_plots(model, history, val_loader, paths, is_online=False, feature_c
     if hasattr(model, 'raw_reward_params') and feature_cols:
         save_combination_params(model, feature_cols, save_path=paths.get('combination_params.png', create=True))
 
+    if verbose >= 2:
+        print(f"  Plots saved to: {paths.run_dir}")
     return y_val_np, y_probs

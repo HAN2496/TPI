@@ -1,15 +1,27 @@
 import yaml
 import pickle
 import torch
+from pathlib import Path
+from .features import ALL_FEATURES
 
-def load_config(driver_name, model_name, config_path='src/configs/config.yaml', verbose=0):
+def _get_driver_filename(driver_name):
+    mapping = {
+        "강신길": "kang",
+        "박재일": "park",
+        "한규택": "han"
+    }
+    return mapping[driver_name]
+
+def load_config(driver_name, model_type, model_name='base', config_path=None, verbose=0):
+    if config_path is None:
+        driver_file = _get_driver_filename(driver_name)
+        config_path = f'src/configs/drivers/{driver_file}.yaml'
+
     with open(config_path, 'r', encoding='utf-8') as f:
         config = yaml.safe_load(f)
 
-    if driver_name in config and model_name in config[driver_name]:
-        result = config[driver_name][model_name]
-    else:
-        result = config
+    result = config[model_type][model_name]
+    result['model_type'] = model_type
 
     if verbose:
         print("=== Loaded Configuration ===")
@@ -17,34 +29,30 @@ def load_config(driver_name, model_name, config_path='src/configs/config.yaml', 
         print("============================")
     return result
 
-def load_features(feature_version):
-    with open('src/configs/features.yaml', 'r') as f:
-        features = yaml.safe_load(f)
-    return features[feature_version]
-
-def create_model(driver_name, model_name, feature_version, is_train=True, device="cpu", verbose=0):
+def create_model(driver_name, model_type, model_name, is_train=True, device="cpu", verbose=0):
     from .registries import MODELS
-    config = load_config(driver_name, model_name, verbose=verbose)
+    from ..model import OnlineCombination
+    config = load_config(driver_name, model_type, model_name, verbose=verbose)
 
     args = config['args'].copy()
     if 'input_dim' not in args:
-        features = load_features(feature_version)
-        args['input_dim'] = len(features)
+        args['input_dim'] = len(config['features'])
 
     model = MODELS[config['model_type']](**args)
 
     if not is_train:
-        if config['model_type'] == 'online_combination':
-            with open(f"artifacts/models/{model_name}/model.pt", 'rb') as f:
+        model_full_name = f"{model_type}_{model_name}" if model_name != 'base' else model_type
+        if MODELS[config['model_type']] is OnlineCombination:
+            with open(f"artifacts/models/{model_full_name}/model.pt", 'rb') as f:
                 state_dict = pickle.load(f)
             model.load_state_dict(state_dict)
         else:
             model = model.to(device)
-            state_dict = torch.load(f"artifacts/models/{model_name}/model.pth", map_location=device)
+            state_dict = torch.load(f"artifacts/models/{model_full_name}/model.pth", map_location=device)
             model.load_state_dict(state_dict['model_state_dict'])
             model.eval()
     else:
-        if config['model_type'] != 'online_combination':
+        if MODELS[config['model_type']] is not OnlineCombination:
             model = model.to(device)
 
     return model

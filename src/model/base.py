@@ -4,25 +4,42 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-class BaseModel(nn.Module, ABC):
-    def __init__(self, reduce='mean'):
-        super().__init__()
-        self.reduce = reduce
+class BaseModel(ABC):
+    model_type: str
+    def __init__(self):
         self.best_threshold = 0.5
 
     @abstractmethod
-    def forward(self, x): # R(tau)
+    def forward(self, x):
+        raise NotImplementedError
+
+    @abstractmethod
+    def predict_probability(self, x):
+        raise NotImplementedError
+
+    @abstractmethod
+    def predict_label(self, x, threshold=None):
+        raise NotImplementedError
+
+class NeuralModel(BaseModel, nn.Module):
+    def __init__(self, reduce='mean'):
+        BaseModel.__init__(self)
+        nn.Module.__init__(self)
+        self.reduce = reduce
+
+    @abstractmethod
+    def forward(self, x):
         raise NotImplementedError
 
     def _get_activation(self, activation):
         activations = {
             'relu': nn.ReLU(),
-            'silu': nn.SiLU(), 
+            'silu': nn.SiLU(),
             'gelu': nn.GELU(),
             'tanh': nn.Tanh(),
             'leaky_relu': nn.LeakyReLU()
         }
-        return activations.get(activation, nn.SiLU())
+        return activations[activation]
 
     def predict_label(self, x, threshold=None):
         if threshold is None:
@@ -36,16 +53,38 @@ class BaseModel(nn.Module, ABC):
             logits = self.forward(x)
             return torch.sigmoid(logits)
 
-def build_mlp(in_dim, hidden_dims, act, dropout_rate=0.0, use_batchnorm=False):
+class RegressionModel(BaseModel):
+    def __init__(self):
+        super().__init__()
+
+    @abstractmethod
+    def forward(self, x):
+        raise NotImplementedError
+
+    @abstractmethod
+    def predict_probability(self, x):
+        raise NotImplementedError
+
+    @abstractmethod
+    def predict_label(self, x, threshold=None):
+        raise NotImplementedError
+
+    def eval(self):
+        return self
+
+    def to(self, device):
+        return self
+
+def build_mlp(in_dim, hidden_dims, act, dropout_rates, use_batchnorm=False):
     layers = []
-    for h in hidden_dims:
-        layers.append(nn.Linear(in_dim, h))
+    for hidden_dim, dropout_rate in zip(hidden_dims, dropout_rates):
+        layers.append(nn.Linear(in_dim, hidden_dim))
         if use_batchnorm:
-            layers.append(nn.BatchNorm1d(h))
+            layers.append(nn.BatchNorm1d(hidden_dim))
         layers.append(act)
         if dropout_rate > 0:
             layers.append(nn.Dropout(dropout_rate))
-        in_dim = h
+        in_dim = hidden_dim
     layers.append(nn.Linear(in_dim, 1))
     return nn.Sequential(*layers)
 
