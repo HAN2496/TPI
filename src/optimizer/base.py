@@ -9,25 +9,33 @@ from torch.utils.data import Dataset, DataLoader
 
 from src.configs.utils import load_config
 from src.configs.registries import MODELS
-from src.configs.features import ALL_FEATURES
 from src.model import OnlineCombination
-from src.utils import prepare_training_data, prepare_training_data_kfold, ExperimentPaths
+from src.utils import prepare_training_data_kfold, ExperimentPaths
 from src.utils.utils import save_config
 from src.utils.trainer import BaseTrainer, CombinationTrainer
 
 class FeatureSelectionDataset(Dataset):
-    def __init__(self, base_dataset, active_indices, n_features):
+    def __init__(self, base_dataset, active_indices, n_features=None, mode='slice'):
         self.ds = base_dataset
-        self.inactive = [i for i in range(n_features) if i not in set(active_indices)]
+        self.active = active_indices
+        self.mode = mode
+        if mode == 'mask':
+            if n_features is None:
+                raise ValueError("n_features must be provided for 'mask' mode.")
+            self.inactive = [i for i in range(n_features) if i not in set(active_indices)]
 
     def __len__(self):
         return len(self.ds)
 
     def __getitem__(self, idx):
         x, y = self.ds[idx]
-        x = x.clone()
-        x[..., self.inactive] = 0.0
-        return x, y
+
+        if self.mode == 'slice':
+            return x[:, self.active], y
+        elif self.mode == 'mask':
+            x = x.clone()
+            x[..., self.inactive] = 0.0
+            return x, y
 
 class BaseOptimizer(ABC):
     def __init__(self, driver_name, model_type, time_range, downsample, n_splits,
@@ -82,11 +90,11 @@ class BaseOptimizer(ABC):
         ):
             if feature_indices:
                 train_loader = DataLoader(
-                    FeatureSelectionDataset(train_loader.dataset, feature_indices, self.n_features),
+                    FeatureSelectionDataset(train_loader.dataset, feature_indices),
                     batch_size=batch_size, shuffle=True, pin_memory=True
                 )
                 val_loader = DataLoader(
-                    FeatureSelectionDataset(val_loader.dataset, feature_indices, self.n_features),
+                    FeatureSelectionDataset(val_loader.dataset, feature_indices),
                     batch_size=len(val_loader.dataset), shuffle=False, pin_memory=True
                 )
 

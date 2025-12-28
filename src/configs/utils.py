@@ -1,8 +1,6 @@
 import yaml
 import pickle
 import torch
-from pathlib import Path
-from .features import ALL_FEATURES
 
 def _get_driver_filename(driver_name):
     mapping = {

@@ -75,7 +75,6 @@ online_attention:
     - IMU_VerAccelVal
     - Bounce_rate_6D
     - Pitch_rate_6D
-    - IMU_LongAccelVal
     args:
       act_name: gelu
       attn_dim: 128
@@ -88,7 +87,38 @@ online_attention:
       use_batchnorm: true
       use_ffn: true
 
+  # bo:
+  #   test_size: 0.1
+  #   trainer: {batch_size: 128, epochs: 200, lam_smooth: 0.0, learning_rate: 0.0009866307104513714, weight_decay: 0.005138517975223831}
+  #   features: [IMU_VerAccelVal, Bounce_rate_6D, Pitch_rate_6D, IMU_LongAccelVal]
+  #   args:
+  #     act_name: silu
+  #     attn_dim: 256
+  #     attn_heads: 2
+  #     attn_dropout: 0.22657093341857834
+  #     ffn_dim: 256
+  #     ffn_dropout: 0.1
+  #     hidden_dims: [32]
+  #     dropout_rates: [0.4]
+  #     use_batchnorm: false
+  #     use_ffn: false
 
+
+  bo:
+    test_size: 0.1
+    trainer: {batch_size: 128, epochs: 200, lam_smooth: 0.0, learning_rate: 0.0005526803165459961, weight_decay: 0.0028914898585685835}
+    features: [IMU_VerAccelVal, Bounce_rate_6D, Pitch_rate_6D]
+    args:
+      act_name: relu
+      attn_dim: 256
+      attn_heads: 2
+      attn_dropout: 0.013345994417725202
+      ffn_dim: 1024
+      ffn_dropout: 0.26176968124930355
+      hidden_dims: [32]
+      dropout_rates: [0.5]
+      use_batchnorm: true
+      use_ffn: true
 offline_lstm:
   base:
     <<: *_base
