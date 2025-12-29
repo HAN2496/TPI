@@ -2,95 +2,169 @@ _base: &_base
   test_size: 0.1
   trainer:
     batch_size: 128
-    epochs: 100
+    epochs: 200
     lam_smooth: 0.0
     learning_rate: 0.001
     weight_decay: 0.0
 
-offline_lstm:
-  base:
-    <<: *_base
-    features:
-      - IMU_VerAccelVal
-      - Bounce_rate_6D
-      - Pitch_rate_6D
-      - IMU_LongAccelVal
-    args:
-      act_name: relu
-      dropout_rates: [0.3, 0.3]
-      hidden_dims: [64, 32]
-      lstm_hidden: 64
-      lstm_layers: 2
-      use_batchnorm: true
 
 online_mlp:
   base:
     <<: *_base
-    test_size: 0.2
     features:
-      - IMU_VerAccelVal
-      - Bounce_rate_6D
-      - Pitch_rate_6D
-      - IMU_LongAccelVal
+    - IMU_VerAccelVal
+    - Bounce_rate_6D
+    - Pitch_rate_6D
+    - IMU_LongAccelVal
     args:
       act_name: relu
       dropout_rates: [0.3, 0.3, 0.3]
       hidden_dims: [64, 64, 32]
       use_batchnorm: true
-    trainer:
-      learning_rate: 0.0005
+  base_sum:
+    <<: *_base
+    features:
+    - IMU_VerAccelVal
+    - Bounce_rate_6D
+    - Pitch_rate_6D
+    - IMU_LongAccelVal
+    args:
+      act_name: relu
+      dropout_rates: [0.3, 0.3, 0.3]
+      hidden_dims: [64, 64, 32]
+      use_batchnorm: true
+      reduce: sum
 
-online_combi:
+
+online_lstm:
   base:
     <<: *_base
     features:
-      - IMU_VerAccelVal
-      - Bounce_rate_6D
-      - Pitch_rate_6D
-      - IMU_LongAccelVal
-  linear_quad:
+    - IMU_VerAccelVal
+    - Bounce_rate_6D
+    - Pitch_rate_6D
+    - IMU_LongAccelVal
+    args:
+      act_name: gelu
+      dropout_rates: [0.0, 0.0]
+      hidden_dims: [64, 64]
+      lstm_dropout: 0.3
+      lstm_hidden_dim: 256
+      lstm_layers: 2
+      use_batchnorm: true
+
+
+online_attention:
+  base:
     <<: *_base
-    test_size: 0.2
     features:
-      - IMU_VerAccelVal
-      - Bounce_rate_6D
-      - Pitch_rate_6D
-      - IMU_LongAccelVal
+    - IMU_VerAccelVal
+    - Bounce_rate_6D
+    - Pitch_rate_6D
+    - IMU_LongAccelVal
+    args:
+      act_name: gelu
+      attn_dim: 128
+      attn_heads: 4
+      attn_dropout: 0.1
+      ffn_dim: 256
+      ffn_dropout: 0.1
+      hidden_dims: [64, 32]
+      dropout_rates: [0.2, 0.2]
+      use_batchnorm: true
+      use_ffn: true
+
+  bo:
+    test_size: 0.1
+    trainer: {batch_size: 128, epochs: 200, lam_smooth: 0.0, learning_rate: 0.0006345598580577934, weight_decay: 0.0022235838234001626}
+    features: [IMU_VerAccelVal, Bounce_rate_6D, Pitch_rate_6D, IMU_LongAccelVal]
+    args:
+      act_name: relu
+      attn_dim: 256
+      attn_heads: 2
+      attn_dropout: 0.05459011351289604
+      ffn_dim: 1024
+      ffn_dropout: 0.22655542515741103
+      hidden_dims: [128, 32, 128]
+      dropout_rates: [0.0, 0.4, 0.1]
+      use_batchnorm: true
+      use_ffn: true
+
+
+offline_lstm:
+  base:
+    <<: *_base
+    features:
+    - IMU_VerAccelVal
+    - Bounce_rate_6D
+    - Pitch_rate_6D
+    - IMU_LongAccelVal
+    args:
+      act_name: gelu
+      bidirectional: true
+      dropout_rates: [0.0, 0.0]
+      hidden_dims: [64, 64]
+      lstm_dropout: 0.3
+      lstm_hidden_dim: 256
+      lstm_layers: 2
+      use_batchnorm: true
+
+
+linear_quad:
+  base:
+    <<: *_base
+    features:
+    - IMU_VerAccelVal
+    - Bounce_rate_6D
+    - Pitch_rate_6D
+    - IMU_LongAccelVal
     args:
       C: 1.0
       form: linear_quad
       max_iter: 1000
       random_state: 0
       solver: lbfgs
-    trainer: {}
-  quad_exp:
-    <<: *_base
-    test_size: 0.2
-    features:
-      - IMU_VerAccelVal
-      - Bounce_rate_6D
-      - Pitch_rate_6D
-      - IMU_LongAccelVal
-    args:
-      C: 1.0
-      form: quad_exp
-      max_iter: 1000
-      random_state: 0
-      solver: lbfgs
-      w3: [1.0, 1.0, 1.0, 1.0]
-      w4: [0.0, 0.0, 0.0, 0.0]
-    trainer: {}
-  quad_only:
+
+  bo:
+    test_size: 0.1
+    trainer: {batch_size: 128, epochs: 200, lam_smooth: 0.0, learning_rate: 0.001, weight_decay: 0.0}
+    features: [IMU_VerAccelVal, Bounce_rate_6D, Pitch_rate_6D, IMU_LongAccelVal]
+    args: {C: 1.1290133559092674, form: linear_quad, max_iter: 1000, random_state: 0, solver: lbfgs}
+quad_only:
+  base:
     <<: *_base
     features:
-      - IMU_VerAccelVal
-      - Bounce_rate_6D
-      - Pitch_rate_6D
-      - IMU_LongAccelVal
+    - IMU_VerAccelVal
+    - Bounce_rate_6D
+    - Pitch_rate_6D
+    - IMU_LongAccelVal
     args:
       C: 1.0
       form: quad_only
       max_iter: 1000
       random_state: 0
       solver: lbfgs
-    trainer: {}
+
+  bo:
+    test_size: 0.1
+    trainer: {batch_size: 128, epochs: 200, lam_smooth: 0.0, learning_rate: 0.001, weight_decay: 0.0}
+    features: [IMU_VerAccelVal, Bounce_rate_6D, Pitch_rate_6D, IMU_LongAccelVal]
+    args: {C: 6.58410616012161, form: quad_only, max_iter: 1000, random_state: 0, solver: lbfgs}
+
+
+quad_exp:
+  base:
+    <<: *_base
+    features:
+    - IMU_VerAccelVal
+    - Bounce_rate_6D
+    - Pitch_rate_6D
+    - IMU_LongAccelVal
+    args:
+      C: 0.06576916117983621
+      form: quad_exp
+      max_iter: 1000
+      random_state: 0
+      solver: lbfgs
+      w3: [1.0, 1.0, 1.0, 1.0]
+      w4: [0.0, 0.0, 0.0, 0.0]

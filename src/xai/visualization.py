@@ -1,82 +1,16 @@
-import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from captum.attr import IntegratedGradients
-
-class CaptumExplainer:
-    def __init__(self, model, device='cpu'):
-        self.model = model
-        self.device = device
-        self.model.eval()
-        self.ig = IntegratedGradients(self.model.forward)
-
-    def explain_sample(self, x_sample, baseline=None):
-        if not isinstance(x_sample, torch.Tensor):
-            x_sample = torch.tensor(x_sample, dtype=torch.float32)
-
-        if x_sample.ndim == 2:
-            x_sample = x_sample.unsqueeze(0)
-
-        x_sample = x_sample.to(self.device)
-
-        if baseline is None:
-            baseline = torch.zeros_like(x_sample)
-        elif not isinstance(baseline, torch.Tensor):
-            baseline = torch.tensor(baseline, dtype=torch.float32)
-            if baseline.ndim == 2:
-                baseline = baseline.unsqueeze(0)
-            baseline = baseline.to(self.device)
-
-        # Handle multiple baselines (conditional imputation)
-        if baseline.ndim == 3 and baseline.shape[0] > 1:
-            # baseline shape: (n_baselines, T, F)
-            # Compute attribution for each baseline and average
-            all_attributions = []
-            for i in range(baseline.shape[0]):
-                single_baseline = baseline[i:i+1]
-                with torch.set_grad_enabled(True):
-                    attr = self.ig.attribute(
-                        x_sample,
-                        baselines=single_baseline,
-                        n_steps=50,
-                        internal_batch_size=1
-                    )
-                all_attributions.append(attr.detach().cpu().numpy())
-
-            attributions = np.mean(all_attributions, axis=0)
-        else:
-            # Single baseline
-            with torch.set_grad_enabled(True):
-                attributions = self.ig.attribute(
-                    x_sample,
-                    baselines=baseline,
-                    n_steps=50,
-                    internal_batch_size=1
-                )
-            attributions = attributions.detach().cpu().numpy()
-
-        return attributions
-
-def create_explainer(model, device='cpu'):
-    return CaptumExplainer(model, device)
-
-def compute_feature_importance(attributions):
-    abs_attr = np.abs(attributions)
-    feature_importance = abs_attr.mean(axis=(0, 1))
-    return feature_importance
-
-def compute_temporal_importance(attributions):
-    abs_attr = np.abs(attributions)
-    temporal_importance = abs_attr.mean(axis=(0, 2))
-    return temporal_importance
-
-def compute_feature_time_matrix(attributions):
-    abs_attr = np.abs(attributions)
-    feature_time_matrix = abs_attr.mean(axis=0)
-    return feature_time_matrix
 
 def plot_feature_importance(feature_importance, feature_names, save_path=None):
+    """
+    Plot global feature importance as horizontal bar chart.
+
+    Args:
+        feature_importance: Feature importance scores (F,)
+        feature_names: List of feature names
+        save_path: Optional path to save the figure
+    """
     plt.figure(figsize=(10, 6))
     colors = ['#d62728' if imp > 0 else '#1f77b4' for imp in feature_importance]
     bars = plt.barh(feature_names, feature_importance, color=colors)
@@ -90,7 +24,15 @@ def plot_feature_importance(feature_importance, feature_names, save_path=None):
         plt.savefig(save_path, bbox_inches='tight', dpi=150)
     plt.close()
 
+
 def plot_temporal_importance(temporal_importance, save_path=None):
+    """
+    Plot temporal importance over time as line plot.
+
+    Args:
+        temporal_importance: Temporal importance scores (T,)
+        save_path: Optional path to save the figure
+    """
     timesteps = list(range(len(temporal_importance)))
 
     plt.figure(figsize=(12, 5))
@@ -107,7 +49,20 @@ def plot_temporal_importance(temporal_importance, save_path=None):
         plt.savefig(save_path, bbox_inches='tight', dpi=150)
     plt.close()
 
+
 def plot_feature_time_heatmap(feature_time_matrix, feature_names, x_sample=None, save_path=None):
+    """
+    Plot feature × time attribution heatmap.
+
+    If x_sample is provided, overlays sensor data on top of attribution background.
+    Each feature gets a subplot with sensor values (line) and attribution (background color).
+
+    Args:
+        feature_time_matrix: Feature × time attribution matrix (T, F)
+        feature_names: List of feature names
+        x_sample: Optional sensor data to overlay (T, F)
+        save_path: Optional path to save the figure
+    """
     if x_sample is not None:
         n_features = len(feature_names)
         fig, axes = plt.subplots(n_features, 1, figsize=(16, 3*n_features), sharex=True)
@@ -121,14 +76,14 @@ def plot_feature_time_heatmap(feature_time_matrix, feature_names, x_sample=None,
         cmap = plt.get_cmap('YlOrRd')
 
         for f_idx, (ax, feature_name) in enumerate(zip(axes, feature_names)):
-            # 배경: Attribution heatmap (색상으로)
+            # Background: Attribution heatmap (colored regions)
             attribution_values = feature_time_matrix[:, f_idx]
             colors = cmap(attribution_values / vmax)
 
             for t in range(len(timesteps)):
                 ax.axvspan(t - 0.5, t + 0.5, facecolor=colors[t], alpha=0.6, zorder=0)
 
-            # 전경: 센서 데이터 라인 플롯
+            # Foreground: Sensor data line plot
             ax.plot(timesteps, x_sample[:, f_idx],
                    color='black', linewidth=2.5, marker='o', markersize=4,
                    label=f'{feature_name} (sensor value)', zorder=2)
@@ -137,7 +92,7 @@ def plot_feature_time_heatmap(feature_time_matrix, feature_names, x_sample=None,
             ax.legend(loc='upper right', fontsize=9)
             ax.grid(True, alpha=0.3, zorder=1)
 
-            # 오른쪽에 attribution 값 표시
+            # Right Y-axis: Attribution value range
             ax2 = ax.twinx()
             ax2.set_ylabel('Attribution', fontsize=9, color='red')
             ax2.tick_params(axis='y', labelcolor='red', labelsize=8)
@@ -148,7 +103,7 @@ def plot_feature_time_heatmap(feature_time_matrix, feature_names, x_sample=None,
         fig.suptitle('Sensor Data with Attribution Heatmap Overlay',
                     fontsize=14, fontweight='bold', y=0.995)
 
-        # Colorbar 추가
+        # Colorbar
         sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=vmax))
         sm.set_array([])
         cbar = fig.colorbar(sm, ax=axes, orientation='vertical',
@@ -157,7 +112,7 @@ def plot_feature_time_heatmap(feature_time_matrix, feature_names, x_sample=None,
         plt.tight_layout()
 
     else:
-        # Original heatmap only
+        # Original heatmap only (no sensor data overlay)
         plt.figure(figsize=(14, 6))
         vmax = feature_time_matrix.max()
         sns.heatmap(feature_time_matrix.T,
@@ -176,7 +131,17 @@ def plot_feature_time_heatmap(feature_time_matrix, feature_names, x_sample=None,
         plt.savefig(save_path, bbox_inches='tight', dpi=150)
     plt.close()
 
+
 def plot_top_contributions(feature_time_matrix, feature_names, top_k=5, save_path=None):
+    """
+    Plot top-K (feature, time) contributions.
+
+    Args:
+        feature_time_matrix: Feature × time attribution matrix (T, F)
+        feature_names: List of feature names
+        top_k: Number of top contributions to display
+        save_path: Optional path to save the figure
+    """
     all_contributions = []
 
     for t in range(feature_time_matrix.shape[0]):
