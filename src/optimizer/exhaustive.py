@@ -148,18 +148,71 @@ class ExhaustiveAttentionOptimizer(ExhaustiveOptimizer):
         config['args']['act_name'] = config_dict['act_name']
         config['args']['use_batchnorm'] = config_dict['use_batchnorm']
 
-class ExhaustiveLinearCombinationOptimizer(ExhaustiveOptimizer):
+class ExhaustiveOnlineRegressionOptimizer(ExhaustiveOptimizer):
     def _suggest_model_params(self, trial, config):
         pass
 
     def _get_search_space(self):
         return {
-            'C': [0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0],
+            'C': [0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0],
+            'ops_per_feature': [
+                ['quad'],
+                ['abs', 'quad'],
+                ['quad', 'cube'],
+                ['abs', 'quad', 'shifted_exp'],
+            ]
         }
 
     def _generate_all_configs(self):
         space = self._get_search_space()
-        return [{'C': C} for C in space['C']]
+        all_configs = []
+        for C in space['C']:
+            for ops in space['ops_per_feature']:
+                config_dict = {
+                    'C': C,
+                    'ops': ops
+                }
+                all_configs.append(config_dict)
+        return all_configs
 
     def _apply_config_dict(self, config, config_dict):
         config['args']['C'] = config_dict['C']
+        basis = {feat_name: config_dict['ops'] for feat_name in config['features']}
+        config['args']['basis'] = basis
+
+        if 'shifted_exp' in config_dict['ops']:
+            config['args']['w3'] = {feat_name: 1.0 for feat_name in config['features']}
+            config['args']['w4'] = {feat_name: 0.0 for feat_name in config['features']}
+
+class ExhaustiveOfflineRegressionOptimizer(ExhaustiveOptimizer):
+    def _suggest_model_params(self, trial, config):
+        pass
+
+    def _get_search_space(self):
+        return {
+            'C': [0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0],
+            'ops_per_feature': [
+                ['mean'],
+                ['mean', 'std'],
+                ['mean', 'max', 'min'],
+                ['mean', 'std', 'max', 'min'],
+                ['mean', 'abs_mean', 'rmse'],
+            ]
+        }
+
+    def _generate_all_configs(self):
+        space = self._get_search_space()
+        all_configs = []
+        for C in space['C']:
+            for ops in space['ops_per_feature']:
+                config_dict = {
+                    'C': C,
+                    'ops': ops
+                }
+                all_configs.append(config_dict)
+        return all_configs
+
+    def _apply_config_dict(self, config, config_dict):
+        config['args']['C'] = config_dict['C']
+        basis = {feat_name: config_dict['ops'] for feat_name in config['features']}
+        config['args']['basis'] = basis

@@ -96,7 +96,7 @@ def plot_feature_time_heatmap(feature_time_matrix, feature_names, x_sample=None,
             ax2 = ax.twinx()
             ax2.set_ylabel('Attribution', fontsize=9, color='red')
             ax2.tick_params(axis='y', labelcolor='red', labelsize=8)
-            ax2.set_ylim(0, vmax)
+            ax2.set_ylim(-vmax, vmax)
             ax2.set_yticks([0, vmax/2, vmax])
 
         axes[-1].set_xlabel('Time Step', fontsize=12)

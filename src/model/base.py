@@ -92,12 +92,12 @@ def build_mlp(in_dim, hidden_dims, act, dropout_rates, use_batchnorm=False):
 def feature_map_dim(input_dim, form):
     if form == "quad_only":
         return input_dim
-    if form in ("linear_quad", "quad_exp"):
+    if form in ("abs_quad", "quad_exp"):
         return input_dim * 2
     raise ValueError(f"Unknown form: {form}")
 
 def feature_map_torch(x, form, w3=None, w4=None, clip=20.0):
-    if form == "linear_quad":
+    if form == "abs_quad":
         return torch.cat([torch.abs(x), x * x], dim=-1)
 
     if form == "quad_only":
@@ -118,7 +118,7 @@ def feature_map_torch(x, form, w3=None, w4=None, clip=20.0):
     raise ValueError(f"Unknown form: {form}")
 
 def feature_map_np(X, form, w3=None, w4=None, clip=20.0):
-    if form == "linear_quad":
+    if form == "abs_quad":
         return np.concatenate([np.abs(X), X * X], axis=-1)
 
     if form == "quad_only":
@@ -137,3 +137,11 @@ def feature_map_np(X, form, w3=None, w4=None, clip=20.0):
         return np.concatenate([quad, expv], axis=-1)
 
     raise ValueError(f"Unknown form: {form}")
+
+def _to_numpy(x):
+    if isinstance(x, np.ndarray):
+        return x
+    import torch
+    if torch.is_tensor(x):
+        return x.detach().cpu().numpy()
+    return np.asarray(x)

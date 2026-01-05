@@ -9,10 +9,10 @@ from torch.utils.data import Dataset, DataLoader
 
 from src.configs.utils import load_config
 from src.configs.registries import MODELS
-from src.model import OnlineCombination
+from src.model.base import RegressionModel
 from src.utils import prepare_training_data_kfold, ExperimentPaths
 from src.utils.utils import save_config
-from src.utils.trainer import BaseTrainer, CombinationTrainer
+from src.utils.trainer import BaseTrainer, RegressionTrainer
 
 class FeatureSelectionDataset(Dataset):
     def __init__(self, base_dataset, active_indices, n_features=None, mode='slice'):
@@ -38,13 +38,14 @@ class FeatureSelectionDataset(Dataset):
             return x, y
 
 class BaseOptimizer(ABC):
-    def __init__(self, driver_name, model_type, time_range, downsample, n_splits,
+    def __init__(self, driver_name, model_type, time_range, downsample, n_splits, test_ratio,
                  use_feature_selection=False, device="cpu", verbose=1):
         self.driver_name = driver_name
         self.model_type = model_type
         self.time_range = time_range
         self.downsample = downsample
         self.n_splits = n_splits
+        self.test_ratio = test_ratio
         self.use_feature_selection = use_feature_selection
         self.device = device
         self.verbose = verbose
@@ -72,37 +73,36 @@ class BaseOptimizer(ABC):
 
     def _train_and_evaluate(self, config, trial):
         fold_scores = []
-        # # OOF AUROC 최대화 방식 (현재는 fold별 AUROC 평균 사용)
-        # fold_predictions = []  # (y_true, y_probs) 저장
-
         load_config = self.base_config if self.use_feature_selection else config
         batch_size = config['trainer']['batch_size']
         input_dim = len(config['features'])
-        is_combination = MODELS[config['model_type']] is OnlineCombination
+        is_regression = issubclass(MODELS[config['model_type']], RegressionModel)
 
         feature_indices = None
         if self.use_feature_selection:
             base_features = self.base_config['features']
             feature_indices = [base_features.index(f) for f in config['features']]
 
-        for fold_idx, train_loader, val_loader in prepare_training_data_kfold(
-            self.driver_name, load_config, self.time_range, self.downsample, n_splits=self.n_splits
-        ):
-            if feature_indices:
-                train_loader = DataLoader(
-                    FeatureSelectionDataset(train_loader.dataset, feature_indices),
-                    batch_size=batch_size, shuffle=True, pin_memory=True
-                )
-                val_loader = DataLoader(
-                    FeatureSelectionDataset(val_loader.dataset, feature_indices),
-                    batch_size=len(val_loader.dataset), shuffle=False, pin_memory=True
-                )
+        _, fold_gen = prepare_training_data_kfold(
+            self.driver_name, load_config, self.time_range, self.downsample, n_splits=self.n_splits, test_ratio=self.test_ratio
+        )
 
-            model_args = {**config['args'], 'input_dim': input_dim}
+        for _, train_loader, val_loader in fold_gen:
+            if feature_indices:
+                train_ds = FeatureSelectionDataset(train_loader.dataset, feature_indices)
+                val_ds = FeatureSelectionDataset(val_loader.dataset, feature_indices)
+                train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, pin_memory=True)
+                val_loader = DataLoader(val_ds, batch_size=len(val_ds), shuffle=False, pin_memory=True)
+
+            model_args = {**config['args']}
+
+            if not is_regression:
+                model_args['input_dim'] = input_dim
+
             model = MODELS[config['model_type']](**model_args)
 
-            if is_combination:
-                trainer = CombinationTrainer(model, config['trainer'])
+            if is_regression:
+                trainer = RegressionTrainer(model, config['trainer'])
                 _, best_auroc, _ = trainer.train(train_loader, val_loader, verbose=False)
             else:
                 model.to(self.device)
@@ -118,7 +118,7 @@ class BaseOptimizer(ABC):
             # model.eval()
             # with torch.no_grad():
             #     X_val, y_val = next(iter(val_loader))
-            #     if not is_combination:
+            #     if not is_regression:
             #         X_val = X_val.to(self.device)
             #     y_probs = model.predict_probability(X_val)
             #     if torch.is_tensor(y_probs):
@@ -128,6 +128,7 @@ class BaseOptimizer(ABC):
             #     fold_predictions.append((y_val, y_probs))
 
         return sum(fold_scores) / len(fold_scores)
+        # return max(fold_scores)
 
         # # OOF 방식: 모든 fold 예측을 합쳐서 AUROC 계산
         # from sklearn.metrics import roc_auc_score

@@ -110,7 +110,7 @@ offline_lstm:
       use_batchnorm: true
 
 
-linear_quad:
+abs_quad:
   base:
     <<: *_base
     features:

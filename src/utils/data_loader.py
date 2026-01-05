@@ -202,20 +202,6 @@ class Dataset:
         return iter(self.data.values())
 
     def to_sequences(self, feature_cols=None, time_range=(5, 8), fill_value=0.0, pad=False):
-        """
-        Convert dataset to sequences for ML training
-
-        Args:
-            feature_cols: List of column names to use as features (if None, use all columns except Time)
-            time_range: Tuple of (start_time, end_time) to extract
-            fill_value: Value to use for fillna and padding
-            pad: If True, pad sequences to expected length based on dt
-
-        Returns:
-            t: List of numpy arrays of time values or stacked array if pad=True
-            X: List of numpy arrays of shape (seq_len, n_features) or stacked array if pad=True
-            y: numpy array of shape (n_samples,) with binary labels (1=True, 0=False)
-        """
         self._ensure_loaded()
 
         t, X, y = [], [], []

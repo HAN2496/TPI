@@ -97,8 +97,6 @@ def main(driver_name, model_type, model_name, time_range, downsample,
         print(f"{'='*60}\n")
 
     args = config['args'].copy()
-    if 'input_dim' not in args:
-        args['input_dim'] = len(config['features'])
     model = MODELS[config['model_type']](**args)
     model = model.to(device)
 

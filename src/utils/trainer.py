@@ -151,7 +151,7 @@ class BaseTrainer:
         return val_acc, self.best_auroc, history
 
 
-class CombinationTrainer:
+class RegressionTrainer:
     def __init__(self, model, config, best_model_path=None):
         self.model = model
         self.config = config

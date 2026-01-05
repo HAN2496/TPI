@@ -117,19 +117,20 @@ def plot_step_rewards(model, X_val, y_val, n_samples=5, save_path=None):
     else:
         plt.show()
 
-def save_combination_params(model, feature_cols, save_path):
-    w_raw, b_raw = model.raw_reward_params()
+def save_regression_params(model, feature_cols, save_path):
     beta = model.model.coef_.reshape(-1)
     intercept = model.model.intercept_[0]
     mu = model.scaler.mean_
     sigma = model.scaler.scale_
 
-    fig = plt.figure(figsize=(14, 10))
+    is_online = hasattr(model, 'reduce')
+
+    fig = plt.figure(figsize=(16, 12))
     ax = fig.add_subplot(111)
     ax.axis('off')
 
     y_pos = 0.95
-    line_height = 0.035
+    line_height = 0.03
 
     def add_text(text, fontsize=10, weight='normal', color='black'):
         nonlocal y_pos
@@ -137,61 +138,77 @@ def save_combination_params(model, feature_cols, save_path):
                 family='monospace', verticalalignment='top', color=color)
         y_pos -= line_height
 
-    add_text("=== Reward Function (with explicit scaling) ===", fontsize=12, weight='bold')
+    model_type = "Online (Step-wise)" if is_online else "Offline (Episode-wise)"
+    add_text(f"=== Regression Model Parameters ({model_type}) ===", fontsize=12, weight='bold')
     add_text("")
 
-    add_text("Step 1: Feature Mapping", fontsize=11, weight='bold', color='darkblue')
-    if model.form == "quad_only":
-        for i, feat in enumerate(feature_cols):
-            add_text(f"  $\\phi_{{{i}}}$ = ({feat})²")
-    elif model.form == "linear_quad":
-        for i, feat in enumerate(feature_cols):
-            add_text(f"  $\\phi_{{{2*i}}}$ = |{feat}|,  $\\phi_{{{2*i+1}}}$ = ({feat})²")
-    elif model.form == "quad_exp":
-        for i, feat in enumerate(feature_cols):
-            add_text(f"  $\\phi_{{{2*i}}}$ = ({feat})²,  $\\phi_{{{2*i+1}}}$ = exp({model.w3[i]:.3f} × max(|{feat}| - {model.w4[i]:.3f}, 0))")
+    add_text("Step 1: Feature Mapping / Aggregation", fontsize=11, weight='bold', color='darkblue')
+    phi_idx = 0
+    feature_phi_map = []
+
+    for feat_name, ops_list in model.basis.items():
+        if is_online:
+            for op in ops_list:
+                if op == 'abs':
+                    add_text(f"  φ_{{{phi_idx}}} = |{feat_name}_t|")
+                elif op == 'quad':
+                    add_text(f"  φ_{{{phi_idx}}} = ({feat_name}_t)²")
+                elif op == 'cube':
+                    add_text(f"  φ_{{{phi_idx}}} = ({feat_name}_t)³")
+                elif op == 'shifted_exp':
+                    w3_val = model.w3[feat_name]
+                    w4_val = model.w4[feat_name]
+                    add_text(f"  φ_{{{phi_idx}}} = exp({w3_val:.3f} × max(|{feat_name}_t| - {w4_val:.3f}, 0))")
+                feature_phi_map.append((feat_name, op, phi_idx))
+                phi_idx += 1
+        else:
+            for op in ops_list:
+                if op == 'mean':
+                    add_text(f"  φ_{{{phi_idx}}} = mean({feat_name})")
+                elif op == 'std':
+                    add_text(f"  φ_{{{phi_idx}}} = std({feat_name})")
+                elif op == 'max':
+                    add_text(f"  φ_{{{phi_idx}}} = max({feat_name})")
+                elif op == 'min':
+                    add_text(f"  φ_{{{phi_idx}}} = min({feat_name})")
+                elif op == 'abs_mean':
+                    add_text(f"  φ_{{{phi_idx}}} = mean(|{feat_name}|)")
+                elif op == 'sqrt_mean':
+                    add_text(f"  φ_{{{phi_idx}}} = mean({feat_name}²)")
+                elif op == 'rmse':
+                    add_text(f"  φ_{{{phi_idx}}} = sqrt(mean({feat_name}²))")
+                feature_phi_map.append((feat_name, op, phi_idx))
+                phi_idx += 1
 
     add_text("")
     add_text("Step 2: Standardization", fontsize=11, weight='bold', color='darkblue')
-    for i in range(len(mu)):
-        add_text(f"  $\\tilde{{\\phi}}_{{{i}}}$ = ($\\phi_{{{i}}}$ - {mu[i]:.3f}) / {sigma[i]:.3f}")
+    for i in range(min(len(mu), 10)):
+        add_text(f"  φ̃_{{{i}}} = (φ_{{{i}}} - {mu[i]:.3f}) / {sigma[i]:.3f}")
+    if len(mu) > 10:
+        add_text(f"  ... ({len(mu) - 10} more features)")
 
     add_text("")
-    add_text("Step 3: Linear Combination", fontsize=11, weight='bold', color='darkblue')
-    add_text(f"  $r(s_t) = \\sum_i \\beta_i \\times \\tilde{{\\phi}}_i$ + {intercept:.3f}")
-    for i in range(len(beta)):
-        add_text(f"    $\\beta_{{{i}}}$ = {beta[i]:.3f}")
+    add_text("Step 3: Logistic Regression", fontsize=11, weight='bold', color='darkblue')
+    if is_online:
+        reduce_str = f" (reduce={model.reduce})"
+        add_text(f"  r_t = Σ β_i × φ̃_i(x_t) + b_adj{reduce_str}")
+    else:
+        add_text(f"  logit = Σ β_i × φ̃_i + {intercept:.3f}")
 
     add_text("")
-    add_text("=== Final Equation (raw form) ===", fontsize=11, weight='bold', color='darkgreen')
+    add_text("Coefficients (β):", fontsize=10, weight='bold', color='darkgreen')
+    for i in range(min(len(beta), 15)):
+        feat_info = feature_phi_map[i] if i < len(feature_phi_map) else ("?", "?", i)
+        add_text(f"  β_{{{i}}} = {beta[i]:+.4f}  [{feat_info[0]}.{feat_info[1]}]")
+    if len(beta) > 15:
+        add_text(f"  ... ({len(beta) - 15} more coefficients)")
 
-    terms = []
-    if model.form == "quad_only":
-        for i, feat in enumerate(feature_cols):
-            terms.append(f"{w_raw[i]:.3f} × ({feat})²")
-    elif model.form == "linear_quad":
-        for i, feat in enumerate(feature_cols):
-            terms.append(f"{w_raw[2*i]:.3f} × |{feat}|")
-            terms.append(f"{w_raw[2*i+1]:.3f} × ({feat})²")
-    elif model.form == "quad_exp":
-        for i, feat in enumerate(feature_cols):
-            terms.append(f"{w_raw[2*i]:.3f} × ({feat})²")
-            terms.append(f"{w_raw[2*i+1]:.3f} × exp({model.w3[i]:.3f} × max(|{feat}| - {model.w4[i]:.3f}, 0))")
+    add_text("")
+    add_text(f"Intercept: {intercept:.4f}", fontsize=10, weight='bold', color='darkgreen')
 
-    equation_parts = ["$r(s_t)$ = "]
-    max_line_length = 80
-    current_line = equation_parts[0]
-
-    for i, term in enumerate(terms):
-        term_str = term if i == 0 else f" + {term}"
-        if len(current_line) + len(term_str) > max_line_length:
-            add_text(current_line)
-            current_line = "         " + term_str.strip()
-        else:
-            current_line += term_str
-
-    current_line += f" + {b_raw:.3f}"
-    add_text(current_line)
+    if is_online:
+        add_text("")
+        add_text(f"Reduce mode: {model.reduce}", fontsize=10, weight='bold', color='purple')
 
     plt.tight_layout()
     plt.savefig(save_path, dpi=150, bbox_inches='tight')
@@ -260,7 +277,7 @@ def plot_kfold_roc_curves(fold_results, save_path=None):
     else:
         plt.show()
 
-def save_all_plots(model, history, val_loader, paths, is_online=False, feature_cols=None, verbose=0):
+def save_all_plots(model, history, val_loader, paths, is_online=False, is_regression=False, feature_cols=None, verbose=0):
     X_val, y_val = val_loader.dataset.tensors
     y_val_np = y_val.numpy()
 
@@ -274,8 +291,8 @@ def save_all_plots(model, history, val_loader, paths, is_online=False, feature_c
     if is_online:
         plot_step_rewards(model, X_val, y_val_np, n_samples=10, save_path=paths.get('step_rewards.png', create=True))
 
-    if hasattr(model, 'raw_reward_params') and feature_cols:
-        save_combination_params(model, feature_cols, save_path=paths.get('combination_params.png', create=True))
+    if is_regression and feature_cols:
+        save_regression_params(model, feature_cols, save_path=paths.get('regression_params.png', create=True))
 
     if verbose >= 2:
         print(f"  Plots saved to: {paths.run_dir}")

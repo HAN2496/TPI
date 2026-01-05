@@ -56,20 +56,49 @@ class AttentionOptimizer(BayesianOptimizer):
         config['trainer']['learning_rate'] = trial.suggest_float('lr', 1e-4, 1e-3, log=True)
         config['trainer']['weight_decay'] = trial.suggest_float('wd', 0.0, 0.01)
 
-class LinearCombinationOptimizer(BayesianOptimizer):
+class OnlineRegressionOptimizer(BayesianOptimizer):
     n_startup_trials = 100
 
-    def __init__(self, driver_name, model_type, time_range, downsample, n_splits,
-                 use_feature_selection=False, device="cpu", verbose=1):
-        super().__init__(driver_name, model_type, time_range, downsample, n_splits,
-                        use_feature_selection, device, verbose)
-        self.n_orig_features = len(self.base_config['features'])
+    def _suggest_model_params(self, trial, config):
+        config['args']['C'] = trial.suggest_float('C', 0.1, 100.0, log=True)
+
+        available_ops = ['abs', 'quad', 'cube', 'shifted_exp']
+        basis = {}
+        shifted_exp_features = []
+
+        for feat_name in config['features']:
+            selected_ops = [op for op in available_ops if trial.suggest_categorical(f'basis_{feat_name}_{op}', [0, 1])]
+            if not selected_ops:
+                selected_ops = ['quad']
+            basis[feat_name] = selected_ops
+            if 'shifted_exp' in selected_ops:
+                shifted_exp_features.append(feat_name)
+
+        config['args']['basis'] = basis
+
+        if shifted_exp_features:
+            w3_dict = {}
+            w4_dict = {}
+            for feat_name in shifted_exp_features:
+                w3_dict[feat_name] = trial.suggest_float(f'w3_{feat_name}', 0.1, 50.0, log=True)
+                w4_dict[feat_name] = trial.suggest_float(f'w4_{feat_name}', 0.0, 50.0)
+
+            config['args']['w3'] = w3_dict
+            config['args']['w4'] = w4_dict
+
+class OfflineRegressionOptimizer(BayesianOptimizer):
+    n_startup_trials = 100
 
     def _suggest_model_params(self, trial, config):
-        config['args']['C'] = trial.suggest_float('C', 0.01, 10.0, log=True)
+        config['args']['C'] = trial.suggest_float('C', 0.1, 100.0, log=True)
 
-        if config['args']['form'] == 'quad_exp':
-            w3_list = [trial.suggest_float(f'w3_{i}', 0.1, 10.0, log=True) for i in range(self.n_orig_features)]
-            w4_list = [trial.suggest_float(f'w4_{i}', 0.0, 5.0) for i in range(self.n_orig_features)]
-            config['args']['w3'] = w3_list
-            config['args']['w4'] = w4_list
+        available_ops = ['mean', 'std', 'max', 'min', 'abs_mean', 'sqrt_mean', 'rmse']
+        basis = {}
+
+        for feat_name in config['features']:
+            selected_ops = [op for op in available_ops if trial.suggest_categorical(f'basis_{feat_name}_{op}', [0, 1])]
+            if not selected_ops:
+                selected_ops = ['mean']
+            basis[feat_name] = selected_ops
+
+        config['args']['basis'] = basis

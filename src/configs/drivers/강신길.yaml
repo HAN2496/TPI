@@ -135,7 +135,7 @@ offline_lstm:
       use_batchnorm: true
 
 
-linear_quad:
+offline_regression:
   base:
     <<: *_base
     features:
@@ -145,17 +145,16 @@ linear_quad:
     - IMU_LongAccelVal
     args:
       C: 1.0
-      form: linear_quad
       max_iter: 1000
-      random_state: 0
       solver: lbfgs
+      random_state: 0
+      basis:
+        IMU_VerAccelVal: [sqrt_mean, max]
+        Bounce_rate_6D: [sqrt_mean, max]
+        Pitch_rate_6D: [sqrt_mean, max]
+        IMU_LongAccelVal: [sqrt_mean, max]
 
-  bo:
-    test_size: 0.1
-    trainer: {batch_size: 128, epochs: 200, lam_smooth: 0.0, learning_rate: 0.001, weight_decay: 0.0}
-    features: [IMU_VerAccelVal, Bounce_rate_6D, Pitch_rate_6D, IMU_LongAccelVal]
-    args: {C: 1.1290133559092674, form: linear_quad, max_iter: 1000, random_state: 0, solver: lbfgs}
-quad_only:
+online_regression:
   base:
     <<: *_base
     features:
@@ -164,27 +163,18 @@ quad_only:
     - Pitch_rate_6D
     - IMU_LongAccelVal
     args:
-      C: 1.0
-      form: quad_only
+      C: 100.0
+      solver: lbfgs
       max_iter: 1000
       random_state: 0
-      solver: lbfgs
+      basis:
+        IMU_VerAccelVal: [abs, quad]
+        Bounce_rate_6D: [abs, quad]
+        Pitch_rate_6D: [abs, quad]
+        IMU_LongAccelVal: [abs, quad]
 
-  bo:
-    test_size: 0.1
-    trainer: {batch_size: 128, epochs: 200, lam_smooth: 0.0, learning_rate: 0.001, weight_decay: 0.0}
-    features: [IMU_VerAccelVal, Bounce_rate_6D, Pitch_rate_6D, IMU_LongAccelVal]
-    args: {C: 6.58410616012161, form: quad_only, max_iter: 1000, random_state: 0, solver: lbfgs}
-
-
-quad_exp:
-  base:
+  quad_exp:
     <<: *_base
-    features:
-    - IMU_VerAccelVal
-    - Bounce_rate_6D
-    - Pitch_rate_6D
-    - IMU_LongAccelVal
     args:
       C: 0.06576916117983621
       form: quad_exp
@@ -193,3 +183,19 @@ quad_exp:
       solver: lbfgs
       w3: [1.0, 1.0, 1.0, 1.0]
       w4: [0.0, 0.0, 0.0, 0.0]
+  bo:
+    test_size: 0.1
+    trainer: {batch_size: 128, epochs: 200, lam_smooth: 0.0, learning_rate: 0.001, weight_decay: 0.0}
+    features: [IMU_VerAccelVal, Bounce_rate_6D, Pitch_rate_6D, IMU_LongAccelVal]
+    args:
+      C: 0.11113159879347126
+      solver: lbfgs
+      max_iter: 1000
+      random_state: 0
+      basis:
+        IMU_VerAccelVal: [abs, shifted_exp]
+        Bounce_rate_6D: [cube, shifted_exp]
+        Pitch_rate_6D: [abs, quad]
+        IMU_LongAccelVal: [quad]
+      w3: {IMU_VerAccelVal: 20.273254267274467, Bounce_rate_6D: 9.905230067883263}
+      w4: {IMU_VerAccelVal: 0.43577550748761884, Bounce_rate_6D: 1.0141475472774526}
