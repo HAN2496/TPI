@@ -55,15 +55,15 @@ online_lstm:
 
   bo:
     test_size: 0.1
-    trainer: {batch_size: 128, epochs: 200, lam_smooth: 0.0, learning_rate: 0.0007015412676067785, weight_decay: 0.007466210341627973}
+    trainer: {batch_size: 128, epochs: 200, lam_smooth: 0.0, learning_rate: 0.0009699935948459097, weight_decay: 0.0008295102901383039}
     features: [IMU_VerAccelVal, Bounce_rate_6D, Pitch_rate_6D, IMU_LongAccelVal]
     args:
       act_name: relu
-      dropout_rates: [0.3, 0.5]
-      hidden_dims: [64, 128]
-      lstm_dropout: 0.4447447004082546
-      lstm_hidden_dim: 64
-      lstm_layers: 3
+      dropout_rates: [0.2, 0.2, 0.3]
+      hidden_dims: [64, 128, 64]
+      lstm_dropout: 0.08430429016727181
+      lstm_hidden_dim: 256
+      lstm_layers: 4
       use_batchnorm: true
 online_attention:
   base:
@@ -190,14 +190,14 @@ online_regression:
     trainer: {batch_size: 128, epochs: 200, lam_smooth: 0.0, learning_rate: 0.001, weight_decay: 0.0}
     features: [IMU_VerAccelVal, Bounce_rate_6D, Pitch_rate_6D, IMU_LongAccelVal]
     args:
-      C: 0.11414261725560083
+      C: 99.2941224236526
       solver: lbfgs
       max_iter: 1000
       random_state: 0
       basis:
-        0: [quad]
-        1: [cube, shifted_exp]
-        2: [abs, quad]
-        3: [cube]
-      w3: [20.78144237037344, 0.19934780178379186, 0.18161827207583653, 4.777787498997755]
-      w4: [18.176536269189334, 2.564693432862826, 49.29791315707418, 42.17472067286505]
+        IMU_VerAccelVal: [abs, quad, shifted_exp]
+        Bounce_rate_6D: [shifted_exp]
+        Pitch_rate_6D: [shifted_exp]
+        IMU_LongAccelVal: [abs, quad, shifted_exp]
+      w3: {IMU_VerAccelVal: 1.2205331046854342, Bounce_rate_6D: 8.808411577892894, Pitch_rate_6D: 0.44943334758365, IMU_LongAccelVal: 49.296860511400084}
+      w4: {IMU_VerAccelVal: 44.895547863405696, Bounce_rate_6D: 36.81752652226854, Pitch_rate_6D: 47.52455020819025, IMU_LongAccelVal: 0.1355079147131126}

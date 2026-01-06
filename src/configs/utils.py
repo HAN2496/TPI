@@ -25,6 +25,8 @@ def create_model(driver_name, model_type, model_name, is_train=True, device="cpu
     config = load_config(driver_name, model_type, model_name, verbose=verbose)
 
     args = config['args'].copy()
+    if 'input_dim' not in args:
+        args['input_dim'] = len(config['features'])
     model = MODELS[config['model_type']](**args)
 
     if not is_train:

@@ -1,47 +1,41 @@
 """
-XAI (Explainable AI) module for time series model interpretation.
+XAI (Explainable AI) module for TPI.
 
-This module provides:
-- Explainers: IntegratedGradients, KernelShap
-- Visualizations: Feature importance, temporal importance, heatmaps
-- Utilities: Baseline computation, attribution metrics
+Provides TimeSHAP-based explanations for TPI models to understand:
+- Which features are important for predictions
+- Which timesteps are important
+- Which (feature, timestep) combinations are important
 """
 
-from .models import (
-    IntegratedGradientsExplainer,
-    KernelShapExplainer,
-    create_explainer
+from .model_adapters import (
+    OnlineModelAdapter,
+    OfflineModelAdapter,
+    create_model_adapter,
+    RewardEstimator,
 )
 
-from .utils import (
-    compute_baselines,
-    compute_feature_importance,
-    compute_temporal_importance,
-    compute_feature_time_matrix
+from .timeshap_explainer import (
+    TimeSHAPExplainer,
+    create_background_dataset,
 )
 
 from .visualization import (
-    plot_feature_importance,
-    plot_temporal_importance,
-    plot_feature_time_heatmap,
-    plot_top_contributions
+    plot_explanation_summary,
+    plot_top_k_cells,
+    plot_all_timeshap,
 )
 
 __all__ = [
-    # Explainers
-    'IntegratedGradientsExplainer',
-    'KernelShapExplainer',
-    'create_explainer',
-
-    # Utils
-    'compute_baselines',
-    'compute_feature_importance',
-    'compute_temporal_importance',
-    'compute_feature_time_matrix',
-
+    # Model adapters
+    'OnlineModelAdapter',
+    'OfflineModelAdapter',
+    'create_model_adapter',
+    'RewardEstimator',
+    # Explainer
+    'TimeSHAPExplainer',
+    'create_background_dataset',
     # Visualization
-    'plot_feature_importance',
-    'plot_temporal_importance',
-    'plot_feature_time_heatmap',
-    'plot_top_contributions',
+    'plot_explanation_summary',
+    'plot_top_k_cells',
+    'plot_all_timeshap',
 ]

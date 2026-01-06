@@ -57,6 +57,10 @@ def train_model_kfold(driver_name, model_type, model_name='base', time_range=Non
 
         X_test, y_test = test_loader.dataset.tensors
         y_test_probs = model.predict_probability(X_test)
+
+        if torch.is_tensor(y_test_probs):
+            y_test_probs = y_test_probs.cpu().numpy()
+
         test_auroc = roc_auc_score(y_test.numpy(), y_test_probs)
         test_preds = (y_test_probs >= model.best_threshold).astype(int)
         test_acc = accuracy_score(y_test.numpy(), test_preds)
