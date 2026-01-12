@@ -5,6 +5,43 @@ from torch.utils.data import Dataset
 from src.utils.data_loader import DatasetManager
 from src.utils.utils import _load_dataset_sequences
 
+class PreferenceDataset(Dataset):
+    def __init__(self, pref_dataset, context_size=64):
+        self.pref_dataset = pref_dataset
+        self.context_size = context_size
+
+    def __len__(self):
+        return len(self.pref_dataset)
+
+    def __getitem__(self, idx):
+        item = self.pref_dataset[idx]
+
+        total_pairs = item['observations'].shape[0]
+        
+        replace = total_pairs < self.context_size
+        indices = np.random.choice(total_pairs, size=self.context_size, replace=replace)
+
+        return {
+            'observations': item['observations'][indices],         # (N_ctx, T, d)
+            'observations_2': item['observations_2'][indices],     # (N_ctx, T, d)
+            'labels': item['labels'][indices],                     # (N_ctx, 1)
+            'driver_name': item['driver_name'],
+        }
+
+    def get_personal_data(self, batch_size):
+        batch_size = min(batch_size, len(self))
+        idxs = np.random.choice(len(self), size=batch_size, replace=False)
+
+        # Return list of observations for selected drivers
+        observations = [self.pref_dataset[i]['observations'] for i in idxs]
+        observations_2 = [self.pref_dataset[i]['observations_2'] for i in idxs]
+
+        return {
+            'observations': observations,
+            'observations_2': observations_2
+        }, batch_size
+
+
 def create_vpl_datset_new(test_deriver_name, features, time_range, downsample, tie_ratio=0.0):
     manager = DatasetManager("datasets", downsample=downsample)
     all_driver_names = manager.keys()
@@ -12,8 +49,10 @@ def create_vpl_datset_new(test_deriver_name, features, time_range, downsample, t
 
     config = {}
     config['features'] = features
-    all_pairs = []
-    for idx, train_driver_name in enumerate(train_driver_names):
+
+    driver_datasets = []
+
+    for train_driver_name in train_driver_names:
         X, y = _load_dataset_sequences(train_driver_name, time_range, downsample, config)
 
         true_mask  = (y == 1)
@@ -25,16 +64,20 @@ def create_vpl_datset_new(test_deriver_name, features, time_range, downsample, t
         n_true  = len(true_episodes)
         n_false = len(false_episodes)
 
+        if n_true == 0 or n_false == 0:
+            print(f"Warning: Driver {train_driver_name} has no True or False episodes. Skipping.")
+            continue
+
+        driver_obs = []
+        driver_obs_2 = []
+        driver_labels = []
+
         # Phase 1: True vs False pairs
         for true_ep in true_episodes:
             for false_ep in false_episodes:
-                all_pairs.append({
-                    "driver_id": idx,
-                    "driver_name": train_driver_name,
-                    "observations": true_ep,
-                    "observations_2": false_ep,
-                    "labels": 1.0,
-                })
+                driver_obs.append(true_ep)
+                driver_obs_2.append(false_ep)
+                driver_labels.append(1.0)
 
         # Phase 2: Tie pairs
         true_tie_pairs = int(len(true_episodes) * tie_ratio)
@@ -42,33 +85,33 @@ def create_vpl_datset_new(test_deriver_name, features, time_range, downsample, t
 
         for _ in range(true_tie_pairs):
             idx_a, idx_b = np.random.choice(n_true, size=2, replace=False)
-            all_pairs.append({
-                "driver_id": idx,
-                "driver_name": train_driver_name,
-                "observations": true_episodes[idx_a],
-                "observations_2": true_episodes[idx_b],
-                "labels": 0.5,
-            })
-        
+            driver_obs.append(true_episodes[idx_a])
+            driver_obs_2.append(true_episodes[idx_b])
+            driver_labels.append(0.5)
+
         for _ in range(false_tie_pairs):
             idx_a, idx_b = np.random.choice(n_false, size=2, replace=False)
-            all_pairs.append({
-                "driver_id": idx,
-                "driver_name": train_driver_name,
-                "observations": false_episodes[idx_a],
-                "observations_2": false_episodes[idx_b],
-                "labels": 0.5,
-            })
-        
-        print(f"Driver {train_driver_name}: {n_true} True, {n_false} False → "
+            driver_obs.append(false_episodes[idx_a])
+            driver_obs_2.append(false_episodes[idx_b])
+            driver_labels.append(0.5)
+
+        # Convert to numpy arrays: (N, T, d)
+        driver_obs = np.stack(driver_obs, axis=0)
+        driver_obs_2 = np.stack(driver_obs_2, axis=0)
+        driver_labels = np.array(driver_labels).reshape(-1, 1)  # (N, 1)
+
+        driver_datasets.append({
+            "observations": driver_obs,
+            "observations_2": driver_obs_2,
+            "labels": driver_labels,
+            "driver_name": train_driver_name
+        })
+
+        print(f"Driver {train_driver_name}: {n_true} True, {n_false} False -> "
               f"{n_true * n_false} primary + {true_tie_pairs + false_tie_pairs} tie = "
-              f"{n_true * n_false + true_tie_pairs + false_tie_pairs} pairs")
+              f"{len(driver_labels)} pairs")
 
-    np.random.shuffle(all_pairs)
-
-    
-
-    return all_pairs
+    return driver_datasets
 
 
 

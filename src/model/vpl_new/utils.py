@@ -64,6 +64,40 @@ def get_all_posterior(env, reward_model, dataset, num_samples):
     return np.stack(means, axis=0)
 
 
+def get_test_latent(model, driver_dataset, device):
+    obs1 = torch.from_numpy(driver_dataset['observations']).float().to(device)
+    obs2 = torch.from_numpy(driver_dataset['observations_2']).float().to(device)
+    labels = torch.from_numpy(driver_dataset['labels']).float().to(device)
+
+    obs1 = obs1.unsqueeze(0)
+    obs2 = obs2.unsqueeze(0)
+    labels = labels.unsqueeze(0)
+
+    with torch.no_grad():
+        mean, _ = model.encode(obs1, obs2, labels, mask=None)
+
+    return mean.squeeze(0).cpu().numpy()
+
+
+def compute_step_rewards(model, X, z_mean, device):
+    N, T, d = X.shape
+
+    obs = torch.from_numpy(X).float().to(device)
+    z = torch.from_numpy(z_mean).float().to(device)
+
+    z_expanded = z.unsqueeze(0).unsqueeze(0).unsqueeze(0)
+    z_expanded = z_expanded.expand(N, 1, T, -1)
+
+    obs = obs.unsqueeze(1)
+
+    with torch.no_grad():
+        step_rewards = model.decode(obs, z_expanded)
+
+    step_rewards = step_rewards.squeeze(1).squeeze(-1)
+
+    return step_rewards.cpu().numpy()
+
+
 def plot_latents(env, reward_model, dataset):
     if reward_model.flow_prior:
         fig, axs = plt.subplots(1, 2, figsize=(10, 8))

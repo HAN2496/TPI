@@ -20,7 +20,10 @@ class Encoder(nn.Module):
         self.FC_var = nn.Linear(hidden_dim, latent_dim)
 
     def forward(self, x):
-        h_ = self.model(x)
+        B, Ann, D = x.shape
+        h = self.model(x.reshape(B * Ann, D)).reshape(B, Ann, -1)
+        h_ = h.mean(dim=1)
+
         mean = self.FC_mean(h_)
         log_var = self.FC_var(h_)
 
@@ -92,9 +95,10 @@ class VAEModel(nn.Module):
         s2_ = s2.view(s2.shape[0], s2.shape[1], -1)
         y = y.reshape(s1.shape[0], s1.shape[1], -1)
 
-        encoder_input = torch.cat([s1_, s2_, y], dim=-1).view(
-            s1.shape[0], -1
-        )  # Batch x Ann x (2*T*State + 1)
+        encoder_input = torch.cat([s1_, s2_, y], dim=-1)
+        # encoder_input = torch.cat([s1_, s2_, y], dim=-1).view(
+        #     s1.shape[0], -1
+        # )  # Batch x Ann x (2*T*State + 1)
         mean, log_var = self.Encoder(encoder_input)
         return mean, log_var
 
@@ -115,6 +119,13 @@ class VAEModel(nn.Module):
         return self.flow(z)
 
     def reconstruction_loss(self, x, x_hat):
+        # bce = nn.functional.binary_cross_entropy(x_hat, x, reduction="none").squeeze(-1)  # (B,Ann)
+        # if mask is None:
+        #     return bce.mean()
+        # else:
+        #     w = mask.float()
+        #     per_user = (bce * w).sum(dim=1) / w.sum(dim=1).clamp_min(1.0)
+        #     return per_user.mean()
         return nn.functional.binary_cross_entropy(x_hat, x, reduction="sum")
 
     def accuracy(self, x, x_hat):
@@ -136,15 +147,20 @@ class VAEModel(nn.Module):
     def forward(self, s1, s2, y):  # Batch x Ann x T x State, Batch x Ann x 1
         # import pdb; pdb.set_trace()
         mean, log_var = self.encode(s1, s2, y)
+        # mean, log_var = self.encode(s1, s2, y)
 
         if self.flow_prior:
             z, log_det = self.transform(mean, log_var)
         else:
             z = self.reparameterization(mean, torch.exp(0.5 * log_var))  # Batch x Z
             log_det = None
-        z = z.repeat((1, self.annotation_size * self.size_segment)).view(
-            -1, self.annotation_size, self.size_segment, z.shape[1]
-        )
+
+        Ann = s1.shape[1]
+        z = z[:, None, None, :].expand(-1, Ann, self.size_segment, -1)  # (B,Ann,T,Z)
+
+        # z = z.repeat((1, self.annotation_size * self.size_segment)).view(
+        #     -1, self.annotation_size, self.size_segment, z.shape[1]
+        # )
 
         r0 = self.decode(s1, z)
         r1 = self.decode(s2, z)

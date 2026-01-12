@@ -77,11 +77,10 @@ class EarlyStopper:
 
 
 class VPLTrainer:
-    def __init__(self, model, logger, config, best_model_path=None, device='cpu'):
+    def __init__(self, model, logger, config, device='cpu'):
         self.model = model
         self.config = config
         self.device = device
-        self.best_model_path = best_model_path
         self.logger = logger
 
         self.optimizer = torch.optim.Adam(
@@ -102,6 +101,7 @@ class VPLTrainer:
                 min_delta=config['min_delta']
             )
 
+        self.best_model_path = self.logger.log_dir / "best_model.pt"
         self.n_epochs = config['n_epochs']
         self.metrics = None
 
@@ -114,6 +114,7 @@ class VPLTrainer:
             observations = batch["observations"].to(self.device).float()
             observations_2 = batch["observations_2"].to(self.device).float()
             labels = batch["labels"].to(self.device).float()
+
             loss, batch_metrics = self.model(observations, observations_2, labels)
             loss.backward()
             self.optimizer.step()
@@ -141,6 +142,8 @@ class VPLTrainer:
                 for key, val in prefix_metrics(batch_metrics, "eval").items():
                     self.metrics[key].append(val)
 
+                total_loss += loss.item() * observations.size(0)  # ✅ 이 줄이 빠져 있었음
+
         return total_loss / len(val_loader.dataset)
 
     def train(self, train_loader, val_loader, verbose=1):
@@ -151,10 +154,8 @@ class VPLTrainer:
             train_loss = self.train_epoch(train_loader)
             val_loss = self.evaluate(val_loader)
 
-            self.metrics["train/loss"] = train_loss
-            self.metrics["val/loss"] = val_loss
-
-            log_metrics(self.metrics, epoch, self.logger)
+            self.metrics["train/loss"].append(train_loss)
+            self.metrics["eval/loss"].append(val_loss)
 
             self.scheduler.step(val_loss)
 
@@ -166,9 +167,11 @@ class VPLTrainer:
             if self.model.annealer:
                 self.model.annealer.step()
 
-            if verbose >= 1 and (epoch + 1) % 10 == 0:
-                print(f"Epoch {epoch+1}/{self.n_epochs} - "
-                      f"Loss: {train_loss:.4f} - Val Loss: {val_loss:.4f} - "
-                      f"Val Acc: {np.mean(self.metrics['val/accuracy']):.4f}")
+            if (epoch + 1) % 10 == 0:
+                log_metrics(self.metrics, epoch, self.logger)
+                if verbose >= 1:
+                    print(f"Epoch {epoch+1}/{self.n_epochs} - "
+                        f"Loss: {train_loss:.4f} - eval Loss: {val_loss:.4f} - "
+                        f"eval Acc: {np.mean(self.metrics['eval/accuracy']):.4f}")
 
-        return self.metrics, np.mean(self.metrics['val/accuracy'])
+        return self.metrics, np.mean(self.metrics['eval/accuracy'])

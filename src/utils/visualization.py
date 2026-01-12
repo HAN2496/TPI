@@ -403,31 +403,58 @@ def plot_driver_reward_comparison(episode, reward_dict, save_path=None):
         plt.show()
 
 
-def plot_vpl_test_evaluation(test_results, save_dir):
-    """
-    Plot ROC curves and scatter plots for test drivers.
+def plot_test_step_rewards(step_rewards, y_true, driver_name, n_samples=10, save_path=None):
+    true_mask = (y_true == 1)
+    false_mask = (y_true == 0)
 
-    Args:
-        test_results: Dict {driver_name: {'y_true': array, 'y_probs': array, 'auroc': float}}
-        save_dir: Directory to save plots
-    """
+    true_rewards = step_rewards[true_mask]
+    false_rewards = step_rewards[false_mask]
+
+    n_true = min(n_samples, len(true_rewards))
+    n_false = min(n_samples, len(false_rewards))
+
+    fig, axes = plt.subplots(2, 1, figsize=(12, 8))
+
+    for i in range(n_true):
+        axes[0].plot(true_rewards[i], alpha=0.6, color='red')
+    axes[0].axhline(y=0, color='black', linestyle='--', linewidth=1)
+    axes[0].set_title(f'{driver_name} - True Episodes (n={len(true_rewards)})')
+    axes[0].set_xlabel('Step')
+    axes[0].set_ylabel('Reward')
+    axes[0].grid(True, alpha=0.3)
+
+    for i in range(n_false):
+        axes[1].plot(false_rewards[i], alpha=0.6, color='blue')
+    axes[1].axhline(y=0, color='black', linestyle='--', linewidth=1)
+    axes[1].set_title(f'{driver_name} - False Episodes (n={len(false_rewards)})')
+    axes[1].set_xlabel('Step')
+    axes[1].set_ylabel('Reward')
+    axes[1].grid(True, alpha=0.3)
+
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show()
+
+
+def plot_vpl_test_evaluation(test_results, save_dir):
     from pathlib import Path
     save_dir = Path(save_dir)
     save_dir.mkdir(parents=True, exist_ok=True)
 
-    # Plot individual ROC curves and scatter plots for each test driver
     for driver_name, results in test_results.items():
         y_true = results['y_true']
         y_probs = results['y_probs']
 
-        # ROC Curve
         plot_roc_curve(
             y_true, y_probs,
             save_path=save_dir / f'test_{driver_name}_roc_curve.png',
             title=f'Test Driver ROC Curve - {driver_name}'
         )
 
-        # Scatter Plot
         plot_prediction_scatter(
             y_true, y_probs,
             threshold=0.5,
@@ -435,7 +462,6 @@ def plot_vpl_test_evaluation(test_results, save_dir):
             title=f'Test Driver Prediction Scatter - {driver_name}'
         )
 
-    # Combined ROC plot if multiple test drivers
     if len(test_results) > 1:
         plt.figure(figsize=(10, 8))
 
