@@ -2,6 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+FONTSIZE_TITLE = 14
+FONTSIZE_LABEL = 12
+FONTSIZE_LEGEND = 9
+FONTSIZE_TICK = 10
+
 def plot_feature_importance(feature_importance, feature_names, save_path=None):
     """
     Plot global feature importance as horizontal bar chart.

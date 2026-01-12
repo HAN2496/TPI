@@ -115,3 +115,17 @@ class ExperimentLogger:
         self.log(f"\n{'='*width}")
         self.log(f"{title}")
         self.log(f"{'='*width}")
+
+    def log_metrics(self, metrics, step=None):
+        if step is not None:
+            self.log(f"\n[Step {step}]")
+        else:
+            self.log("\nMetrics:")
+
+        for key, val in metrics.items():
+            if isinstance(val, float):
+                self.log(f"  {key}: {val:.6f}")
+            elif isinstance(val, (int, type(val).__name__ == 'int64')):
+                self.log(f"  {key}: {val}")
+            else:
+                self.log(f"  {key}: {val}")

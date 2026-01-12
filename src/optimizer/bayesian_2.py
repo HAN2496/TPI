@@ -1,4 +1,4 @@
-from .base import BayesianOptimizer
+from .base_2 import BayesianOptimizer
 
 class MLPOptimizer(BayesianOptimizer):
     def _suggest_model_params(self, trial, config):
@@ -81,7 +81,7 @@ class OnlineRegressionOptimizer(BayesianOptimizer):
             w4_dict = {}
             for feat_name in shifted_exp_features:
                 w3_dict[feat_name] = trial.suggest_float(f'w3_{feat_name}', 0.1, 50.0, log=True)
-                w4_dict[feat_name] = trial.suggest_float(f'w4_{feat_name}', 0.0, 100.0)
+                w4_dict[feat_name] = trial.suggest_float(f'w4_{feat_name}', 0.0, 50.0)
 
             config['args']['w3'] = w3_dict
             config['args']['w4'] = w4_dict
@@ -102,3 +102,11 @@ class OfflineRegressionOptimizer(BayesianOptimizer):
             basis[feat_name] = selected_ops
 
         config['args']['basis'] = basis
+
+OPTIMIZERS_V2 = {
+    'online_mlp': MLPOptimizer,
+    'offline_lstm': LSTMOptimizer,
+    'online_attention': AttentionOptimizer,
+    'online_regression': OnlineRegressionOptimizer,
+    'offline_regression': OfflineRegressionOptimizer,
+}

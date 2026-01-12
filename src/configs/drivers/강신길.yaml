@@ -1,16 +1,19 @@
-_base: &_base
+_neural: &_neural
   test_size: 0.1
   trainer:
     batch_size: 128
     epochs: 200
     lam_smooth: 0.0
-    learning_rate: 0.001
+    learning_rate: 0.0005
     weight_decay: 0.0
+
+_regression: &_regression
+  test_size: 0.1
 
 
 online_mlp:
   base:
-    <<: *_base
+    <<: *_neural
     features:
     - IMU_VerAccelVal
     - Bounce_rate_6D
@@ -22,7 +25,7 @@ online_mlp:
       hidden_dims: [64, 64, 32]
       use_batchnorm: true
   base_sum:
-    <<: *_base
+    <<: *_neural
     features:
     - IMU_VerAccelVal
     - Bounce_rate_6D
@@ -34,11 +37,70 @@ online_mlp:
       hidden_dims: [64, 64, 32]
       use_batchnorm: true
       reduce: sum
-
-
+  bo_fold_0:
+    test_size: 0.1
+    trainer: {batch_size: 128, epochs: 200, lam_smooth: 0.0, learning_rate: 0.0003681941495532391, weight_decay: 0.008253177913930463}
+    features: [IMU_VerAccelVal, Bounce_rate_6D, Pitch_rate_6D, IMU_LongAccelVal]
+    args:
+      act_name: relu
+      dropout_rates: [0.5, 0.0, 0.4, 0.1, 0.5, 0.2, 0.0, 0.3]
+      hidden_dims: [32, 64, 32, 64, 32, 128, 32, 64]
+      use_batchnorm: true
+      input_dim: 4
+  bo_fold_1:
+    test_size: 0.1
+    trainer: {batch_size: 128, epochs: 200, lam_smooth: 0.0, learning_rate: 0.00043512661843448747, weight_decay: 0.0075539816743408345}
+    features: [IMU_VerAccelVal, Bounce_rate_6D, Pitch_rate_6D, IMU_LongAccelVal]
+    args:
+      act_name: gelu
+      dropout_rates: [0.0, 0.1, 0.2, 0.5, 0.5, 0.2]
+      hidden_dims: [64, 32, 256, 128, 64, 64]
+      use_batchnorm: true
+      input_dim: 4
+  bo_fold_2:
+    test_size: 0.1
+    trainer: {batch_size: 128, epochs: 200, lam_smooth: 0.0, learning_rate: 0.0007856977791074882, weight_decay: 0.0011144953521565948}
+    features: [IMU_VerAccelVal, Bounce_rate_6D, Pitch_rate_6D, IMU_LongAccelVal]
+    args:
+      act_name: gelu
+      dropout_rates: [0.2, 0.1, 0.4, 0.4, 0.3, 0.1]
+      hidden_dims: [256, 128, 128, 64, 32, 128]
+      use_batchnorm: false
+      input_dim: 4
+  bo_fold_3:
+    test_size: 0.1
+    trainer: {batch_size: 128, epochs: 200, lam_smooth: 0.0, learning_rate: 0.00065189897458682, weight_decay: 0.0028539682742366335}
+    features: [IMU_VerAccelVal, Bounce_rate_6D, Pitch_rate_6D, IMU_LongAccelVal]
+    args:
+      act_name: relu
+      dropout_rates: [0.1, 0.2, 0.1, 0.3, 0.1, 0.5, 0.0, 0.3]
+      hidden_dims: [32, 32, 64, 32, 128, 64, 32, 256]
+      use_batchnorm: false
+      input_dim: 4
+  bo_fold_4:
+    test_size: 0.1
+    trainer: {batch_size: 128, epochs: 200, lam_smooth: 0.0, learning_rate: 0.00013237191479771517, weight_decay: 0.008697874357428083}
+    features: [IMU_VerAccelVal, Bounce_rate_6D, Pitch_rate_6D, IMU_LongAccelVal]
+    args:
+      act_name: gelu
+      dropout_rates: [0.5, 0.1, 0.0, 0.2, 0.0, 0.3, 0.4, 0.1]
+      hidden_dims: [256, 64, 128, 128, 128, 32, 128, 128]
+      use_batchnorm: true
+      input_dim: 4
+  bo:
+    test_size: 0.1
+    trainer: {batch_size: 128, epochs: 200, lam_smooth: 0.0, learning_rate: 0.00065649333818963, weight_decay: 0.0038307352305303535}
+    features: [IMU_VerAccelVal, Bounce_rate_6D, Pitch_rate_6D, IMU_LongAccelVal]
+    args:
+      act_name: relu
+      dropout_rates: [0.3, 0.5, 0.5, 0.3, 0.5, 0.0, 0.5, 0.1]
+      hidden_dims: [128, 32, 64, 64, 128, 256, 128, 32]
+      use_batchnorm: true
+      input_dim: 4
+    active_feature_indices: [0, 1, 2, 3]
 online_lstm:
   base:
-    <<: *_base
+    <<: *_neural
     features:
     - IMU_VerAccelVal
     - Bounce_rate_6D
@@ -52,22 +114,23 @@ online_lstm:
       lstm_hidden_dim: 256
       lstm_layers: 2
       use_batchnorm: true
-
   bo:
     test_size: 0.1
-    trainer: {batch_size: 128, epochs: 200, lam_smooth: 0.0, learning_rate: 0.0007015412676067785, weight_decay: 0.007466210341627973}
+    trainer: {batch_size: 128, epochs: 200, lam_smooth: 0.0, learning_rate: 0.0004011539463746445, weight_decay: 0.004906658469515869}
     features: [IMU_VerAccelVal, Bounce_rate_6D, Pitch_rate_6D, IMU_LongAccelVal]
     args:
       act_name: relu
-      dropout_rates: [0.3, 0.5]
-      hidden_dims: [64, 128]
-      lstm_dropout: 0.4447447004082546
-      lstm_hidden_dim: 64
-      lstm_layers: 3
+      dropout_rates: [0.1, 0.1, 0.2]
+      hidden_dims: [64, 64, 64]
+      lstm_dropout: 0.4059558612599847
+      lstm_hidden_dim: 32
+      lstm_layers: 4
       use_batchnorm: true
+      input_dim: 4
+    active_feature_indices: [0, 1, 2, 3]
 online_attention:
   base:
-    <<: *_base
+    <<: *_neural
     features:
     - IMU_VerAccelVal
     - Bounce_rate_6D
@@ -118,7 +181,7 @@ online_attention:
       use_ffn: true
 offline_lstm:
   base:
-    <<: *_base
+    <<: *_neural
     features:
     - IMU_VerAccelVal
     - Bounce_rate_6D
@@ -137,7 +200,7 @@ offline_lstm:
 
 offline_regression:
   base:
-    <<: *_base
+    <<: *_regression
     features:
     - IMU_VerAccelVal
     - Bounce_rate_6D
@@ -156,7 +219,7 @@ offline_regression:
 
 online_regression:
   base:
-    <<: *_base
+    <<: *_regression
     features:
     - IMU_VerAccelVal
     - Bounce_rate_6D
@@ -174,7 +237,7 @@ online_regression:
         IMU_LongAccelVal: [abs, quad]
 
   quad_exp:
-    <<: *_base
+    <<: *_regression
     args:
       C: 0.06576916117983621
       form: quad_exp

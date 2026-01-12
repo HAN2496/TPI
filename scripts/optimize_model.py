@@ -22,17 +22,17 @@ def optimize_model(driver_name, model_type, time_range, downsample, n_splits, te
 
         print(f"\nFinal evaluation with best configuration (test_ratio={test_ratio})...")
 
-    train_model_kfold(driver_name, model_type, optimized_model_name, time_range, downsample, None,
-                      n_splits=n_splits, test_ratio=test_ratio, device=device, verbose=verbose)
+    train_model_kfold(driver_name, model_type, optimized_model_name, time_range,
+                      downsample, n_splits, test_ratio=test_ratio, device=device, verbose=verbose)
 
     return study
 
-# uv run python .\scripts\optimize_model.py -d 강신길 -mt online_mlp -t "[5,7]" --downsample 5 --n-splits 5 --n-trials 500 --test-ratio 0.1 --device cuda --verbose 1
-# uv run python .\scripts\optimize_model.py -d 강신길 -mt online_mlp -t "[5,7]" --downsample 5 --n-splits 5 --n-trials 500 --test-ratio 0.1 --device cuda --verbose 1 --use-feature-selection --optimizer-type exhaustive
+# uv run python .\scripts\optimize_model.py -n 강신길 -mt online_mlp -t "[5,7]" -d 5 --n-splits 5 --n-trials 500 --test-ratio 0.1 --device cuda --verbose 1
+# uv run python .\scripts\optimize_model.py -n 강신길 -mt online_mlp -t "[5,7]" -d 5 --n-splits 5 --n-trials 500 --test-ratio 0.1 --device cuda --verbose 1 --use-feature-selection
+# uv run python .\scripts\optimize_model.py -n 강신길 -mt online_mlp -t "[5,7]" -d 5 --n-splits 5 --n-trials 500 --test-ratio 0.1 --device cuda --verbose 1 --use-feature-selection --optimizer-type exhaustive
 def main():
     from src.utils.arg_parser import optimize_model_parser
     parser = optimize_model_parser()
-    parser.add_argument('--test-ratio', type=float, default=0.1, help='Test set ratio (0.1-1.0, default: 0.1)')
     args = parser.parse_args()
 
     tag = args.tag

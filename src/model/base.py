@@ -5,7 +5,8 @@ import torch.nn as nn
 import numpy as np
 
 class BaseModel(ABC):
-    model_type: str
+    is_neural: bool
+    is_online: bool
     def __init__(self):
         self.best_threshold = 0.5
 
@@ -14,7 +15,7 @@ class BaseModel(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def predict_probability(self, x):
+    def predict_proba(self, x):
         raise NotImplementedError
 
     @abstractmethod
@@ -22,6 +23,7 @@ class BaseModel(ABC):
         raise NotImplementedError
 
 class NeuralModel(BaseModel, nn.Module):
+    is_neural = True
     def __init__(self, reduce='mean'):
         BaseModel.__init__(self)
         nn.Module.__init__(self)
@@ -44,16 +46,17 @@ class NeuralModel(BaseModel, nn.Module):
     def predict_label(self, x, threshold=None):
         if threshold is None:
             threshold = self.best_threshold
-        probs = self.predict_probability(x)
+        probs = self.predict_proba(x)
         return (probs >= threshold).long()
 
-    def predict_probability(self, x):
+    def predict_proba(self, x):
         self.eval()
         with torch.no_grad():
             logits = self.forward(x)
             return torch.sigmoid(logits)
 
 class RegressionModel(BaseModel):
+    is_neural = False
     def __init__(self):
         super().__init__()
 
@@ -62,7 +65,7 @@ class RegressionModel(BaseModel):
         raise NotImplementedError
 
     @abstractmethod
-    def predict_probability(self, x):
+    def predict_proba(self, x):
         raise NotImplementedError
 
     @abstractmethod
@@ -70,6 +73,9 @@ class RegressionModel(BaseModel):
         raise NotImplementedError
 
     def eval(self):
+        return self
+    
+    def load_state_dict(self, sd):
         return self
 
     def to(self, device):

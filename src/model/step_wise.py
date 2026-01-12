@@ -7,6 +7,7 @@ from sklearn.preprocessing import StandardScaler
 from .base import NeuralModel, RegressionModel, build_mlp, feature_map_torch, feature_map_np, feature_map_dim, _to_numpy
 
 class OnlineMLP(NeuralModel):
+    is_online = True
     def __init__(self, input_dim, hidden_dims, dropout_rates, act_name, use_batchnorm=False, reduce='mean'):
         super().__init__(reduce=reduce)
 
@@ -29,6 +30,7 @@ class OnlineMLP(NeuralModel):
         raise ValueError(f"Unknown reduce: {self.reduce}")
 
 class OnlineLSTM(NeuralModel):
+    is_online = True
     def __init__(self, input_dim,
                  lstm_hidden_dim, lstm_layers, lstm_dropout,
                  hidden_dims, dropout_rates, act_name, use_batchnorm=False, reduce='mean'):
@@ -63,15 +65,15 @@ class OnlineLSTM(NeuralModel):
 
 
 class OnlineAttention(NeuralModel):
+    is_online = True
     def __init__(self, input_dim, attn_dim, attn_heads, attn_dropout,
                  ffn_dim, ffn_dropout, hidden_dims, dropout_rates, act_name,
-                 use_batchnorm=False, reduce='mean', use_ffn=True):
+                 use_batchnorm=False, reduce='mean'):
         super().__init__(reduce=reduce)
 
         if attn_dim % attn_heads != 0:
             raise ValueError(f"attn_dim({attn_dim}) must be divisible by attn_heads({attn_heads})")
 
-        self.use_ffn = use_ffn
 
         self.in_proj = nn.Linear(input_dim, attn_dim)
 
@@ -85,15 +87,14 @@ class OnlineAttention(NeuralModel):
         self.attn_ln = nn.LayerNorm(attn_dim)
         self.attn_drop = nn.Dropout(attn_dropout)
 
-        if use_ffn:
-            self.ffn = nn.Sequential(
-                nn.Linear(attn_dim, ffn_dim),
-                self._get_activation(act_name),
-                nn.Dropout(ffn_dropout),
-                nn.Linear(ffn_dim, attn_dim),
-                nn.Dropout(ffn_dropout),
-            )
-            self.ffn_ln = nn.LayerNorm(attn_dim)
+        self.ffn = nn.Sequential(
+            nn.Linear(attn_dim, ffn_dim),
+            self._get_activation(act_name),
+            nn.Dropout(ffn_dropout),
+            nn.Linear(ffn_dim, attn_dim),
+            nn.Dropout(ffn_dropout),
+        )
+        self.ffn_ln = nn.LayerNorm(attn_dim)
 
         act = self._get_activation(act_name)
         self.head = build_mlp(attn_dim, hidden_dims, act, dropout_rates, use_batchnorm)
@@ -110,9 +111,8 @@ class OnlineAttention(NeuralModel):
 
         h = self.attn_ln(h + self.attn_drop(attn_out))
 
-        if self.use_ffn:
-            h2 = self.ffn(h)
-            h = self.ffn_ln(h + h2)
+        h2 = self.ffn(h)
+        h = self.ffn_ln(h + h2)
 
         r = self.head(h.reshape(b * t, -1)).squeeze(-1).reshape(b, t)
 
@@ -130,6 +130,7 @@ class OnlineAttention(NeuralModel):
 
 
 class OnlineNNRegression(NeuralModel):
+    is_online = True
     def __init__(self, input_dim, form="quad_exp", reduce="mean"):
         super().__init__(reduce=reduce)
         self.input_dim = input_dim
@@ -159,6 +160,7 @@ class OnlineNNRegression(NeuralModel):
 
 
 class OnlineRegression(RegressionModel):
+    is_online = True
     def __init__(self, basis, w3=None, w4=None, reduce="mean",
                  max_iter=100, C=1.0, solver="lbfgs", random_state=None, clip=20.0):
         super().__init__()
@@ -236,7 +238,7 @@ class OnlineRegression(RegressionModel):
         Z = self.episode_features(phi_s)
         return self.model.decision_function(Z)
     
-    def predict_probability(self, X):
+    def predict_proba(self, X):
         phi_s = self.transform_steps(X, fit=False)
         Z = self.episode_features(phi_s)
         return self.model.predict_proba(Z)[:, 1]
@@ -244,7 +246,7 @@ class OnlineRegression(RegressionModel):
     def predict_label(self, X, threshold=None):
         if threshold is None:
             threshold = self.best_threshold
-        return (self.predict_probability(X) >= threshold).astype(int)
+        return (self.predict_proba(X) >= threshold).astype(int)
 
     def step_contributions(self, X):
         phi_s = self.transform_steps(X, fit=False)

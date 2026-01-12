@@ -1,3 +1,15 @@
+_neural:
+  test_size: 0.1
+  trainer:
+    batch_size: 128
+    epochs: 200
+    lam_smooth: 0.0
+    learning_rate: 0.0005
+    weight_decay: 0.0
+
+_regression: &_regression
+  test_size: 0.1
+
 _base: &_base
   test_size: 0.1
   trainer:
@@ -54,6 +66,20 @@ online_lstm:
       use_batchnorm: true
 
 
+  bo:
+    test_size: 0.1
+    trainer: {batch_size: 128, epochs: 200, lam_smooth: 0.0, learning_rate: 0.000993508917847292, weight_decay: 0.0005120175510907348}
+    features: [IMU_VerAccelVal, Bounce_rate_6D, Pitch_rate_6D, IMU_LongAccelVal]
+    args:
+      act_name: gelu
+      dropout_rates: [0.0, 0.4, 0.1]
+      hidden_dims: [128, 128, 64]
+      lstm_dropout: 0.0027157481252189633
+      lstm_hidden_dim: 256
+      lstm_layers: 2
+      use_batchnorm: true
+      input_dim: 4
+    active_feature_indices: [0, 1, 2, 3]
 online_attention:
   base:
     <<: *_base
@@ -110,56 +136,27 @@ offline_lstm:
       use_batchnorm: true
 
 
-abs_quad:
+online_regression:
   base:
-    <<: *_base
+    <<: *_regression
     features:
     - IMU_VerAccelVal
     - Bounce_rate_6D
     - Pitch_rate_6D
     - IMU_LongAccelVal
     args:
-      C: 1.0
-      form: linear_quad
+      C: 100.0
+      solver: lbfgs
       max_iter: 1000
       random_state: 0
-      solver: lbfgs
+      basis:
+        IMU_VerAccelVal: [abs, quad]
+        Bounce_rate_6D: [abs, quad]
+        Pitch_rate_6D: [abs, quad]
+        IMU_LongAccelVal: [abs, quad]
 
-  bo:
-    test_size: 0.1
-    trainer: {batch_size: 128, epochs: 200, lam_smooth: 0.0, learning_rate: 0.001, weight_decay: 0.0}
-    features: [IMU_VerAccelVal, Bounce_rate_6D, Pitch_rate_6D, IMU_LongAccelVal]
-    args: {C: 1.1290133559092674, form: linear_quad, max_iter: 1000, random_state: 0, solver: lbfgs}
-quad_only:
-  base:
-    <<: *_base
-    features:
-    - IMU_VerAccelVal
-    - Bounce_rate_6D
-    - Pitch_rate_6D
-    - IMU_LongAccelVal
-    args:
-      C: 1.0
-      form: quad_only
-      max_iter: 1000
-      random_state: 0
-      solver: lbfgs
-
-  bo:
-    test_size: 0.1
-    trainer: {batch_size: 128, epochs: 200, lam_smooth: 0.0, learning_rate: 0.001, weight_decay: 0.0}
-    features: [IMU_VerAccelVal, Bounce_rate_6D, Pitch_rate_6D, IMU_LongAccelVal]
-    args: {C: 6.58410616012161, form: quad_only, max_iter: 1000, random_state: 0, solver: lbfgs}
-
-
-quad_exp:
-  base:
-    <<: *_base
-    features:
-    - IMU_VerAccelVal
-    - Bounce_rate_6D
-    - Pitch_rate_6D
-    - IMU_LongAccelVal
+  quad_exp:
+    <<: *_regression
     args:
       C: 0.06576916117983621
       form: quad_exp
@@ -168,3 +165,52 @@ quad_exp:
       solver: lbfgs
       w3: [1.0, 1.0, 1.0, 1.0]
       w4: [0.0, 0.0, 0.0, 0.0]
+  bo:
+    test_size: 0.1
+    features: [IMU_VerAccelVal, Bounce_rate_6D, Pitch_rate_6D, IMU_LongAccelVal]
+    args:
+      C: 67.72340912743816
+      solver: lbfgs
+      max_iter: 1000
+      random_state: 0
+      basis:
+        IMU_VerAccelVal: [abs, cube]
+        Bounce_rate_6D: [abs, shifted_exp]
+        Pitch_rate_6D: [cube, shifted_exp]
+        IMU_LongAccelVal: [abs, quad, cube]
+      w3: {Bounce_rate_6D: 7.626444715428141, Pitch_rate_6D: 0.5820692759067339}
+      w4: {Bounce_rate_6D: 0.17932918028173445, Pitch_rate_6D: 39.24260818989988}
+    active_feature_indices: [0, 1, 2, 3]
+
+offline_regression:
+  base:
+    <<: *_regression
+    features:
+    - IMU_VerAccelVal
+    - Bounce_rate_6D
+    - Pitch_rate_6D
+    - IMU_LongAccelVal
+    args:
+      C: 1.0
+      max_iter: 1000
+      solver: lbfgs
+      random_state: 0
+      basis:
+        IMU_VerAccelVal: [sqrt_mean, max]
+        Bounce_rate_6D: [sqrt_mean, max]
+        Pitch_rate_6D: [sqrt_mean, max]
+        IMU_LongAccelVal: [sqrt_mean, max]
+  bo:
+    test_size: 0.1
+    features: [IMU_VerAccelVal, Bounce_rate_6D, Pitch_rate_6D, IMU_LongAccelVal]
+    args:
+      C: 5.272412272294474
+      max_iter: 1000
+      solver: lbfgs
+      random_state: 0
+      basis:
+        IMU_VerAccelVal: [abs_mean, sqrt_mean]
+        Bounce_rate_6D: [std, abs_mean]
+        Pitch_rate_6D: [mean, max, abs_mean, sqrt_mean]
+        IMU_LongAccelVal: [mean, max, abs_mean]
+    active_feature_indices: [0, 1, 2, 3]

@@ -3,7 +3,7 @@ from src.configs.utils import create_model, load_config
 from src.configs.registries import MODELS
 from src.model.base import RegressionModel
 from src.utils import ExperimentPaths, prepare_training_data, convert_driver_name
-from src.utils.trainer import BaseTrainer, RegressionTrainer
+from model.trainer import BaseTrainer, RegressionTrainer
 from src.utils.visualization import save_all_plots
 
 def train_model(driver_name, model_type, model_name='base', time_range=None, train_downsample=1, val_downsample=1, device="cpu", tag=None, verbose=1):

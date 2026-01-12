@@ -3,8 +3,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 
+plt.rcParams['font.family'] = 'Malgun Gothic'
+plt.rcParams['axes.unicode_minus'] = False
+plt.rcParams['axes.titlesize'] = 16  # 14
+plt.rcParams['axes.labelsize'] = 14  # 12
+plt.rcParams['legend.fontsize'] = 13 # 11
+plt.rcParams['xtick.labelsize'] = 12 # 10
+plt.rcParams['ytick.labelsize'] = 12 # 10
+
 def plot_training_curves(history, save_path=None):
-    fig, axes = plt.subplots(1, 4, figsize=(15, 4))
+    fig, axes = plt.subplots(1, 3, figsize=(12, 4))
 
     axes[0].plot(history['train_loss'])
     axes[0].set_title('Training Loss')
@@ -18,18 +26,11 @@ def plot_training_curves(history, save_path=None):
     axes[1].set_ylabel('Loss')
     axes[1].grid(True)
 
-    axes[2].plot(history['val_acc'])
-    axes[2].set_title('Validation Accuracy')
+    axes[2].plot(history['val_auroc'])
+    axes[2].set_title('Validation AUROC')
     axes[2].set_xlabel('Epoch')
-    axes[2].set_ylabel('Accuracy')
+    axes[2].set_ylabel('AUROC')
     axes[2].grid(True)
-
-    axes[3].plot(history['val_auroc'])
-    axes[3].set_title('Validation AUROC')
-    axes[3].set_xlabel('Epoch')
-    axes[3].set_ylabel('AUROC')
-    axes[3].grid(True)
-
     plt.tight_layout()
 
     if save_path:
@@ -38,7 +39,7 @@ def plot_training_curves(history, save_path=None):
     else:
         plt.show()
 
-def plot_roc_curve(y_true, y_probs, save_path=None):
+def plot_roc_curve(y_true, y_probs, save_path=None, title='ROC Curve'):
     fpr, tpr, _ = roc_curve(y_true, y_probs)
     roc_auc = auc(fpr, tpr)
 
@@ -49,7 +50,7 @@ def plot_roc_curve(y_true, y_probs, save_path=None):
     plt.ylim([0.0, 1.05])
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title('ROC Curve')
+    plt.title(title)
     plt.legend(loc="lower right")
     plt.grid(True)
 
@@ -59,7 +60,7 @@ def plot_roc_curve(y_true, y_probs, save_path=None):
     else:
         plt.show()
 
-def plot_prediction_scatter(y_true, y_probs, threshold=0.5, save_path=None):
+def plot_prediction_scatter(y_true, y_probs, threshold=0.5, save_path=None, title='Prediction Scatter Plot'):
     indices = np.arange(len(y_true))
 
     good_mask = y_true == 1
@@ -71,7 +72,7 @@ def plot_prediction_scatter(y_true, y_probs, threshold=0.5, save_path=None):
     plt.axhline(y=threshold, color='black', linestyle='--', linewidth=1, label=f'Threshold ({threshold:.3f})')
     plt.xlabel('Sample Index')
     plt.ylabel('Predicted Probability')
-    plt.title('Prediction Scatter Plot')
+    plt.title(title)
     plt.legend()
     plt.ylim([-0.05, 1.05])
     plt.grid(True, alpha=0.3)
@@ -214,7 +215,7 @@ def save_regression_params(model, feature_cols, save_path):
     plt.savefig(save_path, dpi=150, bbox_inches='tight')
     plt.close()
 
-def plot_kfold_roc_curves(fold_results, save_path=None):
+def plot_kfold_roc_curves(fold_results, save_path=None, title='K-Fold Cross-Validation ROC Curves'):
     plt.figure(figsize=(10, 8))
     plt.rcParams.update({
         'font.size': 16,          # 기본 글자 크기
@@ -267,7 +268,7 @@ def plot_kfold_roc_curves(fold_results, save_path=None):
     plt.ylim([0.0, 1.05])
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title('K-Fold Cross-Validation ROC Curves')
+    plt.title(title)
     plt.legend(loc="lower right")
     plt.grid(True)
 
@@ -277,23 +278,182 @@ def plot_kfold_roc_curves(fold_results, save_path=None):
     else:
         plt.show()
 
-def save_all_plots(model, history, val_loader, paths, is_online=False, is_regression=False, feature_cols=None, verbose=0):
-    X_val, y_val = val_loader.dataset.tensors
-    y_val_np = y_val.numpy()
+# VPL-specific visualization functions
 
-    y_probs = model.predict_probability(X_val)
+def plot_vpl_training_curves(history, save_path=None):
+    """Plot VPL training curves: loss and accuracy"""
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
 
-    if 'train_loss' in history:
-        plot_training_curves(history, save_path=paths.get('training_curves.png', create=True))
-    plot_roc_curve(y_val_np, y_probs, save_path=paths.get('roc_curve.png', create=True))
-    plot_prediction_scatter(y_val_np, y_probs, threshold=model.best_threshold, save_path=paths.get('prediction_scatter.png', create=True))
+    # Loss curves
+    axes[0].plot(history['train_loss'], label='Train Loss', linewidth=2)
+    axes[0].plot(history['val_loss'], label='Val Loss', linewidth=2)
+    axes[0].set_xlabel('Epoch')
+    axes[0].set_ylabel('Loss')
+    axes[0].set_title('Training and Validation Loss')
+    axes[0].legend()
+    axes[0].grid(True, alpha=0.3)
 
-    if is_online:
-        plot_step_rewards(model, X_val, y_val_np, n_samples=10, save_path=paths.get('step_rewards.png', create=True))
+    # Accuracy curve
+    axes[1].plot(history['val_accuracy'], label='Val Accuracy', color='green', linewidth=2)
+    axes[1].set_xlabel('Epoch')
+    axes[1].set_ylabel('Accuracy')
+    axes[1].set_title('Validation Accuracy')
+    axes[1].legend()
+    axes[1].grid(True, alpha=0.3)
 
-    if is_regression and feature_cols:
-        save_regression_params(model, feature_cols, save_path=paths.get('regression_params.png', create=True))
+    plt.tight_layout()
 
-    if verbose >= 2:
-        print(f"  Plots saved to: {paths.run_dir}")
-    return y_val_np, y_probs
+    if save_path:
+        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show()
+
+
+def plot_driver_latent_space(driver_latents, save_path=None):
+    """Visualize driver latents using PCA or t-SNE"""
+    from sklearn.decomposition import PCA
+
+    driver_names = list(driver_latents.keys())
+    latents = np.array([driver_latents[name]['z_mean_point'] for name in driver_names])
+
+    n_drivers = len(driver_names)
+    latent_dim = latents.shape[1]
+
+    # Handle single driver case
+    if n_drivers == 1:
+        plt.figure(figsize=(8, 6))
+        # Show first 2 dimensions of latent
+        if latent_dim >= 2:
+            plt.scatter([latents[0, 0]], [latents[0, 1]], s=200, alpha=0.7, color='steelblue')
+            plt.annotate(driver_names[0], (latents[0, 0], latents[0, 1]),
+                        xytext=(5, 5), textcoords='offset points', fontsize=14, fontweight='bold')
+            plt.xlabel('Latent Dimension 1')
+            plt.ylabel('Latent Dimension 2')
+        else:
+            plt.scatter([latents[0, 0]], [0], s=200, alpha=0.7, color='steelblue')
+            plt.annotate(driver_names[0], (latents[0, 0], 0),
+                        xytext=(5, 5), textcoords='offset points', fontsize=14, fontweight='bold')
+            plt.xlabel('Latent Dimension 1')
+            plt.ylabel('(Single Driver)')
+        plt.title(f'Driver Latent Space (1 driver, latent_dim={latent_dim})')
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+
+        if save_path:
+            plt.savefig(save_path, dpi=150, bbox_inches='tight')
+            plt.close()
+        else:
+            plt.show()
+        return
+
+    # Multiple drivers: use PCA if needed
+    if latent_dim > 2:
+        pca = PCA(n_components=2)
+        latents_2d = pca.fit_transform(latents)
+        explained_var = pca.explained_variance_ratio_
+    else:
+        latents_2d = latents
+        explained_var = None
+
+    plt.figure(figsize=(8, 6))
+    plt.scatter(latents_2d[:, 0], latents_2d[:, 1], s=100, alpha=0.7, color='steelblue')
+
+    for i, name in enumerate(driver_names):
+        plt.annotate(name, (latents_2d[i, 0], latents_2d[i, 1]),
+                    xytext=(5, 5), textcoords='offset points', fontsize=12)
+
+    if explained_var is not None:
+        plt.xlabel(f'PC1 ({explained_var[0]*100:.1f}%)')
+        plt.ylabel(f'PC2 ({explained_var[1]*100:.1f}%)')
+        plt.title('Driver Latent Space (PCA)')
+    else:
+        plt.xlabel('Latent Dimension 1')
+        plt.ylabel('Latent Dimension 2')
+        plt.title('Driver Latent Space')
+
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show()
+
+
+def plot_driver_reward_comparison(episode, reward_dict, save_path=None):
+    """Plot reward curves for same episode with different driver latents"""
+    plt.figure(figsize=(10, 6))
+
+    for driver_name, rewards in reward_dict.items():
+        plt.plot(rewards, label=driver_name, linewidth=2, alpha=0.8)
+
+    plt.xlabel('Time Step')
+    plt.ylabel('Reward')
+    plt.title('Reward Comparison Across Drivers for Same Episode')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show()
+
+
+def plot_vpl_test_evaluation(test_results, save_dir):
+    """
+    Plot ROC curves and scatter plots for test drivers.
+
+    Args:
+        test_results: Dict {driver_name: {'y_true': array, 'y_probs': array, 'auroc': float}}
+        save_dir: Directory to save plots
+    """
+    from pathlib import Path
+    save_dir = Path(save_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    # Plot individual ROC curves and scatter plots for each test driver
+    for driver_name, results in test_results.items():
+        y_true = results['y_true']
+        y_probs = results['y_probs']
+
+        # ROC Curve
+        plot_roc_curve(
+            y_true, y_probs,
+            save_path=save_dir / f'test_{driver_name}_roc_curve.png',
+            title=f'Test Driver ROC Curve - {driver_name}'
+        )
+
+        # Scatter Plot
+        plot_prediction_scatter(
+            y_true, y_probs,
+            threshold=0.5,
+            save_path=save_dir / f'test_{driver_name}_scatter.png',
+            title=f'Test Driver Prediction Scatter - {driver_name}'
+        )
+
+    # Combined ROC plot if multiple test drivers
+    if len(test_results) > 1:
+        plt.figure(figsize=(10, 8))
+
+        for driver_name, results in test_results.items():
+            y_true = results['y_true']
+            y_probs = results['y_probs']
+            fpr, tpr, _ = roc_curve(y_true, y_probs)
+            auroc = results['auroc']
+            plt.plot(fpr, tpr, lw=2, label=f'{driver_name} (AUC = {auroc:.4f})')
+
+        plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label='Random')
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('Test Drivers ROC Curves')
+        plt.legend(loc="lower right")
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(save_dir / 'test_combined_roc_curves.png', dpi=150, bbox_inches='tight')
+        plt.close()

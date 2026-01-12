@@ -1,16 +1,19 @@
-_base: &_base
+_neural: &_neural
   test_size: 0.1
   trainer:
     batch_size: 128
     epochs: 200
     lam_smooth: 0.0
-    learning_rate: 0.001
+    learning_rate: 0.0005
     weight_decay: 0.0
+
+_regression: &_regression
+  test_size: 0.1
 
 
 online_mlp:
   base:
-    <<: *_base
+    <<: *_neural
     features:
     - IMU_VerAccelVal
     - Bounce_rate_6D
@@ -22,7 +25,7 @@ online_mlp:
       hidden_dims: [64, 64, 32]
       use_batchnorm: true
   base_sum:
-    <<: *_base
+    <<: *_neural
     features:
     - IMU_VerAccelVal
     - Bounce_rate_6D
@@ -34,11 +37,9 @@ online_mlp:
       hidden_dims: [64, 64, 32]
       use_batchnorm: true
       reduce: sum
-
-
 online_lstm:
   base:
-    <<: *_base
+    <<: *_neural
     features:
     - IMU_VerAccelVal
     - Bounce_rate_6D
@@ -55,19 +56,21 @@ online_lstm:
 
   bo:
     test_size: 0.1
-    trainer: {batch_size: 128, epochs: 200, lam_smooth: 0.0, learning_rate: 0.0007015412676067785, weight_decay: 0.007466210341627973}
+    trainer: {batch_size: 128, epochs: 200, lam_smooth: 0.0, learning_rate: 0.0009331944459528507, weight_decay: 0.0003765141629751754}
     features: [IMU_VerAccelVal, Bounce_rate_6D, Pitch_rate_6D, IMU_LongAccelVal]
     args:
-      act_name: relu
-      dropout_rates: [0.3, 0.5]
-      hidden_dims: [64, 128]
-      lstm_dropout: 0.4447447004082546
-      lstm_hidden_dim: 64
+      act_name: tanh
+      dropout_rates: [0.2, 0.1]
+      hidden_dims: [128, 32]
+      lstm_dropout: 0.4472275733990106
+      lstm_hidden_dim: 256
       lstm_layers: 3
       use_batchnorm: true
+      input_dim: 4
+    active_feature_indices: [0, 1, 2, 3]
 online_attention:
   base:
-    <<: *_base
+    <<: *_neural
     features:
     - IMU_VerAccelVal
     - Bounce_rate_6D
@@ -118,7 +121,7 @@ online_attention:
       use_ffn: true
 offline_lstm:
   base:
-    <<: *_base
+    <<: *_neural
     features:
     - IMU_VerAccelVal
     - Bounce_rate_6D
@@ -137,7 +140,7 @@ offline_lstm:
 
 offline_regression:
   base:
-    <<: *_base
+    <<: *_regression
     features:
     - IMU_VerAccelVal
     - Bounce_rate_6D
@@ -153,11 +156,24 @@ offline_regression:
         Bounce_rate_6D: [sqrt_mean, max]
         Pitch_rate_6D: [sqrt_mean, max]
         IMU_LongAccelVal: [sqrt_mean, max]
-
+  bo:
+    test_size: 0.1
+    features: [IMU_VerAccelVal, Bounce_rate_6D, Pitch_rate_6D, IMU_LongAccelVal]
+    args:
+      C: 19.574394233501994
+      max_iter: 1000
+      solver: lbfgs
+      random_state: 0
+      basis:
+        IMU_VerAccelVal: [min, abs_mean, sqrt_mean, rmse]
+        Bounce_rate_6D: [std, max, abs_mean, rmse]
+        Pitch_rate_6D: [min]
+        IMU_LongAccelVal: [mean, max, abs_mean, sqrt_mean]
+    active_feature_indices: [0, 1, 2, 3]
 
 online_regression:
   base:
-    <<: *_base
+    <<: *_regression
     features:
     - IMU_VerAccelVal
     - Bounce_rate_6D
@@ -175,7 +191,7 @@ online_regression:
         IMU_LongAccelVal: [abs, quad]
 
   quad_exp:
-    <<: *_base
+    <<: *_regression
     args:
       C: 0.06576916117983621
       form: quad_exp
@@ -184,20 +200,19 @@ online_regression:
       solver: lbfgs
       w3: [1.0, 1.0, 1.0, 1.0]
       w4: [0.0, 0.0, 0.0, 0.0]
-
   bo:
     test_size: 0.1
-    trainer: {batch_size: 128, epochs: 200, lam_smooth: 0.0, learning_rate: 0.001, weight_decay: 0.0}
     features: [IMU_VerAccelVal, Bounce_rate_6D, Pitch_rate_6D, IMU_LongAccelVal]
     args:
-      C: 0.11414261725560083
+      C: 99.2941224236526
       solver: lbfgs
       max_iter: 1000
       random_state: 0
       basis:
-        0: [quad]
-        1: [cube, shifted_exp]
-        2: [abs, quad]
-        3: [cube]
-      w3: [20.78144237037344, 0.19934780178379186, 0.18161827207583653, 4.777787498997755]
-      w4: [18.176536269189334, 2.564693432862826, 49.29791315707418, 42.17472067286505]
+        IMU_VerAccelVal: [abs, quad, shifted_exp]
+        Bounce_rate_6D: [shifted_exp]
+        Pitch_rate_6D: [shifted_exp]
+        IMU_LongAccelVal: [abs, quad, shifted_exp]
+      w3: {IMU_VerAccelVal: 1.2205331046854342, Bounce_rate_6D: 8.808411577892894, Pitch_rate_6D: 0.44943334758365, IMU_LongAccelVal: 49.296860511400084}
+      w4: {IMU_VerAccelVal: 44.895547863405696, Bounce_rate_6D: 36.81752652226854, Pitch_rate_6D: 47.52455020819025, IMU_LongAccelVal: 0.1355079147131126}
+    active_feature_indices: [0, 1, 2, 3]

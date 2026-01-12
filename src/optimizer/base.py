@@ -5,14 +5,18 @@ import subprocess
 import webbrowser
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, TensorDataset
 
 from src.configs.utils import load_config
 from src.configs.registries import MODELS
-from src.model.base import RegressionModel
-from src.utils import prepare_training_data_kfold, ExperimentPaths
-from src.utils.utils import save_config
-from src.utils.trainer import BaseTrainer, RegressionTrainer
+from src.model.base import RegressionModel, NeuralModel
+from src.utils import ExperimentPaths, prepare_training_data_kfold, save_config
+from model.trainer import BaseTrainer, RegressionTrainer, create_trainer
+
+from sklearn.model_selection import StratifiedKFold, train_test_split
+import numpy as np
+import torch
+from src.utils.utils import _load_dataset_sequences
 
 class FeatureSelectionDataset(Dataset):
     def __init__(self, base_dataset, active_indices, n_features=None, mode='slice'):
@@ -43,98 +47,94 @@ class BaseOptimizer(ABC):
         self.driver_name = driver_name
         self.model_type = model_type
         self.time_range = time_range
-        self.downsample = downsample
-        self.n_splits = n_splits
-        self.test_ratio = test_ratio
-        self.use_feature_selection = use_feature_selection
         self.device = device
         self.verbose = verbose
+
         self.base_config = load_config(driver_name, model_type, 'base')
+        self.all_features = self.base_config['features']
         self.n_features = len(self.base_config['features'])
 
-    def _create_trial_config(self, trial):
-        config = deepcopy(self.base_config)
+        self.use_feature_selection = use_feature_selection
 
-        self._suggest_model_params(trial, config)
+        self._setup_data(downsample, n_splits, test_ratio)
 
-        if self.use_feature_selection:
-            base_features = config['features']
-            mask = [trial.suggest_categorical(f"use_feat_{i}", [0, 1]) for i in range(len(base_features))]
-            if sum(mask) == 0:
-                mask[0] = 1
-            selected_features = [base_features[i] for i, v in enumerate(mask) if v == 1]
-            config['features'] = selected_features
+    def _setup_data(self, downsample, n_splits, test_ratio):
+        X, y = _load_dataset_sequences(self.driver_name, self.time_range, downsample, self.base_config)
 
-        return config
+        X_trainval, _, y_trainval, _ = train_test_split(X, y, test_size=test_ratio, random_state=42, stratify=y)
+
+        self.X_data = torch.as_tensor(X_trainval, dtype=torch.float32)
+        self.y_data = torch.as_tensor(y_trainval, dtype=torch.float32)
+
+        skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
+        y_np = np.asarray(y_trainval)
+        
+        self.folds_indices = list(skf.split(np.zeros(len(y_np)), y_np))
 
     @abstractmethod
     def _suggest_model_params(self, trial, config):
         raise NotImplementedError
 
-    def _train_and_evaluate(self, config, trial):
-        fold_scores = []
-        load_config = self.base_config if self.use_feature_selection else config
-        batch_size = config['trainer']['batch_size']
-        input_dim = len(config['features'])
-        is_regression = issubclass(MODELS[config['model_type']], RegressionModel)
+    def _suggest_features(self, trial):
+        if not self.use_feature_selection:
+            return list(range(self.n_features))
 
-        feature_indices = None
+        mask = [trial.suggest_categorical(f"use_feat_{i}", [0, 1]) for i in range(self.n_features)]
+
+        if sum(mask) == 0:
+            mask[0] = 1
+
+        selected_indices = [i for i, v in enumerate(mask) if v == 1]
+        return selected_indices
+
+    def _create_trial_config(self, trial):
+        config = deepcopy(self.base_config)
+        self._suggest_model_params(trial, config)
+
         if self.use_feature_selection:
-            base_features = self.base_config['features']
-            feature_indices = [base_features.index(f) for f in config['features']]
+            selected_indices = self._suggest_features(trial)
+            config['features'] = [self.all_features[i] for i in selected_indices]
+            config['active_feature_indices'] = selected_indices # for internal use
+        else:
+            config['active_feature_indices'] = list(range(self.n_features))
+        return config
 
-        _, fold_gen = prepare_training_data_kfold(
-            self.driver_name, load_config, self.time_range, self.downsample, n_splits=self.n_splits, test_ratio=self.test_ratio
-        )
+    def _run_fold(self, train_idx, val_idx, config):
+        active_indices = config['active_feature_indices']
 
-        for _, train_loader, val_loader in fold_gen:
-            if feature_indices:
-                train_ds = FeatureSelectionDataset(train_loader.dataset, feature_indices)
-                val_ds = FeatureSelectionDataset(val_loader.dataset, feature_indices)
-                train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, pin_memory=True)
-                val_loader = DataLoader(val_ds, batch_size=len(val_ds), shuffle=False, pin_memory=True)
+        X_train = self.X_data[train_idx][:, :, active_indices]
+        y_train = self.y_data[train_idx]
 
-            model_args = {**config['args']}
+        X_val = self.X_data[val_idx][:, :, active_indices]
+        y_val = self.y_data[val_idx]
 
-            if not is_regression:
-                model_args['input_dim'] = input_dim
+        is_neural = issubclass(MODELS[config['model_type']], NeuralModel)
+        batch_size = config['trainer']['batch_size'] if is_neural else len(X_train)
 
-            model = MODELS[config['model_type']](**model_args)
+        train_ds = TensorDataset(X_train, y_train)
+        val_ds = TensorDataset(X_val, y_val)
 
-            if is_regression:
-                trainer = RegressionTrainer(model, config['trainer'])
-                _, best_auroc, _ = trainer.train(train_loader, val_loader, verbose=False)
-            else:
-                model.to(self.device)
-                trainer = BaseTrainer(model, config['trainer'], device=self.device)
-                trainer.train(train_loader, val_loader, epochs=30, verbose=False)
-                best_auroc = trainer.best_auroc
+        train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+        val_loader = DataLoader(val_ds, batch_size=len(val_ds), shuffle=False)
 
-            fold_scores.append(best_auroc)
+        model_args = {**config['args']}
+        if is_neural:
+            model_args['input_dim'] = len(active_indices)
 
-            # # OOF 방식: 각 fold의 예측 수집
-            # import torch
-            # import numpy as np
-            # model.eval()
-            # with torch.no_grad():
-            #     X_val, y_val = next(iter(val_loader))
-            #     if not is_regression:
-            #         X_val = X_val.to(self.device)
-            #     y_probs = model.predict_probability(X_val)
-            #     if torch.is_tensor(y_probs):
-            #         y_probs = y_probs.cpu().numpy()
-            #     if torch.is_tensor(y_val):
-            #         y_val = y_val.cpu().numpy()
-            #     fold_predictions.append((y_val, y_probs))
+        model = MODELS[config['model_type']](**model_args)
 
-        return sum(fold_scores) / len(fold_scores)
-        # return max(fold_scores)
+        trainer = create_trainer(model, config, device=self.device, is_neural=is_neural)
+        _, best_score = trainer.train(train_loader, val_loader, epochs=30, verbose=False)
 
-        # # OOF 방식: 모든 fold 예측을 합쳐서 AUROC 계산
-        # from sklearn.metrics import roc_auc_score
-        # y_true_all = np.concatenate([y for y, _ in fold_predictions])
-        # y_probs_all = np.concatenate([p for _, p in fold_predictions])
-        # return roc_auc_score(y_true_all, y_probs_all)
+        return best_score
+
+    def evaluate(self, config):
+        scores = []
+        for train_idx, val_idx in self.folds_indices:
+            score = self._run_fold(train_idx, val_idx, config)
+            scores.append(score)
+        
+        return sum(scores) / len(scores)
 
 class BayesianOptimizer(BaseOptimizer):
     n_startup_trials = 30
@@ -142,9 +142,7 @@ class BayesianOptimizer(BaseOptimizer):
     def optimize(self, n_trials=100, tag="optuna"):
         paths = ExperimentPaths(self.driver_name, self.model_type, None,
                                self.time_range, tag=tag)
-
         storage_path = paths.get("study.db", create=True)
-        direction = "maximize"
 
         sampler = optuna.samplers.TPESampler(
             n_startup_trials=self.n_startup_trials,
@@ -157,7 +155,7 @@ class BayesianOptimizer(BaseOptimizer):
 
         study = optuna.create_study(
             study_name=f"{self.model_type}_optimization",
-            direction=direction,
+            direction="maximize",
             storage=f"sqlite:///{storage_path}",
             load_if_exists=True,
             sampler=sampler,
@@ -165,26 +163,30 @@ class BayesianOptimizer(BaseOptimizer):
 
         def objective(trial):
             config = self._create_trial_config(trial)
-            score = self._train_and_evaluate(config, trial)
+            score = self.evaluate(config)
             return score
 
         study.optimize(objective, n_trials=n_trials, show_progress_bar=True)
+        return self._save_results(study, paths)
 
+    def _save_results(self, study, paths):
         best_params_path = paths.get("best_params.json", create=True)
         with open(best_params_path, 'w') as f:
             json.dump(study.best_params, f, indent=2)
 
         best_config = self._create_trial_config(study.best_trial)
+        save_name = 'bo_fs' if self.use_feature_selection else 'bo'
 
-        new_model_name = 'bo_fs' if self.use_feature_selection else 'bo'
+        is_neural = not issubclass(MODELS[best_config['model_type']], RegressionModel)
+        if is_neural:
+            best_config['args']['input_dim'] = len(best_config['features'])
 
-        save_config(best_config, self.driver_name, self.model_type, new_model_name)
+        save_config(best_config, self.driver_name, self.model_type, save_name)
 
         print(f"\nBest AUROC: {study.best_value:.4f}")
         print(f"Best params saved to: {best_params_path}")
-        print(f"Best config saved to: src/configs/config.yaml under {self.driver_name}/{new_model_name}")
-
-        return study, new_model_name
+        print(f"Best config saved to: src/configs/config.yaml under {self.driver_name}/{save_name}")
+        return study, save_name
 
     def open_dashboard(self, port=8081, host="127.0.0.1", open_browser=True):
         storage_path = getattr(self, "_storage_path", None)
@@ -234,7 +236,7 @@ class ExhaustiveOptimizer(BaseOptimizer):
             config = deepcopy(self.base_config)
             self._apply_config_dict(config, config_dict)
 
-            score = self._train_and_evaluate(config, trial=None)
+            score = self.evaluate(config)
 
             trial_data = {
                 'trial_id': i + 1,

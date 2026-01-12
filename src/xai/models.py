@@ -14,7 +14,7 @@ class IntegratedGradientsExplainer:
         self.device = device
         self.n_steps = n_steps
         self.model.eval()
-        self.ig = IntegratedGradients(self.model.forward)
+        self.ig = IntegratedGradients(self.model)
 
     def explain_sample(self, x_sample, baseline=None):
         if not isinstance(x_sample, torch.Tensor):
@@ -65,18 +65,12 @@ class IntegratedGradientsExplainer:
 
 
 class KernelShapExplainer:
-    """
-    KernelShap-based explainer for time series models.
-
-    Uses coalition-based Shapley values via the LIME framework.
-    More theoretically aligned with TimeSHAP but computationally intensive.
-    """
     def __init__(self, model, device='cpu', n_samples=128):
         self.model = model
         self.device = device
         self.n_samples = n_samples
         self.model.eval()
-        self.ks = KernelShap(self.model.forward)
+        self.ks = KernelShap(self.model)
 
     def explain_sample(self, x_sample, baseline=None):
         if not isinstance(x_sample, torch.Tensor):

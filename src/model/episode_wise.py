@@ -6,6 +6,7 @@ from sklearn.preprocessing import StandardScaler
 from .base import NeuralModel, RegressionModel, build_mlp, _to_numpy
 
 class OfflineLSTM(NeuralModel):
+    is_online = False
     def __init__(self, input_dim,
                  lstm_hidden_dim, lstm_layers, lstm_dropout, bidirectional,
                  hidden_dims, dropout_rates, act_name, use_batchnorm=False, reduce='mean'):
@@ -32,6 +33,7 @@ class OfflineLSTM(NeuralModel):
 
 
 class OfflineRegression(RegressionModel):
+    is_online = False
     def __init__(self, basis, C=1.0, solver="lbfgs", max_iter=100, random_state=None):
         super().__init__()
 
@@ -79,7 +81,7 @@ class OfflineRegression(RegressionModel):
         Z_scaled = self.scaler.transform(Z)
         return self.model.decision_function(Z_scaled)
 
-    def predict_probability(self, X):
+    def predict_proba(self, X):
         Z = self.extract_features(X)
         Z_scaled = self.scaler.transform(Z)
         return self.model.predict_proba(Z_scaled)[:, 1]
@@ -87,7 +89,7 @@ class OfflineRegression(RegressionModel):
     def predict_label(self, X, threshold=None):
         if threshold is None:
             threshold = self.best_threshold
-        return (self.predict_probability(X) >= threshold).astype(int)
+        return (self.predict_proba(X) >= threshold).astype(int)
 
     def forward(self, X):
         return self.decision_function(X)
