@@ -402,6 +402,47 @@ def plot_driver_reward_comparison(episode, reward_dict, save_path=None):
     else:
         plt.show()
 
+def plot_test_step_rewards(step_rewards, y_true, driver_name, n_samples=10, save_path=None):
+    true_rewards = step_rewards[y_true == 1]
+    false_rewards = step_rewards[y_true == 0]
+
+    n_true = min(n_samples, len(true_rewards))
+    n_false = min(n_samples, len(false_rewards))
+    total_plots = n_true + n_false
+
+    if total_plots == 0:
+        return
+
+    n_cols = 2
+    n_rows = math.ceil(total_plots / n_cols)
+
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(12, 3.5 * n_rows), constrained_layout=True)
+    axes_flat = axes.flatten()
+
+    for i in range(n_true):
+        ax = axes_flat[i]
+        ax.plot(true_rewards[i], color='red', alpha=0.8)
+        ax.axhline(y=0, color='black', linestyle='--', linewidth=0.8)
+        ax.set_title(f'True Sample #{i+1}', fontsize=10, color='darkred', fontweight='bold')
+        ax.grid(True, alpha=0.3)
+
+    for i in range(n_false):
+        ax = axes_flat[n_true + i]
+        ax.plot(false_rewards[i], color='blue', alpha=0.8)
+        ax.axhline(y=0, color='black', linestyle='--', linewidth=0.8)
+        ax.set_title(f'False Sample #{i+1}', fontsize=10, color='darkblue', fontweight='bold')
+        ax.grid(True, alpha=0.3)
+
+    for j in range(total_plots, len(axes_flat)):
+        axes_flat[j].axis('off')
+
+    fig.suptitle(f'{driver_name} - Step Rewards per Episode', fontsize=16)
+
+    if save_path:
+        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show()
 
 def plot_test_step_rewards(step_rewards, y_true, driver_name, n_samples=10, save_path=None):
     true_mask = (y_true == 1)
@@ -483,3 +524,82 @@ def plot_vpl_test_evaluation(test_results, save_dir):
         plt.tight_layout()
         plt.savefig(save_dir / 'test_combined_roc_curves.png', dpi=150, bbox_inches='tight')
         plt.close()
+
+
+def visualize_all_driver_latents(model, all_driver_data, device, save_path):
+    """
+    모든 드라이버의 latent z를 TSNE/PCA로 시각화
+
+    Args:
+        model: VAEModel
+        all_driver_data: {driver_name: {'observations': ..., 'observations_2': ..., 'labels': ...}}
+        device: cuda/cpu
+        save_path: 저장 경로
+    """
+    import torch
+    from sklearn.manifold import TSNE
+    from sklearn.decomposition import PCA
+
+    all_z = []
+    driver_labels = []
+    driver_names = []
+
+    print("\nExtracting latent vectors for all drivers...")
+
+    for driver_name, data in all_driver_data.items():
+        obs1 = torch.from_numpy(data['observations']).float().to(device).unsqueeze(0)
+        obs2 = torch.from_numpy(data['observations_2']).float().to(device).unsqueeze(0)
+        labels = torch.from_numpy(data['labels']).float().to(device).unsqueeze(0)
+
+        with torch.no_grad():
+            mean, _ = model.encode(obs1, obs2, labels)
+
+        z = mean.squeeze(0).cpu().numpy()
+        all_z.append(z)
+        driver_labels.extend([driver_name] * len(z))
+        driver_names.append(driver_name)
+        print(f"  {driver_name}: {len(z)} latent samples")
+
+    all_z = np.concatenate(all_z, axis=0)
+    print(f"\nTotal latent samples: {len(all_z)}")
+    print(f"Latent dimension: {all_z.shape[1]}")
+
+    fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+
+    # TSNE
+    print("\nComputing TSNE...")
+    z_tsne = TSNE(n_components=2, perplexity=30, random_state=42).fit_transform(all_z)
+
+    colors = plt.cm.tab10(np.linspace(0, 1, len(driver_names)))
+    for i, driver_name in enumerate(driver_names):
+        mask = np.array([label == driver_name for label in driver_labels])
+        axes[0].scatter(z_tsne[mask, 0], z_tsne[mask, 1],
+                       label=driver_name, alpha=0.6, s=20, color=colors[i])
+
+    axes[0].set_title("TSNE: Latent Space by Driver", fontsize=14, fontweight='bold')
+    axes[0].set_xlabel("TSNE Component 1")
+    axes[0].set_ylabel("TSNE Component 2")
+    axes[0].legend(loc='best', fontsize=10)
+    axes[0].grid(True, alpha=0.3)
+
+    # PCA
+    print("Computing PCA...")
+    pca = PCA(n_components=2)
+    z_pca = pca.fit_transform(all_z)
+    explained_var = pca.explained_variance_ratio_
+
+    for i, driver_name in enumerate(driver_names):
+        mask = np.array([label == driver_name for label in driver_labels])
+        axes[1].scatter(z_pca[mask, 0], z_pca[mask, 1],
+                       label=driver_name, alpha=0.6, s=20, color=colors[i])
+
+    axes[1].set_title("PCA: Latent Space by Driver", fontsize=14, fontweight='bold')
+    axes[1].set_xlabel(f"PC1 ({explained_var[0]*100:.1f}%)")
+    axes[1].set_ylabel(f"PC2 ({explained_var[1]*100:.1f}%)")
+    axes[1].legend(loc='best', fontsize=10)
+    axes[1].grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=150, bbox_inches='tight')
+    plt.close()
+    print(f"Latent space visualization saved to: {save_path}")

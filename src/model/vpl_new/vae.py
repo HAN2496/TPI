@@ -91,8 +91,12 @@ class VAEModel(nn.Module):
         return z
 
     def encode(self, s1, s2, y):
-        s1_ = s1.view(s1.shape[0], s1.shape[1], -1)
-        s2_ = s2.view(s2.shape[0], s2.shape[1], -1)
+        # s1_ = s1.view(s1.shape[0], s1.shape[1], -1)
+        # s2_ = s2.view(s2.shape[0], s2.shape[1], -1)
+        # y = y.reshape(s1.shape[0], s1.shape[1], -1)
+
+        s1_ = s1.reshape(s1.shape[0], s1.shape[1], -1)
+        s2_ = s2.reshape(s2.shape[0], s2.shape[1], -1)
         y = y.reshape(s1.shape[0], s1.shape[1], -1)
 
         encoder_input = torch.cat([s1_, s2_, y], dim=-1)
@@ -119,13 +123,6 @@ class VAEModel(nn.Module):
         return self.flow(z)
 
     def reconstruction_loss(self, x, x_hat):
-        # bce = nn.functional.binary_cross_entropy(x_hat, x, reduction="none").squeeze(-1)  # (B,Ann)
-        # if mask is None:
-        #     return bce.mean()
-        # else:
-        #     w = mask.float()
-        #     per_user = (bce * w).sum(dim=1) / w.sum(dim=1).clamp_min(1.0)
-        #     return per_user.mean()
         return nn.functional.binary_cross_entropy(x_hat, x, reduction="sum")
 
     def accuracy(self, x, x_hat):

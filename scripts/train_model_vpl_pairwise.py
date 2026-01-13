@@ -302,7 +302,7 @@ def main():
             print(f"  {driver_name}: z_mean shape = {latent_info['z_mean_point'].shape}")
 
     # 13. Test binary feedback inference (if requested)
-    if args.test_binary_inference and args.test_drivers:
+    if args.test_drivers:
         print("\n" + "=" * 70)
         print("Testing Binary Feedback Inference")
         print("=" * 70)
@@ -422,7 +422,7 @@ def main():
 
                 # Box plot
                 plt.subplot(1, 2, 2)
-                plt.boxplot([false_rewards, true_rewards], labels=['False', 'True'], patch_artist=True,
+                plt.boxplot([false_rewards, true_rewards], tick_labels=['False', 'True'], patch_artist=True,
                            boxprops=dict(facecolor='lightblue', alpha=0.6),
                            medianprops=dict(color='red', linewidth=2))
                 plt.ylabel('Mean Reward', fontsize=11)

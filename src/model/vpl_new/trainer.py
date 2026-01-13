@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from collections import defaultdict
-from .utils import log_metrics, prefix_metrics
+from .utils import log_metrics
 
 class Annealer:
     def __init__(self, total_steps, shape, baseline=0.0, cyclical=False, disable=False):
@@ -77,10 +77,10 @@ class EarlyStopper:
 
 
 class VPLTrainer:
-    def __init__(self, model, logger, config, device='cpu'):
+    def __init__(self, model, logger, config):
         self.model = model
         self.config = config
-        self.device = device
+        self.device = config["device"]
         self.logger = logger
 
         self.optimizer = torch.optim.Adam(
@@ -108,6 +108,8 @@ class VPLTrainer:
     def train_epoch(self, train_loader):
         self.model.train()
         total_loss = 0
+        total_samples = 0
+        batch_metrics = defaultdict(list)
 
         for batch in train_loader:
             self.optimizer.zero_grad()
@@ -115,47 +117,65 @@ class VPLTrainer:
             observations_2 = batch["observations_2"].to(self.device).float()
             labels = batch["labels"].to(self.device).float()
 
-            loss, batch_metrics = self.model(observations, observations_2, labels)
+            loss, metrics = self.model(observations, observations_2, labels)
             loss.backward()
             self.optimizer.step()
 
-            for key, val in prefix_metrics(batch_metrics, "train").items():
-                self.metrics[key].append(val)
+            for key, val in metrics.items():
+                batch_metrics[key].append(val)
 
-            total_loss += loss.item() * observations.size(0)
+            batch_size = observations.size(0)
+            total_loss += loss.item() * batch_size
+            total_samples += batch_size
 
-        return total_loss / len(train_loader.dataset)
+        avg_loss = total_loss / total_samples
+        avg_metrics = {key: np.mean(vals) for key, vals in batch_metrics.items()}
+
+        return avg_loss, avg_metrics
 
     def evaluate(self, val_loader):
         self.model.eval()
         total_loss = 0
+        total_samples = 0
+        batch_metrics = defaultdict(list)
 
         for batch in val_loader:
             with torch.no_grad():
                 observations = batch["observations"].to(self.device).float()
                 observations_2 = batch["observations_2"].to(self.device).float()
                 labels = batch["labels"].to(self.device).float()
-                loss, batch_metrics = self.model(
+                loss, metrics = self.model(
                     observations, observations_2, labels
                 )
 
-                for key, val in prefix_metrics(batch_metrics, "eval").items():
-                    self.metrics[key].append(val)
+                for key, val in metrics.items():
+                    batch_metrics[key].append(val)
 
-                total_loss += loss.item() * observations.size(0)  # ✅ 이 줄이 빠져 있었음
+                batch_size = observations.size(0)
+                total_loss += loss.item() * batch_size
+                total_samples += batch_size
 
-        return total_loss / len(val_loader.dataset)
+        avg_loss = total_loss / total_samples
+        avg_metrics = {key: np.mean(vals) for key, vals in batch_metrics.items()}
+
+        return avg_loss, avg_metrics
 
     def train(self, train_loader, val_loader, verbose=1):
         self.metrics = defaultdict(list)
+
         for epoch in range(self.n_epochs):
-            self.metrics["epoch"] = epoch
+            train_loss, train_metrics = self.train_epoch(train_loader)
+            val_loss, val_metrics = self.evaluate(val_loader)
 
-            train_loss = self.train_epoch(train_loader)
-            val_loss = self.evaluate(val_loader)
-
+            # Store epoch-level metrics
             self.metrics["train/loss"].append(train_loss)
             self.metrics["eval/loss"].append(val_loss)
+
+            for key, val in train_metrics.items():
+                self.metrics[f"train/{key}"].append(val)
+
+            for key, val in val_metrics.items():
+                self.metrics[f"eval/{key}"].append(val)
 
             self.scheduler.step(val_loss)
 
@@ -167,11 +187,11 @@ class VPLTrainer:
             if self.model.annealer:
                 self.model.annealer.step()
 
-            if (epoch + 1) % 10 == 0:
+            if (epoch + 1) % int(self.config["eval_freq"]) == 0:
                 log_metrics(self.metrics, epoch, self.logger)
                 if verbose >= 1:
                     print(f"Epoch {epoch+1}/{self.n_epochs} - "
                         f"Loss: {train_loss:.4f} - eval Loss: {val_loss:.4f} - "
-                        f"eval Acc: {np.mean(self.metrics['eval/accuracy']):.4f}")
+                        f"eval Acc: {val_metrics['accuracy']:.4f}")
 
-        return self.metrics, np.mean(self.metrics['eval/accuracy'])
+        return self.metrics, np.mean(self.metrics['eval/accuracy'][-5:])

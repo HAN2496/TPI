@@ -4,13 +4,13 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 
-from torch.utils.data import DataLoader, WeightedRandomSampler
+from torch.utils.data import DataLoader
 
 from src.model.vpl_new.vae import VAEModel
 from src.model.vpl_new.trainer import VPLTrainer
 
 from src.utils.logger import ExperimentLogger
-from src.utils.vpl_pairwise_dataset import create_vpl_datset_new, PreferenceDataset
+from src.utils.vpl_pairwise_dataset import create_vpl_dataset_new, PreferenceDataset, create_vpl_dataset_new_2
 
 FLAGS = {
     # data
@@ -20,33 +20,32 @@ FLAGS = {
     "downsample": 5,
     "tie_ratio": 0.0,
 
-    "sampling_method": "balanced", # "balanced" or "sqrt" or "natural"
     "context_size": 128,
-    "steps_per_epoch": 100,
+    "val_size": 0.1,
+    "use_test_context": True,  # True: use context_size for test, False: use all pairs at once
 
     # model
-    "hidden_dim": 256,
+    "hidden_dim": 128,
     "batch_size": 64,
+    "latent_dim": 32,
+    "kl_weight": 1.0,
+    "flow_prior": False,
+    "use_annealing": True,
+    "annealer_baseline": 0.0,
+    "annealer_type": "cosine", # linear, cosine, logistic
+    "annealer_cycles":4,
+
+    # Trainer
     "lr": 1e-3,
     "weight_decay": 0.0,
     "early_stop": False,
     "patience": 10,
     "min_delta": 3e-4,
 
-    "latent_dim": 32,
-    "kl_weight": 1.0,
-    "flow_prior": False,
-    "use_annealing": False,
-    "annealer_baseline": 0.0,
-    "annealer_type": "cosine",
-    "annealer_cycles":4,
-
-    # Training
     "n_epochs": 500,
-    "eval_freq": 50,
-    "save_freq": 50,
+    "eval_freq": 10,
 
-    "device": "cuda" if torch.cuda.is_available() else "cpu",
+    "device": "cuda", # cuda, cpu
     "verbose": 1,
 }
 
@@ -55,84 +54,92 @@ def collate_fn(batch):
         'observations': torch.stack([torch.from_numpy(item['observations']).float() for item in batch]),
         'observations_2': torch.stack([torch.from_numpy(item['observations_2']).float() for item in batch]),
         'labels': torch.stack([torch.from_numpy(item['labels']).float() for item in batch]),
-        'driver_names': [item['driver_name'] for item in batch]
     }
 
 def plot_history(metrics, logger):
-    os.makedirs(logger.run_dir / "plots", exist_ok=True)
+    plot_keys = [k for k in metrics.keys() if k.startswith("train/") or k.startswith("eval/")]
 
-    for key in metrics.keys():
-        if not key.startswith("train/") and not key.startswith("eval/"):
-            continue
+    num_plots = len(plot_keys)
+    if num_plots == 0:
+        return
 
-        plt.figure()
-        plt.plot(metrics[key])
-        plt.title(key)
-        plt.xlabel("Epoch")
-        plt.ylabel(key)
-        plt.grid()
-        plt.savefig(logger.run_dir / "plots" / f"{key}.png")
-        plt.close()
+    cols = math.ceil(math.sqrt(num_plots))
+    rows = math.ceil(num_plots / cols)
+
+    fig, axes = plt.subplots(rows, cols, figsize=(5 * cols, 4 * rows), squeeze=False)
+    axes = axes.flatten() 
+
+    for i, key in enumerate(plot_keys):
+        ax = axes[i]
+        ax.plot(metrics[key])
+        ax.set_title(key)
+        ax.set_xlabel("Epoch")
+        ax.set_ylabel("Value")
+        ax.grid(True)
+
+    for j in range(i + 1, len(axes)):
+        axes[j].axis('off')
+
+    plt.tight_layout()
+
+    save_path = logger.log_dir / "training_curves.png"
+    os.makedirs(save_path.parent, exist_ok=True) 
+
+    plt.savefig(save_path)
+    plt.close()
+
 
 def main():
 
     print("Creating dataset...")
-    train_datasets = create_vpl_datset_new(
-        test_deriver_name=FLAGS["test_driver_name"],
+    trainval_data, test_driver_data = create_vpl_dataset_new_2(
+        test_driver_names=[FLAGS["test_driver_name"]],
         features=FLAGS["features"],
         time_range=FLAGS["time_range"],
         downsample=FLAGS["downsample"],
         tie_ratio=FLAGS["tie_ratio"]
     )
 
-    print(f"\nTotal drivers: {len(train_datasets)}")
-    for i, data in enumerate(train_datasets[:3]):
-        print(f"  Driver {data['driver_name']}: {data['observations'].shape[0]} pairs")
+    print(f"Total train pairs: {len(trainval_data)}")
 
-    np.random.shuffle(train_datasets)
-    n_total = len(train_datasets)
-    n_val = max(1, int(n_total * 0.1))
+    # Shuffle all pairs
+    np.random.shuffle(trainval_data)
+
+    # Split into train/val (pairs level, not driver level)
+    n_total = len(trainval_data)
+    n_val = max(1, int(n_total * FLAGS["val_size"]))
     n_train = n_total - n_val
 
-    train_drivers = train_datasets[:n_train]
-    val_drivers = train_datasets[n_train:]
+    train_data = trainval_data[:n_train]
+    val_data = trainval_data[n_train:]
 
-    train_dataset = PreferenceDataset(train_drivers, context_size=FLAGS["context_size"])
-    val_dataset = PreferenceDataset(val_drivers, context_size=FLAGS["context_size"])
+    print(f"\nTrain/Val split:")
+    print(f"  Train pairs: {len(train_data)}")
+    print(f"  Val pairs: {len(val_data)}")
 
-    data_counts = [len(d['observations']) for d in train_drivers]
+    # Create fixed context datasets (group pairs into queries)
+    train_dataset = PreferenceDataset(train_data, FLAGS["context_size"])
+    val_dataset = PreferenceDataset(val_data, FLAGS["context_size"])
 
-    if FLAGS["sampling_method"] == "balanced":
-        weights = [1.0 / c for c in data_counts]
-        print(f"Sampling Method: Balanced (All drivers have equal probability)")
-    elif FLAGS["sampling_method"] == "sqrt":
-        weights = [math.sqrt(c) for c in data_counts]
-        weights = [1.0 / math.sqrt(c) for c in data_counts]
-        print(f"Sampling Method: Square Root (Proportional to sqrt(N))")
-    else:
-        weights = [1.0 for _ in data_counts]
-        print(f"Sampling Method: Natural (Proportional to dataset size)")
-
-    total_samples = FLAGS["steps_per_epoch"] * FLAGS["batch_size"]
-    sampler = WeightedRandomSampler(
-        weights=weights,
-        num_samples=total_samples,
-        replacement=True
-    )
+    print(f"\nQuery statistics:")
+    print(f"  Train queries: {len(train_dataset)}")
+    print(f"  Val queries: {len(val_dataset)}")
 
     train_loader = DataLoader(
         train_dataset,
         batch_size=FLAGS["batch_size"],
-        sampler=sampler,
+        shuffle=True,
         collate_fn=collate_fn,
-        drop_last=True,
-        num_workers=0
+        num_workers=0,
+        pin_memory=True
     )
     val_loader = DataLoader(
         val_dataset,
-        batch_size=FLAGS["batch_size"],
+        batch_size=len(val_dataset),  # Process entire val set at once
+        shuffle=False,
         collate_fn=collate_fn,
-        num_workers=0
+        num_workers=0,
+        pin_memory=True
     )
 
     sample_batch = next(iter(train_loader))
@@ -176,20 +183,10 @@ def main():
         add_timestamp=True
     )
 
-    train_config = {
-        'lr': FLAGS["lr"],
-        'weight_decay': FLAGS["weight_decay"],
-        'n_epochs': FLAGS["n_epochs"],
-        'early_stop': FLAGS["early_stop"],
-        'patience': FLAGS["patience"],
-        'min_delta': FLAGS["min_delta"]
-    }
-
     trainer = VPLTrainer(
         model=model,
         logger=logger,
-        config=train_config,
-        device=FLAGS["device"]
+        config=FLAGS
     )
 
     print("\nStarting training...")
@@ -210,39 +207,103 @@ def main():
 
 
 
-    from src.model.vpl_new.utils import get_test_latent, compute_step_rewards
+    from src.model.vpl_new.utils import compute_step_rewards
     from src.utils.utils import _load_dataset_sequences
-    from src.utils.visualization import plot_roc_curve, plot_test_step_rewards
+    from src.utils.visualization import plot_roc_curve, plot_test_step_rewards, visualize_all_driver_latents
+    from src.utils.data_loader import DatasetManager
     from sklearn.metrics import roc_auc_score
 
-    model.load_state_dict(torch.load(logger.run_dir / "best_model.pt"))
+    model.load_state_dict(torch.load(logger.log_dir / "best_model.pt"))
     model.eval()
 
-    print(f"\nTest driver: {FLAGS['test_driver_name']}")
+    # Prepare all driver data for latent visualization
+    print("\n" + "="*70)
+    print("Preparing all driver data for latent visualization")
+    print("="*70)
 
-    test_driver_dataset = create_vpl_datset_new(
-        test_deriver_name=None,
-        features=FLAGS["features"],
-        time_range=FLAGS["time_range"],
-        downsample=FLAGS["downsample"],
-        tie_ratio=FLAGS["tie_ratio"]
-    )
+    all_driver_data = {}
+    manager = DatasetManager("datasets", downsample=FLAGS["downsample"])
+    all_driver_names = manager.keys()
 
-    test_driver_data = None
-    for data in test_driver_dataset:
-        if data['driver_name'] == FLAGS['test_driver_name']:
-            test_driver_data = data
-            break
+    for driver_name in all_driver_names:
+        X, y = _load_dataset_sequences(
+            driver_name,
+            FLAGS["time_range"],
+            FLAGS["downsample"],
+            {'features': FLAGS["features"]}
+        )
 
-    if test_driver_data is None:
-        print(f"Warning: Test driver {FLAGS['test_driver_name']} not found in dataset!")
-    else:
-        print(f"Estimating latent z for {FLAGS['test_driver_name']}...")
-        z_mean = get_test_latent(model, test_driver_data, FLAGS["device"])
-        print(f"  z shape: {z_mean.shape}")
+        true_mask = (y == 1)
+        false_mask = (y == 0)
+        true_episodes = X[true_mask]
+        false_episodes = X[false_mask]
+
+        if len(true_episodes) == 0 or len(false_episodes) == 0:
+            print(f"Skipping {driver_name}: no True or False episodes")
+            continue
+
+        driver_obs = []
+        driver_obs_2 = []
+        driver_labels = []
+
+        for true_ep in true_episodes:
+            for false_ep in false_episodes:
+                driver_obs.append(true_ep)
+                driver_obs_2.append(false_ep)
+                driver_labels.append(1.0)
+
+        driver_obs = np.stack(driver_obs, axis=0)
+        driver_obs_2 = np.stack(driver_obs_2, axis=0)
+        driver_labels = np.array(driver_labels).reshape(-1, 1)
+
+        all_driver_data[driver_name] = {
+            'observations': driver_obs,
+            'observations_2': driver_obs_2,
+            'labels': driver_labels
+        }
+        print(f"  {driver_name}: {len(driver_obs)} pairs")
+
+    for test_driver_name, test_data in test_driver_data.items():
+        print(f"\nTest driver: {test_driver_name}")
+        print(f"  Test pairs: {len(test_data['observations'])}")
+
+        # Convert to individual pairs
+        test_pairs = []
+        for i in range(len(test_data['observations'])):
+            test_pairs.append({
+                'observations': test_data['observations'][i],
+                'observations_2': test_data['observations_2'][i],
+                'labels': test_data['labels'][i]
+            })
+
+        # Create test dataset with context_size
+        if FLAGS["use_test_context"]:
+            test_context_size = FLAGS["context_size"]
+            print(f"  Using context_size={test_context_size} for test inference")
+        else:
+            test_context_size = len(test_pairs)  # Use all pairs at once
+            print(f"  Using all {test_context_size} pairs at once for test inference")
+
+        test_dataset = PreferenceDataset(test_pairs, test_context_size)
+        print(f"  Test queries: {len(test_dataset)}")
+
+        # Get average z from all queries
+        print(f"Estimating latent z for {test_driver_name}...")
+        all_z = []
+        for query_data in test_dataset:
+            obs1 = torch.from_numpy(query_data['observations']).float().to(FLAGS["device"]).unsqueeze(0)
+            obs2 = torch.from_numpy(query_data['observations_2']).float().to(FLAGS["device"]).unsqueeze(0)
+            labels = torch.from_numpy(query_data['labels']).float().to(FLAGS["device"]).unsqueeze(0)
+
+            with torch.no_grad():
+                mean, _ = model.encode(obs1, obs2, labels)
+            all_z.append(mean.squeeze(0).cpu().numpy())
+
+        z_mean = np.mean(all_z, axis=0)
+        print(f"  z shape: {z_mean.shape} (averaged over {len(all_z)} queries)")
 
         X, y = _load_dataset_sequences(
-            FLAGS['test_driver_name'],
+            test_driver_name,
             FLAGS["time_range"],
             FLAGS["downsample"],
             {'features': FLAGS["features"]}
@@ -274,19 +335,30 @@ def main():
 
             plot_roc_curve(
                 y, mean_rewards,
-                save_path=logger.run_dir / f"test_{FLAGS['test_driver_name']}_roc.png",
-                title=f"Test Driver ROC - {FLAGS['test_driver_name']}"
+                save_path=logger.log_dir / f"test_{test_driver_name}_roc.png",
+                title=f"Test Driver ROC - {test_driver_name}"
             )
             print(f"  ROC curve saved")
         else:
             print("\nWarning: Only one class in test data, cannot compute AUROC")
 
         plot_test_step_rewards(
-            step_rewards, y, FLAGS['test_driver_name'],
+            step_rewards, y, test_driver_name,
             n_samples=10,
-            save_path=logger.run_dir / f"test_{FLAGS['test_driver_name']}_step_rewards.png"
+            save_path=logger.log_dir / f"test_{test_driver_name}_step_rewards.png"
         )
         print(f"  Step rewards plot saved")
+
+    print("\n" + "="*70)
+    print("Visualizing latent space for all drivers")
+    print("="*70)
+
+    visualize_all_driver_latents(
+        model=model,
+        all_driver_data=all_driver_data,
+        device=FLAGS["device"],
+        save_path=logger.log_dir / "all_drivers_latent_space.png"
+    )
 
     print("\n" + "="*70)
     print("All done!")

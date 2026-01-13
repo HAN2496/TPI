@@ -74,7 +74,7 @@ def get_test_latent(model, driver_dataset, device):
     labels = labels.unsqueeze(0)
 
     with torch.no_grad():
-        mean, _ = model.encode(obs1, obs2, labels, mask=None)
+        mean, _ = model.encode(obs1, obs2, labels)
 
     return mean.squeeze(0).cpu().numpy()
 
