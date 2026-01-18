@@ -20,6 +20,7 @@ FLAGS = {
     "downsample": 5,
     "tie_ratio": 0.0,
 
+    "train_deriver_names": ["박재일", "이지환", "조현석", "한규택"],
     "context_size": 128,
     "val_size": 0.1,
     "use_test_context": True,  # True: use context_size for test, False: use all pairs at once
@@ -190,18 +191,18 @@ def main():
     )
 
     print("\nStarting training...")
-    metrics, val_accuracy = trainer.train(train_loader, val_loader)
+    # metrics, val_accuracy = trainer.train(train_loader, val_loader)
 
-    print(f"\nTraining complete!")
-    print(f"Final validation accuracy: {val_accuracy:.4f}")
-    print(f"Results saved to: {logger.log_dir}")
+    # print(f"\nTraining complete!")
+    # print(f"Final validation accuracy: {val_accuracy:.4f}")
+    # print(f"Results saved to: {logger.log_dir}")
 
-    print("\nPlotting training curves...")
-    plot_history(metrics, logger)
+    # print("\nPlotting training curves...")
+    # plot_history(metrics, logger)
 
-    print("\n" + "="*70)
-    print("Testing on test driver")
-    print("="*70)
+    # print("\n" + "="*70)
+    # print("Testing on test driver")
+    # print("="*70)
 
 
 
@@ -209,12 +210,15 @@ def main():
 
     from src.model.vpl_new.utils import compute_step_rewards
     from src.utils.utils import _load_dataset_sequences
-    from src.utils.visualization import plot_roc_curve, plot_test_step_rewards, visualize_all_driver_latents
+    from src.utils.visualization import plot_roc_curve, plot_test_step_rewards, visualize_all_driver_latents, visualize_episode_probabilities
     from src.utils.data_loader import DatasetManager
     from sklearn.metrics import roc_auc_score
 
     model.load_state_dict(torch.load(logger.log_dir / "best_model.pt"))
     model.eval()
+
+    # 테스트 결과 저장용
+    test_probability_results = {}
 
     # Prepare all driver data for latent visualization
     print("\n" + "="*70)
@@ -313,8 +317,10 @@ def main():
         step_rewards = compute_step_rewards(model, X, z_mean, FLAGS["device"])
         print(f"  Step rewards shape: {step_rewards.shape}")
 
-        mean_rewards = step_rewards.mean(axis=1)
-        print(f"\nReward statistics:")
+        # 모델과 동일하게 scaling 적용: r_hat = sum(r_t) / scaling
+        T = step_rewards.shape[1]  # timesteps
+        mean_rewards = step_rewards.sum(axis=1) / T
+        print(f"\nReward statistics (scaled):")
         print(f"  Mean: {mean_rewards.mean():.4f} ± {mean_rewards.std():.4f}")
         print(f"  Range: [{mean_rewards.min():.4f}, {mean_rewards.max():.4f}]")
 
@@ -340,6 +346,7 @@ def main():
             )
             print(f"  ROC curve saved")
         else:
+            auroc = 0.0
             print("\nWarning: Only one class in test data, cannot compute AUROC")
 
         plot_test_step_rewards(
@@ -349,6 +356,13 @@ def main():
         )
         print(f"  Step rewards plot saved")
 
+        # 확률 시각화를 위한 결과 저장
+        test_probability_results[test_driver_name] = {
+            'mean_rewards': mean_rewards,
+            'y_true': y,
+            'auroc': auroc
+        }
+
     print("\n" + "="*70)
     print("Visualizing latent space for all drivers")
     print("="*70)
@@ -357,7 +371,17 @@ def main():
         model=model,
         all_driver_data=all_driver_data,
         device=FLAGS["device"],
-        save_path=logger.log_dir / "all_drivers_latent_space.png"
+        save_path=logger.log_dir / "all_drivers_latent_space.png",
+        context_size=FLAGS["context_size"]
+    )
+
+    print("\n" + "="*70)
+    print("Visualizing episode probabilities")
+    print("="*70)
+
+    visualize_episode_probabilities(
+        test_results=test_probability_results,
+        save_path=logger.log_dir / "episode_probabilities.png"
     )
 
     print("\n" + "="*70)

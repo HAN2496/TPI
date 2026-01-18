@@ -1,9 +1,50 @@
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+from torch.utils.data import Dataset
 
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
+
+from src.utils.data_loader import DatasetManager
+
+class PreferenceDatasets(Dataset):
+    def __init__(self, pairs, context_size):
+        self.context_size = context_size
+        self.queries = []
+
+        for i in range(0, len(pairs), context_size):
+            query_pairs = pairs[i:i+context_size]
+
+            if len(query_pairs) < context_size:
+                original_size = len(query_pairs)
+                padded_size = context_size - original_size
+                print(f"  Query {len(self.queries)}: Padding {padded_size} pairs ({original_size} → {context_size})")
+
+                # Pad last incomplete query by repeating samples
+                while len(query_pairs) < context_size:
+                    query_pairs.append(query_pairs[np.random.randint(len(query_pairs))])
+
+            # Stack into query
+            self.queries.append({
+                'driver_name': np.stack([p['driver_name'] for p in query_pairs]),
+                'observations': np.stack([p['observations'] for p in query_pairs]),
+                'observations_2': np.stack([p['observations_2'] for p in query_pairs]),
+                'labels': np.stack([p['labels'] for p in query_pairs]),
+            })
+
+    def __len__(self):
+        return len(self.queries)
+
+    def __getitem__(self, idx):
+        return self.queries[idx]
+
+def create_vpl_dataset(train_driver_names, test_driver_names, features, time_range, downsample, tie_ratio=0.0):
+    manager = DatasetManager("datasets", downsample=downsample)
+
+    train_data, test_data = [], []
+
+
 
 def log_metrics(metrics, epoch, logger):
     # Compute mean for list values

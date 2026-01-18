@@ -526,7 +526,7 @@ def plot_vpl_test_evaluation(test_results, save_dir):
         plt.close()
 
 
-def visualize_all_driver_latents(model, all_driver_data, device, save_path):
+def visualize_all_driver_latents(model, all_driver_data, device, save_path, context_size=128):
     """
     모든 드라이버의 latent z를 TSNE/PCA로 시각화
 
@@ -535,6 +535,7 @@ def visualize_all_driver_latents(model, all_driver_data, device, save_path):
         all_driver_data: {driver_name: {'observations': ..., 'observations_2': ..., 'labels': ...}}
         device: cuda/cpu
         save_path: 저장 경로
+        context_size: query당 페어 개수 (annotation size)
     """
     import torch
     from sklearn.manifold import TSNE
@@ -547,59 +548,260 @@ def visualize_all_driver_latents(model, all_driver_data, device, save_path):
     print("\nExtracting latent vectors for all drivers...")
 
     for driver_name, data in all_driver_data.items():
-        obs1 = torch.from_numpy(data['observations']).float().to(device).unsqueeze(0)
-        obs2 = torch.from_numpy(data['observations_2']).float().to(device).unsqueeze(0)
-        labels = torch.from_numpy(data['labels']).float().to(device).unsqueeze(0)
+        n_pairs = len(data['observations'])
+        n_queries = max(1, n_pairs // context_size)
 
-        with torch.no_grad():
-            mean, _ = model.encode(obs1, obs2, labels)
+        driver_z_list = []
 
-        z = mean.squeeze(0).cpu().numpy()
-        all_z.append(z)
-        driver_labels.extend([driver_name] * len(z))
+        for i in range(n_queries):
+            start_idx = i * context_size
+            end_idx = min((i + 1) * context_size, n_pairs)
+
+            obs1_chunk = data['observations'][start_idx:end_idx]
+            obs2_chunk = data['observations_2'][start_idx:end_idx]
+            labels_chunk = data['labels'][start_idx:end_idx]
+
+            obs1 = torch.from_numpy(obs1_chunk).float().to(device).unsqueeze(0)
+            obs2 = torch.from_numpy(obs2_chunk).float().to(device).unsqueeze(0)
+            labels = torch.from_numpy(labels_chunk).float().to(device).unsqueeze(0)
+
+            with torch.no_grad():
+                mean, _ = model.encode(obs1, obs2, labels)
+
+            z = mean.squeeze(0).cpu().numpy()
+            driver_z_list.append(z)
+
+        driver_z = np.stack(driver_z_list, axis=0)
+        all_z.append(driver_z)
+        driver_labels.extend([driver_name] * len(driver_z))
         driver_names.append(driver_name)
-        print(f"  {driver_name}: {len(z)} latent samples")
+        print(f"  {driver_name}: {n_queries} latent samples (from {n_pairs} pairs)")
 
     all_z = np.concatenate(all_z, axis=0)
     print(f"\nTotal latent samples: {len(all_z)}")
     print(f"Latent dimension: {all_z.shape[1]}")
 
-    fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+    # 각 드라이버의 평균 latent 계산
+    driver_mean_latents = []
+    for driver_name in driver_names:
+        mask = np.array([label == driver_name for label in driver_labels])
+        driver_mean_z = all_z[mask].mean(axis=0)
+        driver_mean_latents.append(driver_mean_z)
 
-    # TSNE
-    print("\nComputing TSNE...")
+    driver_mean_latents = np.array(driver_mean_latents)
+    print(f"Driver mean latents shape: {driver_mean_latents.shape}")
+
+    fig, axes = plt.subplots(1, 3, figsize=(24, 6))
+
+    # TSNE - 모든 샘플
+    print("\nComputing TSNE for all samples...")
     z_tsne = TSNE(n_components=2, perplexity=30, random_state=42).fit_transform(all_z)
 
+    from matplotlib.patches import Ellipse, Circle
+    import matplotlib.transforms as transforms
+
     colors = plt.cm.tab10(np.linspace(0, 1, len(driver_names)))
+
+    # 각 드라이버의 TSNE 공간 분산 저장
+    driver_tsne_stats = {}
+
     for i, driver_name in enumerate(driver_names):
         mask = np.array([label == driver_name for label in driver_labels])
-        axes[0].scatter(z_tsne[mask, 0], z_tsne[mask, 1],
+        points = z_tsne[mask]
+
+        # 샘플 점들
+        axes[0].scatter(points[:, 0], points[:, 1],
                        label=driver_name, alpha=0.6, s=20, color=colors[i])
 
-    axes[0].set_title("TSNE: Latent Space by Driver", fontsize=14, fontweight='bold')
+        # 분산 계산
+        std_x = points[:, 0].std()
+        std_y = points[:, 1].std()
+        overall_std = np.sqrt(std_x**2 + std_y**2)
+
+        # 저장 (두 번째 subplot에서 사용)
+        driver_tsne_stats[driver_name] = {
+            'std_x': std_x,
+            'std_y': std_y,
+            'overall_std': overall_std,
+            'cov': np.cov(points[:, 0], points[:, 1])
+        }
+
+    axes[0].set_title("TSNE: All Latent Samples", fontsize=14, fontweight='bold')
     axes[0].set_xlabel("TSNE Component 1")
     axes[0].set_ylabel("TSNE Component 2")
     axes[0].legend(loc='best', fontsize=10)
     axes[0].grid(True, alpha=0.3)
 
-    # PCA
-    print("Computing PCA...")
+    # TSNE - 드라이버 평균만
+    print("Computing TSNE for driver means...")
+    z_mean_tsne = TSNE(n_components=2, perplexity=min(5, len(driver_names)-1), random_state=42).fit_transform(driver_mean_latents)
+
+    def confidence_ellipse(x, y, ax, n_std=2.0, facecolor='none', edgecolor='red', **kwargs):
+        """2D 신뢰 타원 그리기"""
+        if len(x) < 2:
+            return None
+
+        cov = np.cov(x, y)
+        pearson = cov[0, 1] / np.sqrt(cov[0, 0] * cov[1, 1]) if cov[0, 0] * cov[1, 1] > 0 else 0
+
+        ell_radius_x = np.sqrt(1 + pearson)
+        ell_radius_y = np.sqrt(1 - pearson)
+        ellipse = Ellipse((0, 0), width=ell_radius_x * 2, height=ell_radius_y * 2,
+                         facecolor=facecolor, edgecolor=edgecolor, **kwargs)
+
+        scale_x = np.sqrt(cov[0, 0]) * n_std
+        scale_y = np.sqrt(cov[1, 1]) * n_std
+
+        mean_x = np.mean(x)
+        mean_y = np.mean(y)
+
+        transf = transforms.Affine2D() \
+            .scale(scale_x, scale_y) \
+            .translate(mean_x, mean_y)
+
+        ellipse.set_transform(transf + ax.transData)
+        return ax.add_patch(ellipse)
+
+    for i, driver_name in enumerate(driver_names):
+        # 첫 번째 subplot의 분산 정보 가져오기
+        stats = driver_tsne_stats[driver_name]
+        overall_std = stats['overall_std']
+
+        # 분산 원 그리기 (별 뒤에)
+        circle = Circle((z_mean_tsne[i, 0], z_mean_tsne[i, 1]),
+                       radius=overall_std,
+                       facecolor=colors[i], alpha=0.15,
+                       edgecolor=colors[i], linewidth=2, linestyle='--')
+        axes[1].add_patch(circle)
+
+        # 평균 latent (별)
+        axes[1].scatter(z_mean_tsne[i, 0], z_mean_tsne[i, 1],
+                       label=driver_name, alpha=1.0, s=200, color=colors[i],
+                       marker='*', edgecolors='black', linewidths=2, zorder=10)
+
+        # 드라이버 이름
+        axes[1].annotate(driver_name,
+                        (z_mean_tsne[i, 0], z_mean_tsne[i, 1]),
+                        xytext=(5, 5), textcoords='offset points',
+                        fontsize=10, fontweight='bold')
+
+        # 분산 텍스트
+        axes[1].annotate(f'σ={overall_std:.2f}',
+                        (z_mean_tsne[i, 0], z_mean_tsne[i, 1]),
+                        xytext=(8, -12), textcoords='offset points',
+                        fontsize=8, color=colors[i], fontweight='bold',
+                        bbox=dict(boxstyle='round,pad=0.3', facecolor='white',
+                                 edgecolor=colors[i], alpha=0.8))
+
+    axes[1].set_title("TSNE: Driver Means + Variance", fontsize=14, fontweight='bold')
+    axes[1].set_xlabel("TSNE Component 1")
+    axes[1].set_ylabel("TSNE Component 2")
+    axes[1].legend(loc='best', fontsize=10)
+    axes[1].grid(True, alpha=0.3)
+
+    # PCA - 모든 샘플
+    print("Computing PCA for all samples...")
     pca = PCA(n_components=2)
     z_pca = pca.fit_transform(all_z)
     explained_var = pca.explained_variance_ratio_
 
     for i, driver_name in enumerate(driver_names):
         mask = np.array([label == driver_name for label in driver_labels])
-        axes[1].scatter(z_pca[mask, 0], z_pca[mask, 1],
+        axes[2].scatter(z_pca[mask, 0], z_pca[mask, 1],
                        label=driver_name, alpha=0.6, s=20, color=colors[i])
 
-    axes[1].set_title("PCA: Latent Space by Driver", fontsize=14, fontweight='bold')
-    axes[1].set_xlabel(f"PC1 ({explained_var[0]*100:.1f}%)")
-    axes[1].set_ylabel(f"PC2 ({explained_var[1]*100:.1f}%)")
-    axes[1].legend(loc='best', fontsize=10)
-    axes[1].grid(True, alpha=0.3)
+    axes[2].set_title("PCA: All Latent Samples", fontsize=14, fontweight='bold')
+    axes[2].set_xlabel(f"PC1 ({explained_var[0]*100:.1f}%)")
+    axes[2].set_ylabel(f"PC2 ({explained_var[1]*100:.1f}%)")
+    axes[2].legend(loc='best', fontsize=10)
+    axes[2].grid(True, alpha=0.3)
 
     plt.tight_layout()
     plt.savefig(save_path, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"Latent space visualization saved to: {save_path}")
+
+
+def visualize_episode_probabilities(test_results, save_path):
+    """
+    각 드라이버의 episode별 예측 확률 scatter plot
+
+    Args:
+        test_results: {driver_name: {'mean_rewards': array, 'y_true': array, 'auroc': float}}
+        save_path: 저장 경로
+    """
+    n_drivers = len(test_results)
+
+    if n_drivers == 0:
+        return
+
+    # subplot 레이아웃 계산
+    n_cols = min(2, n_drivers)
+    n_rows = math.ceil(n_drivers / n_cols)
+
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(12 * n_cols, 6 * n_rows), squeeze=False)
+    axes = axes.flatten()
+
+    for idx, (driver_name, results) in enumerate(test_results.items()):
+        ax = axes[idx]
+
+        mean_rewards = results['mean_rewards']
+        y_true = results['y_true']
+        auroc = results.get('auroc', 0.0)
+
+        # Rewards를 표준화 후 확률로 변환
+        # 모델은 상대적 비교로 학습되므로 절대값이 calibration 안 됨
+        mean_rewards_normalized = (mean_rewards - mean_rewards.mean()) / (mean_rewards.std() + 1e-8)
+        y_probs = 1 / (1 + np.exp(-mean_rewards_normalized))
+
+        # True/False 분리
+        true_mask = (y_true == 1)
+        false_mask = (y_true == 0)
+
+        indices = np.arange(len(y_true))
+
+        # Scatter plot
+        ax.scatter(indices[false_mask], y_probs[false_mask],
+                  c='blue', alpha=0.6, s=30, label='Bad (False)', edgecolors='darkblue', linewidths=0.5)
+        ax.scatter(indices[true_mask], y_probs[true_mask],
+                  c='red', alpha=0.6, s=30, label='Good (True)', edgecolors='darkred', linewidths=0.5)
+
+        # Threshold line
+        ax.axhline(y=0.5, color='black', linestyle='--', linewidth=1.5, label='Threshold (0.5)', alpha=0.7)
+
+        # 통계 정보
+        true_probs = y_probs[true_mask]
+        false_probs = y_probs[false_mask]
+
+        if len(true_probs) > 0 and len(false_probs) > 0:
+            true_mean = true_probs.mean()
+            false_mean = false_probs.mean()
+            separation = true_mean - false_mean
+
+            # 텍스트 박스에 통계 표시
+            stats_text = f'AUROC: {auroc:.3f}\n'
+            stats_text += f'Good mean: {true_mean:.3f}\n'
+            stats_text += f'Bad mean: {false_mean:.3f}\n'
+            stats_text += f'Separation: {separation:.3f}'
+
+            ax.text(0.02, 0.98, stats_text,
+                   transform=ax.transAxes,
+                   fontsize=10,
+                   verticalalignment='top',
+                   bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
+
+        ax.set_xlabel('Episode Index', fontsize=12)
+        ax.set_ylabel('Predicted Probability (Good)', fontsize=12)
+        ax.set_title(f'{driver_name} - Episode Probabilities', fontsize=14, fontweight='bold')
+        ax.set_ylim([-0.05, 1.05])
+        ax.legend(loc='lower right', fontsize=10)
+        ax.grid(True, alpha=0.3)
+
+    # 빈 subplot 제거
+    for j in range(len(test_results), len(axes)):
+        axes[j].axis('off')
+
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=150, bbox_inches='tight')
+    plt.close()
+    print(f"Episode probability scatter saved to: {save_path}")
