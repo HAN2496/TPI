@@ -1,256 +1,196 @@
-import sys
-import json
-import optuna
-import subprocess
-import webbrowser
 import numpy as np
 import torch
-from abc import ABC, abstractmethod
-from copy import deepcopy
-from torch.utils.data import TensorDataset, DataLoader, Subset
-from sklearn.model_selection import StratifiedKFold, train_test_split
+from torch.utils.data import Dataset
+from collections import defaultdict
+from src.utils.data_loader import DatasetManager
+from src.utils.utils import _load_dataset_sequences
 
-from src.configs.utils import load_config
-from src.configs.registries import MODELS
-from src.model.base import RegressionModel
-from src.utils import ExperimentPaths, save_config
-from model.trainer import BaseTrainer, RegressionTrainer
+class PreferenceDataset(Dataset):
+    def __init__(self, pref_dataset):
+        self.pref_dataset = pref_dataset
 
-# 기존의 prepare_training_data_kfold 대신 내부 메서드 혹은 _load_dataset_sequences를 직접 사용한다고 가정
-# (여기서는 코드 문맥상 필요한 데이터 로딩 부분만 간소화하여 클래스 내부에 통합했습니다)
-from src.utils import _load_dataset_sequences 
+    def __len__(self):
+        return len(self.pref_dataset["observations"])
 
-class BaseOptimizer(ABC):
-    def __init__(self, driver_name, model_type, time_range, downsample, n_splits, test_ratio,
-                 use_feature_selection=False, device="cpu", verbose=1):
-        self.driver_name = driver_name
-        self.model_type = model_type
-        self.time_range = time_range
-        self.device = device
-        self.verbose = verbose
+    def __getitem__(self, idx):
+        item = {
+            'observations': self.pref_dataset["observations"][idx],
+            'observations_2': self.pref_dataset["observations_2"][idx],
+            'labels': self.pref_dataset["labels"][idx]
+        }
+        if "driver_name" in self.pref_dataset:
+            item['driver_name'] = self.pref_dataset["driver_name"][idx]
+        return item
+
+    def get_driver_data(self, target_name):
+        if "driver_name" not in self.pref_dataset:
+            return None
+        all_names = self.pref_dataset["driver_name"][:, 0] 
+        indices = np.where(all_names == target_name)[0]
         
-        # 설정 로드
-        self.base_config = load_config(driver_name, model_type, 'base')
-        self.all_features = self.base_config['features']
-        self.n_features = len(self.all_features)
-        
-        # Feature Selection 설정
-        self.use_feature_selection = use_feature_selection
-        
-        # 데이터 미리 준비 (핵심 최적화: Trial마다 로드하지 않음)
-        self._setup_data(downsample, n_splits, test_ratio)
-
-    def _setup_data(self, downsample, n_splits, test_ratio):
-        """데이터를 메모리에 로드하고 K-Fold 인덱스를 미리 계산합니다."""
-        if self.verbose > 0:
-            print("Loading and splitting data for optimization...")
+        if len(indices) == 0:
+            return None
             
-        # 1. 원본 데이터 로드 (외부 함수 사용)
-        X, y = _load_dataset_sequences(self.driver_name, self.time_range, downsample, self.base_config)
-        
-        # 2. Train/Test 분리
-        X_trainval, _, y_trainval, _ = train_test_split(
-            X, y, test_size=test_ratio, random_state=42, stratify=y
-        )
+        return {
+            'observations': self.pref_dataset["observations"][indices],
+            'observations_2': self.pref_dataset["observations_2"][indices],
+            'labels': self.pref_dataset["labels"][indices],
+            'driver_name': target_name
+        }
 
-        # 3. Tensor 변환 (GPU 사용 시 미리 옮길 수도 있지만, 메모리 이슈 고려하여 CPU 유지 추천)
-        self.X_data = torch.as_tensor(X_trainval, dtype=torch.float32)
-        self.y_data = torch.as_tensor(y_trainval, dtype=torch.float32)
 
-        # 4. K-Fold 인덱스 미리 생성 (Fixed Folds)
-        skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
-        y_np = np.asarray(y_trainval)
-        
-        # [(train_idx, val_idx), (train_idx, val_idx), ...] 형태로 저장
-        self.folds_indices = list(skf.split(np.zeros(len(y_np)), y_np))
+def create_vpl_dataset(train_driver_names, test_driver_names, features, time_range, downsample, tie_ratio=0.0, context_size=64):
+    manager = DatasetManager("datasets", downsample=downsample)
+    available_drivers = set(manager.keys())
+    target_drivers = sorted(list(set(train_driver_names + test_driver_names)))
+    
+    config = {'features': features}
 
-    @abstractmethod
-    def _suggest_model_params(self, trial, config):
-        """모델 하이퍼파라미터 제안 로직 (자식 클래스 구현)"""
-        pass
+    # ---------------------------------------------------------
+    # [Step 1] 데이터 로드 및 정규화(Normalization) 통계량 계산
+    # ---------------------------------------------------------
+    print(f"Loading raw data to compute normalization stats...")
+    raw_data_cache = {}
+    all_observations = []
 
-    def _suggest_features(self, trial):
-        """Feature Selection 마스크 생성"""
-        if not self.use_feature_selection:
-            return list(range(self.n_features))
-
-        # Categorical로 0/1 선택 (Bit mask)
-        mask = [trial.suggest_categorical(f"use_feat_{i}", [0, 1]) for i in range(self.n_features)]
-        
-        # 모든 Feature가 꺼지는 경우 방지
-        if sum(mask) == 0:
-            mask[0] = 1
+    for driver_name in target_drivers:
+        if driver_name not in available_drivers:
+            continue
             
-        selected_indices = [i for i, v in enumerate(mask) if v == 1]
-        return selected_indices
-
-    def _create_trial_config(self, trial):
-        config = deepcopy(self.base_config)
-        self._suggest_model_params(trial, config)
+        X, y = _load_dataset_sequences(driver_name, time_range, downsample, config)
         
-        # Feature Selection 적용
-        if self.use_feature_selection:
-            selected_indices = self._suggest_features(trial)
-            config['features'] = [self.all_features[i] for i in selected_indices]
-            config['active_feature_indices'] = selected_indices # 내부 로직용 저장
-        else:
-            config['active_feature_indices'] = list(range(self.n_features))
+        # 유효 데이터 체크
+        if len(X[y==1]) == 0 or len(X[y==0]) == 0:
+            print(f"Skipping {driver_name} for stats (insufficient data)")
+            continue
             
-        return config
+        raw_data_cache[driver_name] = (X, y)
+        all_observations.append(X)
+    
+    if not all_observations:
+        raise ValueError("No valid data found for any driver!")
 
-    def _run_fold(self, train_idx, val_idx, config):
-        """단일 Fold 학습 및 평가"""
-        active_indices = config['active_feature_indices']
+    # 전체 데이터에 대해 Mean, Std 계산
+    concat_obs = np.concatenate(all_observations, axis=0) # (Total_N, T, D)
+    # Feature 차원(axis=2)을 제외한 나머지 차원에 대해 평균 계산
+    # shape: (D,)
+    mean = np.mean(concat_obs, axis=(0, 1))
+    std = np.std(concat_obs, axis=(0, 1)) + 1e-6 # 0으로 나누기 방지
+
+    print("Data Normalization Stats:")
+    print(f"  Mean: {mean}")
+    print(f"  Std : {std}")
+
+    # ---------------------------------------------------------
+    # [Step 2] 정규화 적용 및 데이터셋 생성
+    # ---------------------------------------------------------
+    train_queries = defaultdict(list)
+    test_driver_data = {}
+
+    print(f"Creating datasets with context_size={context_size}...")
+
+    for driver_name in target_drivers:
+        if driver_name not in raw_data_cache:
+            continue
+
+        X_raw, y = raw_data_cache[driver_name]
         
-        # 1. 텐서 슬라이싱 (여기서 필요한 Feature만 딱 잘라냅니다 - 속도 최적화)
-        # X_data: (N, Seq, Feat) -> 슬라이싱 -> (N, Seq, Selected_Feat)
-        X_train = self.X_data[train_idx][:, :, active_indices]
-        y_train = self.y_data[train_idx]
+        # ★ 정규화 (Standardization) ★
+        # Broadcasting: (N, T, D) - (D,)
+        X = (X_raw - mean) / std
+
+        true_episodes = X[y == 1]
+        false_episodes = X[y == 0]
+
+        # Pair 생성
+        driver_obs, driver_obs_2, driver_labels = [], [], []
+
+        # (1) True vs False
+        for true_ep in true_episodes:
+            for false_ep in false_episodes:
+                driver_obs.append(true_ep)
+                driver_obs_2.append(false_ep)
+                driver_labels.append(1.0)
         
-        X_val = self.X_data[val_idx][:, :, active_indices]
-        y_val = self.y_data[val_idx]
-
-        # 2. 데이터로더 생성
-        is_regression = issubclass(MODELS[config['model_type']], RegressionModel)
-        batch_size = config['trainer']['batch_size'] if not is_regression else len(X_train)
-        
-        train_ds = TensorDataset(X_train, y_train)
-        val_ds = TensorDataset(X_val, y_val)
-        
-        train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
-        val_loader = DataLoader(val_ds, batch_size=len(val_ds), shuffle=False)
-
-        # 3. 모델 초기화
-        model_args = {**config['args']}
-        if not is_regression:
-            model_args['input_dim'] = len(active_indices) # 동적으로 입력 차원 변경
-
-        model = MODELS[config['model_type']](**model_args)
-
-        # 4. 학습
-        if is_regression:
-            trainer = RegressionTrainer(model)
-            _, best_score, _ = trainer.train(train_loader, val_loader, verbose=False)
-        else:
-            model.to(self.device)
-            trainer = BaseTrainer(model, config, device=self.device)
-            trainer.train(train_loader, val_loader, epochs=30, verbose=False)
-            best_score = trainer.best_auroc
+        # (2) Tie Pairs
+        n_tie = int((len(true_episodes) + len(false_episodes)) * tie_ratio)
+        if n_tie > 0:
+            true_indices = np.random.choice(len(true_episodes), size=(n_tie, 2))
+            for i1, i2 in true_indices:
+                driver_obs.append(true_episodes[i1])
+                driver_obs_2.append(true_episodes[i2])
+                driver_labels.append(0.5)
             
-        return best_score
+            false_indices = np.random.choice(len(false_episodes), size=(n_tie, 2))
+            for i1, i2 in false_indices:
+                driver_obs.append(false_episodes[i1])
+                driver_obs_2.append(false_episodes[i2])
+                driver_labels.append(0.5)
 
-    def evaluate(self, config):
-        """전체 Fold에 대해 평가 수행"""
-        scores = []
-        for train_idx, val_idx in self.folds_indices:
-            score = self._run_fold(train_idx, val_idx, config)
-            scores.append(score)
+        driver_obs = np.stack(driver_obs)
+        driver_obs_2 = np.stack(driver_obs_2)
+        driver_labels = np.array(driver_labels).reshape(-1, 1)
+
+        # Context Grouping
+        num_pairs = len(driver_obs)
         
-        return sum(scores) / len(scores)
+        grouped_obs = []
+        grouped_obs_2 = []
+        grouped_labels = []
+        grouped_names = []
 
-
-class BayesianOptimizer(BaseOptimizer):
-    n_startup_trials = 30
-
-    def optimize(self, n_trials=100, tag="optuna"):
-        paths = ExperimentPaths(self.driver_name, self.model_type, None, self.time_range, tag=tag)
-        storage_path = paths.get("study.db", create=True)
-
-        sampler = optuna.samplers.TPESampler(
-            n_startup_trials=self.n_startup_trials,
-            n_ei_candidates=128,
-            multivariate=True,
-            seed=42
-        )
-
-        study = optuna.create_study(
-            study_name=f"{self.model_type}_optimization",
-            direction="maximize",
-            storage=f"sqlite:///{storage_path}",
-            load_if_exists=True,
-            sampler=sampler,
-        )
-
-        def objective(trial):
-            config = self._create_trial_config(trial)
-            return self.evaluate(config)
-
-        if self.verbose > 0:
-            print(f"Starting Bayesian Optimization: {n_trials} trials")
-
-        study.optimize(objective, n_trials=n_trials, show_progress_bar=(self.verbose > 0))
-        return self._save_results(study, paths)
-
-    def _save_results(self, study, paths):
-        best_params_path = paths.get("best_params.json", create=True)
-        with open(best_params_path, 'w') as f:
-            json.dump(study.best_params, f, indent=2)
-
-        # Best Config 재생성 및 저장
-        best_config = self._create_trial_config(study.best_trial)
-        
-        # Feature Selection 여부에 따른 이름 결정
-        suffix = 'fs' if self.use_feature_selection else 'bo'
-        save_name = f"{suffix}" 
-
-        save_config(best_config, self.driver_name, self.model_type, save_name)
-
-        if self.verbose > 0:
-            print(f"\nBest AUROC: {study.best_value:.4f}")
-            print(f"Config saved as: {save_name}")
+        for i in range(0, num_pairs, context_size):
+            end_idx = min(i + context_size, num_pairs)
             
-        return study, save_name
-
-
-class ExhaustiveOptimizer(BaseOptimizer):
-    @abstractmethod
-    def _get_search_space(self):
-        """Return list of config dictionaries to try"""
-        pass
-
-    def optimize(self, tag="exhaustive"):
-        configs = self._get_search_space()
-        
-        # Feature Selection이 켜져있다면, 각 Config에 대해 Feature 조합도 추가해야 함
-        # 하지만 Exhaustive에서 Feature 조합까지 다 돌리는 건 불가능에 가까우므로 
-        # 여기서는 하이퍼파라미터만 서치하거나, 로직을 추가해야 함.
-        # 일단은 하이퍼파라미터 서치만 수행한다고 가정.
-        
-        if self.verbose > 0:
-            print(f"Starting Exhaustive Search: {len(configs)} configurations")
-
-        best_score = -1.0
-        best_config = None
-        
-        # 결과 저장을 위한 경로 설정
-        paths = ExperimentPaths(self.driver_name, self.model_type, None, self.time_range, tag=tag)
-        
-        for i, config_dict in enumerate(configs):
-            # Base Config에 파라미터 덮어씌우기
-            config = deepcopy(self.base_config)
+            batch_obs = driver_obs[i:end_idx]
+            batch_obs_2 = driver_obs_2[i:end_idx]
+            batch_lbl = driver_labels[i:end_idx]
             
-            # config_dict 병합 (재귀적 업데이트 필요시 유틸 함수 사용 권장)
-            for k, v in config_dict.items():
-                if isinstance(v, dict) and k in config:
-                    config[k].update(v)
-                else:
-                    config[k] = v
-            
-            # Feature Selection은 Exhaustive에서는 보통 고정하거나 따로 처리하므로
-            # 여기서는 전체 Feature 사용으로 가정 (필요시 수정)
-            config['active_feature_indices'] = list(range(self.n_features))
-
-            score = self.evaluate(config)
-
-            if score > best_score:
-                best_score = score
-                best_config = config
+            current_len = len(batch_obs)
+            if current_len < context_size:
+                needed = context_size - current_len
+                indices = np.random.randint(0, current_len, size=needed)
                 
-            if self.verbose > 0:
-                print(f"[{i+1}/{len(configs)}] Score: {score:.4f} (Best: {best_score:.4f})")
+                batch_obs = np.concatenate([batch_obs, batch_obs[indices]], axis=0)
+                batch_obs_2 = np.concatenate([batch_obs_2, batch_obs_2[indices]], axis=0)
+                batch_lbl = np.concatenate([batch_lbl, batch_lbl[indices]], axis=0)
+            
+            grouped_obs.append(batch_obs)
+            grouped_obs_2.append(batch_obs_2)
+            grouped_labels.append(batch_lbl)
+            grouped_names.append(np.array([driver_name] * context_size))
 
-        # 저장 로직
-        suffix = 'exhaust_fs' if self.use_feature_selection else 'exhaust'
-        save_config(best_config, self.driver_name, self.model_type, suffix)
+        if driver_name in test_driver_names:
+            test_driver_data[driver_name] = {
+                'observations': np.stack(grouped_obs),
+                'observations_2': np.stack(grouped_obs_2),
+                'labels': np.stack(grouped_labels),
+                'driver_name': np.stack(grouped_names)
+            }
+        elif driver_name in train_driver_names:
+            train_queries['observations'].extend(grouped_obs)
+            train_queries['observations_2'].extend(grouped_obs_2)
+            train_queries['labels'].extend(grouped_labels)
+            train_queries['driver_name'].extend(grouped_names)
+
+        print(f"  {driver_name}: {num_pairs} pairs -> {len(grouped_obs)} queries")
+
+    train_dataset_dict = {}
+    if train_queries:
+        train_dataset_dict['observations'] = np.stack(train_queries['observations'])
+        train_dataset_dict['observations_2'] = np.stack(train_queries['observations_2'])
+        train_dataset_dict['labels'] = np.stack(train_queries['labels'])
+        train_dataset_dict['driver_name'] = np.stack(train_queries['driver_name'])
         
-        return None, suffix
+    return train_dataset_dict, test_driver_data
+
+# --- Utils for inference (기존과 동일하게 유지) ---
+def compute_step_rewards(model, X, z_mean, device):
+    N, T, d = X.shape
+    obs = torch.from_numpy(X).float().to(device)
+    z = torch.from_numpy(z_mean).float().to(device)
+    z_expanded = z.view(1, 1, 1, -1).expand(N, 1, T, -1)
+    obs = obs.unsqueeze(1) 
+    with torch.no_grad():
+        step_rewards = model.decode(obs, z_expanded)
+    return step_rewards.squeeze(1).squeeze(-1).cpu().numpy()

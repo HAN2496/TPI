@@ -160,7 +160,7 @@ class VPLTrainer:
 
         return avg_loss, avg_metrics
 
-    def train(self, train_loader, val_loader, verbose=1):
+    def train(self, train_loader, val_loader, verbose=1, warmup_epochs=10):
         self.metrics = defaultdict(list)
 
         for epoch in range(self.n_epochs):
@@ -179,10 +179,15 @@ class VPLTrainer:
 
             self.scheduler.step(val_loss)
 
-            if val_loss < self.best_val_loss:
-                self.best_val_loss = val_loss
-                if self.best_model_path:
+            # [수정] Warm-up 기간 동안은 Best Model 저장 건너뛰기
+            if epoch >= warmup_epochs:
+                if val_loss < self.best_val_loss:
+                    self.best_val_loss = val_loss
                     torch.save(self.model.state_dict(), self.best_model_path)
+                    print(f"  --> New best model saved at epoch {epoch+1} with val loss {val_loss:.4f}")
+            else:
+                if verbose >= 1 and (epoch + 1) % int(self.config["eval_freq"]) == 0:
+                    print(f"  (Warm-up: Skipping best model save)")
 
             if self.model.annealer:
                 self.model.annealer.step()
