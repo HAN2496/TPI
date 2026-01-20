@@ -86,13 +86,12 @@ class VAEModel(nn.Module):
         z = mean + var * epsilon  # reparameterization trick
         return z
 
-    def encode(self, s1, s2, y):
-        s1_ = s1.view(s1.shape[0], s1.shape[1], -1)
-        s2_ = s2.view(s2.shape[0], s2.shape[1], -1)
-        y = y.reshape(s1.shape[0], s1.shape[1], -1)
+    def encode(self, s, y):
+        s_ = s.view(s.shape[0], s.shape[1], -1)
+        y = y.reshape(s.shape[0], s.shape[1], -1)
 
-        encoder_input = torch.cat([s1_, s2_, y], dim=-1).view(
-            s1.shape[0], -1
+        encoder_input = torch.cat([s_, y], dim=-1).view(
+            s.shape[0], -1
         )  # Batch x Ann x (2*T*State + 1)
         mean, log_var = self.Encoder(encoder_input)
         return mean, log_var
@@ -120,35 +119,33 @@ class VAEModel(nn.Module):
         predicted_class = (x_hat > 0.5).float()
         return torch.mean((predicted_class == x).float())
 
-    def latent_loss(self, mean, log_var):
-        if self.learned_prior:
-            kl = -0.5 * torch.sum(
-                1
-                + (log_var - self.log_var)
-                - (log_var - self.log_var).exp()
-                - (mean.pow(2) - self.mean.pow(2)) / (self.log_var.exp())
-            )
-        else:
-            kl = -0.5 * torch.sum(1.0 + log_var - mean.pow(2) - log_var.exp())
-        return kl
-
     # def latent_loss(self, mean, log_var):
     #     if self.learned_prior:
-    #         kl = -0.5 * (
+    #         kl = -0.5 * torch.sum(
     #             1
     #             + (log_var - self.log_var)
     #             - (log_var - self.log_var).exp()
     #             - (mean.pow(2) - self.mean.pow(2)) / (self.log_var.exp())
-    #         ).sum(dim=1).mean()
+    #         )
     #     else:
-    #         kl = -0.5 * (
-    #             1.0 + log_var - mean.pow(2) - log_var.exp()
-    #         ).sum(dim=1).mean()
+    #         kl = -0.5 * torch.sum(1.0 + log_var - mean.pow(2) - log_var.exp())
     #     return kl
 
-    def forward(self, s1, s2, y):  # Batch x Ann x T x State, Batch x Ann x 1
+    def latent_loss(self, mean, log_var):
+        if self.learned_prior:
+            kl = -0.5 * (
+                1
+                + (log_var - self.log_var)
+                - (log_var - self.log_var).exp()
+                - (mean.pow(2) - self.mean.pow(2)) / (self.log_var.exp())
+            ).sum(dim=1).mean()
+        else:
+            kl = -0.5 * (1.0 + log_var - mean.pow(2) - log_var.exp()).sum(dim=1).mean()
+        return kl
+
+    def forward(self, s, y):  # Batch x Ann x T x State, Batch x Ann x 1
         # import pdb; pdb.set_trace()
-        mean, log_var = self.encode(s1, s2, y)
+        mean, log_var = self.encode(s, y)
 
         if self.flow_prior:
             z, log_det = self.transform(mean, log_var)
@@ -159,20 +156,17 @@ class VAEModel(nn.Module):
             -1, self.annotation_size, self.size_segment, z.shape[1]
         )
 
-        r0 = self.decode(s1, z)
-        r1 = self.decode(s2, z)
+        r = self.decode(s, z)
 
-        r_hat1 = r0.sum(axis=2)/self.scaling
-        r_hat2 = r1.sum(axis=2)/self.scaling
-
-        p_hat = torch.nn.functional.sigmoid(r_hat1 - r_hat2).view(-1, 1)
+        r_hat = r.sum(axis=2)/self.scaling
+        p_hat = torch.nn.functional.sigmoid(r_hat).view(-1, 1)
         labels = y.view(-1, 1)
 
         reconstruction_loss = self.reconstruction_loss(labels, p_hat)
         accuracy = self.accuracy(labels, p_hat)
         latent_loss = self.latent_loss(mean, log_var)
 
-        kl_weight = self.annealer.slope() if self.annealer else self.kl_weight
+        kl_weight = self.annealer.slope() * self.kl_weight if self.annealer else self.kl_weight
         loss = reconstruction_loss + kl_weight * latent_loss
 
         if self.flow_prior:
@@ -196,8 +190,8 @@ class VAEModel(nn.Module):
             z, _ = self.flow(z)
         return z
     
-    def sample_posterior(self, s1, s2, y):
-        mean, log_var = self.encode(s1, s2, y)
+    def sample_posterior(self, s, y):
+        mean, log_var = self.encode(s, y)
         z = self.reparameterization(mean, torch.exp(0.5 * log_var))
         return mean, log_var, z
     

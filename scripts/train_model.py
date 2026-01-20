@@ -3,8 +3,7 @@ from src.configs.utils import create_model, load_config
 from src.configs.registries import MODELS
 from src.model.base import RegressionModel
 from src.utils import ExperimentPaths, prepare_training_data, convert_driver_name
-from model.trainer import BaseTrainer, RegressionTrainer
-from src.utils.visualization import save_all_plots
+from src.model.trainer import BaseTrainer, RegressionTrainer
 
 def train_model(driver_name, model_type, model_name='base', time_range=None, train_downsample=1, val_downsample=1, device="cpu", tag=None, verbose=1):
     driver_name = convert_driver_name(driver_name)
@@ -31,7 +30,6 @@ def train_model(driver_name, model_type, model_name='base', time_range=None, tra
         print(f"  - Val Acc: {val_acc:.4f}, Val AUROC: {val_auroc:.4f}")
 
     is_online = config['model_type'] == 'online_mlp' or is_regression
-    save_all_plots(model, history, val_loader, paths, is_online=is_online, is_regression=is_regression, feature_cols=config['features'], verbose=verbose)
 
     return model, history
 

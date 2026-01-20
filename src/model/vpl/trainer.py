@@ -2,13 +2,10 @@ import math
 import numpy as np
 import torch
 import torch.nn as nn
-
+from collections import defaultdict
+from .utils import log_metrics
 
 class Annealer:
-    """
-    KL annealing scheduler for VAE training.
-    Copied from reference VPL workspace.
-    """
     def __init__(self, total_steps, shape, baseline=0.0, cyclical=False, disable=False):
         self.total_steps = total_steps
         self.current_step = 0
@@ -62,10 +59,6 @@ class Annealer:
 
 
 class EarlyStopper:
-    """
-    Early stopping based on validation loss.
-    Copied from reference VPL workspace.
-    """
     def __init__(self, patience=1, min_delta=0):
         self.patience = patience
         self.min_delta = min_delta
@@ -84,22 +77,16 @@ class EarlyStopper:
 
 
 class VPLTrainer:
-    """
-    Trainer for VPL (Variational Preference Learning) models.
-
-    Key Point: Training 시 driver_ids는 사용하지 않음!
-    Batch에서 observations와 labels만 사용.
-    """
-    def __init__(self, model, config, best_model_path=None, device='cpu'):
+    def __init__(self, model, logger, config):
         self.model = model
         self.config = config
-        self.device = device
-        self.best_model_path = best_model_path
+        self.device = config["device"]
+        self.logger = logger
 
         self.optimizer = torch.optim.Adam(
             model.parameters(),
-            lr=config['learning_rate'],
-            weight_decay=config.get('weight_decay', 0.0)
+            lr=config['lr'],
+            weight_decay=config['weight_decay']
         )
 
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -108,81 +95,167 @@ class VPLTrainer:
 
         self.best_val_loss = float('inf')
 
-        if config.get('early_stop'):
+        if config['early_stop']:
             self.early_stopper = EarlyStopper(
-                patience=config.get('patience', 10),
-                min_delta=config.get('min_delta', 3e-4)
+                patience=config['patience'],
+                min_delta=config['min_delta']
             )
+
+        self.best_model_path = self.logger.log_dir / "best_model.pt"
+        self.n_epochs = config['n_epochs']
+        self.metrics = None
 
     def train_epoch(self, train_loader):
         self.model.train()
         total_loss = 0
-        metrics = {'recon_loss': [], 'kl_loss': [], 'accuracy': []}
+        total_samples = 0
+        batch_metrics = defaultdict(list)
 
         for batch in train_loader:
-            obs = batch['observations'].to(self.device).float()
-            labels = batch['labels'].to(self.device).float()
-
             self.optimizer.zero_grad()
-            loss, batch_metrics = self.model(obs, labels)
+            observations = batch["observations"].to(self.device).float()
+            observations_2 = batch["observations_2"].to(self.device).float()
+            labels = batch["labels"].to(self.device).float()
+
+            loss, metrics = self.model(observations, observations_2, labels)
             loss.backward()
             self.optimizer.step()
 
-            total_loss += loss.item() * obs.size(0)
-            for k, v in batch_metrics.items():
-                if k in metrics:
-                    metrics[k].append(v)
+            for key, val in metrics.items():
+                batch_metrics[key].append(val)
 
-        return total_loss / len(train_loader.dataset), metrics
+            batch_size = observations.size(0)
+            total_loss += loss.item() * batch_size
+            total_samples += batch_size
+
+        avg_loss = total_loss / total_samples
+        avg_metrics = {key: np.mean(vals) for key, vals in batch_metrics.items()}
+
+        return avg_loss, avg_metrics
 
     def evaluate(self, val_loader):
         self.model.eval()
         total_loss = 0
-        metrics = {'recon_loss': [], 'kl_loss': [], 'accuracy': []}
+        total_samples = 0
+        batch_metrics = defaultdict(list)
 
-        with torch.no_grad():
-            for batch in val_loader:
-                obs = batch['observations'].to(self.device).float()
-                labels = batch['labels'].to(self.device).float()
+        for batch in val_loader:
+            with torch.no_grad():
+                observations = batch["observations"].to(self.device).float()
+                observations_2 = batch["observations_2"].to(self.device).float()
+                labels = batch["labels"].to(self.device).float()
+                loss, metrics = self.model(
+                    observations, observations_2, labels
+                )
 
-                loss, batch_metrics = self.model(obs, labels)
-                total_loss += loss.item() * obs.size(0)
-                for k, v in batch_metrics.items():
-                    if k in metrics:
-                        metrics[k].append(v)
+                for key, val in metrics.items():
+                    batch_metrics[key].append(val)
 
-        return total_loss / len(val_loader.dataset), metrics
+                batch_size = observations.size(0)
+                total_loss += loss.item() * batch_size
+                total_samples += batch_size
 
-    def train(self, train_loader, val_loader, epochs, verbose=1):
-        history = {'train_loss': [], 'val_loss': [], 'val_accuracy': []}
+        avg_loss = total_loss / total_samples
+        avg_metrics = {key: np.mean(vals) for key, vals in batch_metrics.items()}
 
-        for epoch in range(epochs):
+        return avg_loss, avg_metrics
+
+    def train(self, train_loader, val_loader, verbose=1, warmup_epochs=10):
+        self.metrics = defaultdict(list)
+
+        for epoch in range(self.n_epochs):
             train_loss, train_metrics = self.train_epoch(train_loader)
             val_loss, val_metrics = self.evaluate(val_loader)
 
-            history['train_loss'].append(train_loss)
-            history['val_loss'].append(val_loss)
-            history['val_accuracy'].append(np.mean(val_metrics['accuracy']))
+            # Store epoch-level metrics
+            self.metrics["train/loss"].append(train_loss)
+            self.metrics["eval/loss"].append(val_loss)
+
+            for key, val in train_metrics.items():
+                self.metrics[f"train/{key}"].append(val)
+
+            for key, val in val_metrics.items():
+                self.metrics[f"eval/{key}"].append(val)
 
             self.scheduler.step(val_loss)
 
-            if val_loss < self.best_val_loss:
-                self.best_val_loss = val_loss
-                if self.best_model_path:
+            if epoch >= warmup_epochs:
+                if val_loss < self.best_val_loss:
+                    self.best_val_loss = val_loss
                     torch.save(self.model.state_dict(), self.best_model_path)
-
-            if hasattr(self, 'early_stopper'):
-                if self.early_stopper.early_stop(val_loss):
-                    if verbose >= 1:
-                        print(f"Early stopping at epoch {epoch+1}")
-                    break
+                    print(f"  --> New best model saved at epoch {epoch+1} with val loss {val_loss:.4f}")
+            else:
+                if verbose >= 1 and (epoch + 1) % int(self.config["eval_freq"]) == 0:
+                    print(f"  (Warm-up: Skipping best model save)")
 
             if self.model.annealer:
                 self.model.annealer.step()
 
-            if verbose >= 1 and (epoch + 1) % 10 == 0:
-                print(f"Epoch {epoch+1}/{epochs} - "
-                      f"Loss: {train_loss:.4f} - Val Loss: {val_loss:.4f} - "
-                      f"Val Acc: {np.mean(val_metrics['accuracy']):.4f}")
+            if (epoch + 1) % int(self.config["eval_freq"]) == 0:
+                log_metrics(self.metrics, epoch, self.logger)
+                if verbose >= 1:
+                    print(f"Epoch {epoch+1}/{self.n_epochs} - "
+                        f"Loss: {train_loss:.4f} - eval Loss: {val_loss:.4f} - "
+                        f"eval Acc: {val_metrics['accuracy']:.4f}")
 
-        return history, np.mean(history['val_accuracy'][-5:])
+        return self.metrics, np.mean(self.metrics['eval/accuracy'][-5:])
+
+
+class VPLTrainerBinary(VPLTrainer):
+    """
+    Trainer for VPL Binary Model (No observations_2)
+    """
+    def train_epoch(self, train_loader):
+        self.model.train()
+        total_loss = 0
+        total_samples = 0
+        batch_metrics = defaultdict(list)
+
+        for batch in train_loader:
+            self.optimizer.zero_grad()
+            observations = batch["observations"].to(self.device).float()
+            labels = batch["labels"].to(self.device).float()
+
+            loss, metrics = self.model(observations, labels)
+            loss.backward()
+
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+
+            self.optimizer.step()
+
+            for key, val in metrics.items():
+                batch_metrics[key].append(val)
+
+            batch_size = observations.size(0)
+            total_loss += loss.item() * batch_size
+            total_samples += batch_size
+
+        avg_loss = total_loss / total_samples
+        avg_metrics = {key: np.mean(vals) for key, vals in batch_metrics.items()}
+
+        return avg_loss, avg_metrics
+
+    def evaluate(self, val_loader):
+        self.model.eval()
+        total_loss = 0
+        total_samples = 0
+        batch_metrics = defaultdict(list)
+
+        for batch in val_loader:
+            with torch.no_grad():
+                observations = batch["observations"].to(self.device).float()
+                labels = batch["labels"].to(self.device).float()
+                
+                loss, metrics = self.model(observations, labels)
+
+                for key, val in metrics.items():
+                    batch_metrics[key].append(val)
+
+                batch_size = observations.size(0)
+                total_loss += loss.item() * batch_size
+                total_samples += batch_size
+
+        avg_loss = total_loss / total_samples
+        avg_metrics = {key: np.mean(vals) for key, vals in batch_metrics.items()}
+
+        return avg_loss, avg_metrics
