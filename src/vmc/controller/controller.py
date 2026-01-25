@@ -88,7 +88,7 @@ class LQRController(BaseController):
         self.N = len(self.base_q_diag_0)
         self.param_mapper = param_mapper
 
-        from src.controller.solver import LQRSolver
+        from src.vmc.controller.solver import LQRSolver
         self.lqr_helper = LQRSolver()
         self.K = self.lqr_helper.get_K(Q=np.diag(self.q_diag))
 
@@ -140,7 +140,7 @@ class MPCController(BaseController):
 
         solver_opts = self.solver_options.copy()
 
-        from src.controller.solver import MPCOSQPSolver
+        from src.vmc.controller.solver import MPCOSQPSolver
         self.solver = MPCOSQPSolver(
             u_limit=u_limit,
             test=test,

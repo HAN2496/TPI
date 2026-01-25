@@ -9,119 +9,6 @@ from sklearn.decomposition import PCA
 
 from src.utils.utils import _load_dataset_sequences
 
-class DynamicPreferenceDataset(Dataset):
-    def __init__(self, driver_data_map, context_size=32, mode='binary', tie_ratio=0.0):
-        self.driver_data_map = driver_data_map
-        self.driver_names = list(driver_data_map.keys())
-        self.context_size = context_size
-        self.mode = mode
-        self.tie_ratio = tie_ratio
-
-        self.length = len(self.driver_names) * 100 
-
-    def __len__(self):
-        return self.length
-
-    def __getitem__(self, idx):
-        # 1. Select Driver (Round-robin or Random)
-        driver_name = self.driver_names[idx % len(self.driver_names)]
-        data = self.driver_data_map[driver_name]
-        
-        # 2. Separate Indices by Label
-        # Assuming labels are 0 or 1.
-        # Check label shape: could be (N,) or (N, 1)
-        lbls = data['labels'].reshape(-1)
-        pos_indices = np.where(lbls == 1)[0]
-        neg_indices = np.where(lbls == 0)[0]
-        
-        if len(pos_indices) == 0 or len(neg_indices) == 0:
-            # Fallback if a driver has only one class (should be filtered out before)
-            # Just return random samples
-            indices = np.random.choice(len(lbls), self.context_size, replace=True)
-            if self.mode == 'binary':
-                return {
-                    'observations': data['observations'][indices],
-                    'labels': data['labels'][indices],
-                    'driver_name': driver_name
-                }
-            else:
-                # Pairwise fallback (random pairs)
-                idx2 = np.random.choice(len(lbls), self.context_size, replace=True)
-                return {
-                    'observations': data['observations'][indices],
-                    'observations_2': data['observations'][idx2],
-                    'labels': np.zeros((self.context_size, 1), dtype=np.float32) + 0.5, # Tie assumption
-                    'driver_name': driver_name
-                }
-
-        if self.mode == 'binary':
-            # --- Binary Mode: Balanced Sampling ---
-            n_pos = self.context_size // 2
-            n_neg = self.context_size - n_pos
-            
-            p_idxs = np.random.choice(pos_indices, n_pos, replace=True)
-            n_idxs = np.random.choice(neg_indices, n_neg, replace=True)
-            
-            indices = np.concatenate([p_idxs, n_idxs])
-            np.random.shuffle(indices) # Shuffle to mix pos/neg
-            
-            return {
-                'observations': data['observations'][indices],
-                'labels': data['labels'][indices],
-                'driver_name': driver_name
-            }
-
-        elif self.mode == 'pairwise':
-            # --- Pairwise Mode: Good > Bad Pairs ---
-            # context_size here is number of pairs
-            
-            # 1. Good > Bad
-            n_pairs = self.context_size
-            n_tie = int(n_pairs * self.tie_ratio)
-            n_diff = n_pairs - n_tie
-            
-            obs1_list, obs2_list, lbl_list = [], [], []
-            
-            # Difference Pairs (Good > Bad)
-            if n_diff > 0:
-                p_idxs = np.random.choice(pos_indices, n_diff, replace=True)
-                n_idxs = np.random.choice(neg_indices, n_diff, replace=True)
-                
-                obs1_list.append(data['observations'][p_idxs])
-                obs2_list.append(data['observations'][n_idxs])
-                # Label 1.0 means obs1 > obs2
-                lbl_list.append(np.ones((n_diff, 1), dtype=np.float32))
-            
-            # Tie Pairs (Good=Good or Bad=Bad)
-            if n_tie > 0:
-                # Half Good-Good, Half Bad-Bad
-                n_tie_good = n_tie // 2
-                n_tie_bad = n_tie - n_tie_good
-                
-                if n_tie_good > 0:
-                    g1 = np.random.choice(pos_indices, n_tie_good, replace=True)
-                    g2 = np.random.choice(pos_indices, n_tie_good, replace=True)
-                    obs1_list.append(data['observations'][g1])
-                    obs2_list.append(data['observations'][g2])
-                    lbl_list.append(np.full((n_tie_good, 1), 0.5, dtype=np.float32))
-                    
-                if n_tie_bad > 0:
-                    b1 = np.random.choice(neg_indices, n_tie_bad, replace=True)
-                    b2 = np.random.choice(neg_indices, n_tie_bad, replace=True)
-                    obs1_list.append(data['observations'][b1])
-                    obs2_list.append(data['observations'][b2])
-                    lbl_list.append(np.full((n_tie_bad, 1), 0.5, dtype=np.float32))
-
-            return {
-                'observations': np.concatenate(obs1_list, axis=0),
-                'observations_2': np.concatenate(obs2_list, axis=0),
-                'labels': np.concatenate(lbl_list, axis=0),
-                'driver_name': driver_name
-            }
-        
-        else:
-             raise ValueError(f"Unknown mode: {self.mode}")
-
 class PreferenceDataset(Dataset):
     def __init__(self, pref_dataset):
         self.pref_dataset = pref_dataset
@@ -156,12 +43,10 @@ class PreferenceDataset(Dataset):
         return np.unique(all_names)
 
     def get_driver_data(self, driver_name):
-        # 1. 해당 드라이버의 인덱스 찾기
-        # (모든 쿼리의 첫 번째 데이터 포인트의 드라이버 이름을 확인)
+        # Filter data for the given driver_name
         drivers = self.pref_dataset["driver_name"][:, 0]
         indices = np.where(drivers == driver_name)[0]
 
-        # 2. 해당 인덱스의 데이터만 슬라이싱하여 반환
         subset = {}
         for key, val in self.pref_dataset.items():
             subset[key] = val[indices]
@@ -179,7 +64,7 @@ def convert_to_pairwise(X, y, driver_name, context_size=64, tie_ratio=0.0):
             driver_obs.append(true_ep)
             driver_obs_2.append(false_ep)
             driver_labels.append(1.0)
-    
+
     # 2. Tie Pairs
     n_tie = int((len(true_episodes) + len(false_episodes)) * tie_ratio)
     if n_tie > 0:
@@ -189,7 +74,7 @@ def convert_to_pairwise(X, y, driver_name, context_size=64, tie_ratio=0.0):
                 driver_obs.append(true_episodes[i1])
                 driver_obs_2.append(true_episodes[i2])
                 driver_labels.append(0.5)
-        
+
         if len(false_episodes) > 0:
             false_indices = np.random.choice(len(false_episodes), size=(n_tie, 2))
             for i1, i2 in false_indices:
@@ -197,16 +82,13 @@ def convert_to_pairwise(X, y, driver_name, context_size=64, tie_ratio=0.0):
                 driver_obs_2.append(false_episodes[i2])
                 driver_labels.append(0.5)
 
-    if not driver_obs:
-        return None
-
     driver_obs = np.stack(driver_obs)
     driver_obs_2 = np.stack(driver_obs_2)
     driver_labels = np.array(driver_labels).reshape(-1, 1)
 
     # Context Grouping
     num_pairs = len(driver_obs)
-    
+
     grouped_obs = []
     grouped_obs_2 = []
     grouped_labels = []
@@ -214,21 +96,21 @@ def convert_to_pairwise(X, y, driver_name, context_size=64, tie_ratio=0.0):
 
     for i in range(0, num_pairs, context_size):
         end_idx = min(i + context_size, num_pairs)
-        
+
         batch_obs = driver_obs[i:end_idx]
         batch_obs_2 = driver_obs_2[i:end_idx]
         batch_lbl = driver_labels[i:end_idx]
-        
+
         current_len = len(batch_obs)
         if current_len < context_size:
             print(f"  Warning: Padding context from {current_len} to {context_size} for driver {driver_name}.")
             needed = context_size - current_len
             indices = np.random.randint(0, current_len, size=needed)
-            
+
             batch_obs = np.concatenate([batch_obs, batch_obs[indices]], axis=0)
             batch_obs_2 = np.concatenate([batch_obs_2, batch_obs_2[indices]], axis=0)
             batch_lbl = np.concatenate([batch_lbl, batch_lbl[indices]], axis=0)
-        
+
         grouped_obs.append(batch_obs)
         grouped_obs_2.append(batch_obs_2)
         grouped_labels.append(batch_lbl)
@@ -247,52 +129,52 @@ def convert_to_binary_context(X, y, driver_name, context_size=64, balanced=False
 
     if len(driver_obs) == 0:
         return None
-    
+
     pos_indices = np.where(driver_labels == 1)[0]
     neg_indices = np.where(driver_labels == 0)[0]
-    
+
     # Check if stratified creation is possible
     if balanced and len(pos_indices) > 0 and len(neg_indices) > 0:
         # 1. Calculate Ratios
         total_count = len(driver_labels)
         pos_ratio = len(pos_indices) / total_count
-        
+
         # 2. Determine counts per batch based on ratio
         n_pos_per_batch = int(np.round(context_size * pos_ratio))
-        
+
         # Ensure at least 1 sample from each class if context_size allows
         n_pos_per_batch = max(1, min(n_pos_per_batch, context_size - 1))
         n_neg_per_batch = context_size - n_pos_per_batch
-        
+
         # 3. Determine number of batches
         # We try to cover the larger class roughly once (Oversampling the smaller one implicitly)
         max_samples = max(len(pos_indices), len(neg_indices))
         # Normalized by the portion taken per batch
         max_batches_pos = len(pos_indices) / n_pos_per_batch
         max_batches_neg = len(neg_indices) / n_neg_per_batch
-        
+
         # Use the max possible batches to utilize data fully (similar to previous logic)
         num_batches = int(np.ceil(max(max_batches_pos, max_batches_neg)))
-        
+
         grouped_obs = []
         grouped_labels = []
         grouped_names = []
-        
+
         # Create batches
         for _ in range(num_batches):
             p_idxs = np.random.choice(pos_indices, n_pos_per_batch, replace=True)
             n_idxs = np.random.choice(neg_indices, n_neg_per_batch, replace=True)
-            
+
             batch_indices = np.concatenate([p_idxs, n_idxs])
             np.random.shuffle(batch_indices) # Mix them within the context
-            
+
             batch_obs = driver_obs[batch_indices]
             batch_lbl = driver_labels[batch_indices].reshape(-1, 1)
-            
+
             grouped_obs.append(batch_obs)
             grouped_labels.append(batch_lbl)
             grouped_names.append(np.array([driver_name] * context_size))
-            
+
         return {
             'observations': np.stack(grouped_obs),
             'labels': np.stack(grouped_labels),
@@ -302,27 +184,27 @@ def convert_to_binary_context(X, y, driver_name, context_size=64, balanced=False
     # Fallback: Original Sequential Logic (if not balanced or missing class)
     driver_labels = driver_labels.reshape(-1, 1)
     num_samples = len(driver_obs)
-    
+
     grouped_obs = []
     grouped_labels = []
     grouped_names = []
 
     for i in range(0, num_samples, context_size):
         end_idx = min(i + context_size, num_samples)
-        
+
         batch_obs = driver_obs[i:end_idx]
         batch_lbl = driver_labels[i:end_idx]
-        
+
         current_len = len(batch_obs)
-        
+
         if current_len < context_size:
             # Padding
             needed = context_size - current_len
             indices = np.random.randint(0, current_len, size=needed)
-            
+
             batch_obs = np.concatenate([batch_obs, batch_obs[indices]], axis=0)
             batch_lbl = np.concatenate([batch_lbl, batch_lbl[indices]], axis=0)
-        
+
         grouped_obs.append(batch_obs)
         grouped_labels.append(batch_lbl)
         grouped_names.append(np.array([driver_name] * context_size))

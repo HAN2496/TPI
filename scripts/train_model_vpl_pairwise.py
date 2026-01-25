@@ -24,7 +24,7 @@ FLAGS = {
     "time_range": (5, 7),
     "downsample": 5,
     "tie_ratio": 0.0,
-    "context_size": 16,
+    "context_size": 20,
     "val_size": 0.1,
     'normalize': True,
 
@@ -32,7 +32,7 @@ FLAGS = {
     "pin_memory": False,
 
     # Inference
-    "query_ratio": 0.5, # Ratio of data used for querying z
+    "query_ratio": 0.3, # Ratio of data used for querying z
     "timestamp": None, # If not None or "test", load model from this timestamp and skip training
 
     # Model

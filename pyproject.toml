@@ -10,10 +10,13 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "captum",
+    "gymnasium>=1.2.3",
     "matplotlib>=3.10.7",
+    "numba>=0.63.1",
     "numpy>=2.3.5",
     "opencv-python>=4.11.0.86",
     "optuna>=4.6.0",
+    "osqp>=1.0.5",
     "pandas>=2.3.3",
     "pyqtgraph>=0.14.0",
     "pyside6>=6.10.0",

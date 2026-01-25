@@ -2,7 +2,7 @@ import numpy as np
 from numba import jit
 import math
 
-from configs import Vehicle_Parameters
+from src.vmc.configs import Vehicle_Parameters
 
 @jit(nopython=True, cache=True)
 def _compute_dynamics(x_data, u, z_data, params_data, out_data):

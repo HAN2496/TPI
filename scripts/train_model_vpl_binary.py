@@ -24,8 +24,8 @@ FLAGS = {
     "test_driver_name": "강신길",
     "train_driver_names": ["김진명", "김태근", "조현석", "한규택", "박재일", "이지환"],
     "time_range": (5, 7),
-    "downsample": 5,
-    "context_size": 8,
+    "downsample": 1,
+    "context_size": 20,
     "val_size": 0.1,
     'normalize': False, # False, True
     "balanced": True,
@@ -41,11 +41,11 @@ FLAGS = {
     "hidden_dim": 64,
     "batch_size": 128,
     "latent_dim": 8,
-    "kl_weight": 20.0,
-    "flow_prior": False,
+    "kl_weight": 1.0,
+    "flow_prior": True,
     "use_annealing": True,
-    "annealer_baseline": 0.0,
-    "annealer_type": "cosine",
+    "annealer_baseline": 0.3,
+    "annealer_type": "linear",
     "annealer_cycles": 4,
     "reward_scaling": "T", # 1 or T
 
@@ -186,7 +186,6 @@ def evaluate_driver(model, driver_name, X_raw, y_raw, query_ratio, device, logge
     print(f"  Inferred z: {z_mean.shape}")
 
     # 3. Compute Rewards (using Eval Set)
-    # Binary model decode also works same way for single observation batch
     step_rewards = compute_step_rewards(model, X_eval, z_mean, device)
 
     # Mean reward per episode (scaled)
@@ -212,6 +211,7 @@ def evaluate_driver(model, driver_name, X_raw, y_raw, query_ratio, device, logge
     )
 
     return mean_rewards, query_dataset, X_query, y_query
+
 def visualize_latent_space(model, train_dataset, test_driver_results, device, save_path):
     print("Visualizing Latent Space...")
     
@@ -251,63 +251,40 @@ def visualize_latent_space(model, train_dataset, test_driver_results, device, sa
     perplexities = [10, 20, 30]
     
     n_rows = 2 if use_flow else 1
-    # 3 t-SNEs + 1 PCA = 4 Columns
     n_cols = len(perplexities) + 1 
-    
-    fig, axs = plt.subplots(n_rows, n_cols, figsize=(6 * n_cols, 5 * n_rows))
-    
-    # Ensure axs is 2D array [row, col]
-    if n_rows == 1:
-        axs = np.expand_dims(axs, axis=0) # (1, 4)
-    if n_cols == 1:
-        axs = np.expand_dims(axs, axis=1) # Should not happen here
 
-    # --- Helper Function for Scatter Plot ---
+    fig, axs = plt.subplots(n_rows, n_cols, figsize=(6 * n_cols, 5 * n_rows), squeeze=False)
+
     def plot_scatter(ax, data, title):
         for label in unique_labels:
             mask = (labels == label)
-            
+
             # Distinct style for Test data
             if "(Test)" in label:
-                marker = '*'
-                s = 100
-                alpha = 1.0
-                edgecolors = 'black'
-                zorder = 10 # Draw on top
+                marker = '*'; s = 100; alpha = 1.0; edgecolors = 'black'; zorder = 10
             else:
-                marker = 'o'
-                s = 30
-                alpha = 0.7
-                edgecolors = 'none'
-                zorder = 1
-                
+                marker = 'o'; s = 30; alpha = 0.7; edgecolors = 'none'; zorder = 1
             ax.scatter(
-                data[mask, 0], data[mask, 1], 
-                label=label, 
-                marker=marker,
-                s=s,
-                alpha=alpha, 
-                edgecolors=edgecolors,
-                zorder=zorder
+                data[mask, 0], data[mask, 1], label=label, marker=marker, s=s, alpha=alpha, edgecolors=edgecolors, zorder=zorder
             )
         ax.set_title(title)
         ax.grid(True, alpha=0.3)
 
     # --- 1. Original Latent Space (Row 0) ---
     print("  Computing t-SNE & PCA for Original Latent Space...")
-    
+
     # A. t-SNEs
     for i, perp in enumerate(perplexities):
         actual_perp = min(perp, len(latents) - 1)
         tsne = TSNE(n_components=2, random_state=42, perplexity=actual_perp)
         z_tsne = tsne.fit_transform(latents)
         plot_scatter(axs[0, i], z_tsne, f"t-SNE (Original)\nPerp={actual_perp}")
-    
+
     # B. PCA
     pca = PCA(n_components=2)
     z_pca = pca.fit_transform(latents)
     var_ratio = pca.explained_variance_ratio_
-    plot_scatter(axs[0, 3], z_pca, f"PCA (Original)\nVar: [{var_ratio[0]:.2f}, {var_ratio[1]:.2f}]")
+    plot_scatter(axs[0, -1], z_pca, f"PCA (Original)\nVar: [{var_ratio[0]:.2f}, {var_ratio[1]:.2f}]")
 
     # --- 2. Flow Transformed Latent Space (Row 1) ---
     if use_flow:
@@ -316,19 +293,19 @@ def visualize_latent_space(model, train_dataset, test_driver_results, device, sa
         with torch.no_grad():
             z_transformed, _ = model.flow(z_tensor)
             z_transformed = z_transformed.cpu().numpy()
-            
+
         # A. t-SNEs
         for i, perp in enumerate(perplexities):
             actual_perp = min(perp, len(latents) - 1)
             tsne = TSNE(n_components=2, random_state=42, perplexity=actual_perp)
             z_trans_tsne = tsne.fit_transform(z_transformed)
             plot_scatter(axs[1, i], z_trans_tsne, f"t-SNE (Flow)\nPerp={actual_perp}")
-            
+
         # B. PCA
         pca_flow = PCA(n_components=2)
         z_trans_pca = pca_flow.fit_transform(z_transformed)
         var_ratio_flow = pca_flow.explained_variance_ratio_
-        plot_scatter(axs[1, 3], z_trans_pca, f"PCA (Flow)\nVar: [{var_ratio_flow[0]:.2f}, {var_ratio_flow[1]:.2f}]")
+        plot_scatter(axs[1, -1], z_trans_pca, f"PCA (Flow)\nVar: [{var_ratio_flow[0]:.2f}, {var_ratio_flow[1]:.2f}]")
 
     # Add legend to the last plot only
     axs[0, -1].legend(loc='upper right', bbox_to_anchor=(1.3, 1))
@@ -355,14 +332,6 @@ def visualize_latent_space(model, train_dataset, test_driver_results, device, sa
     effective_rank = np.exp(entropy)
     print(f"Effective Rank: {effective_rank:.4f} (Max possible: {min(4, latents.shape[1])})")
 
-    # --- 2. Silhouette Score ---
-    from sklearn.metrics import silhouette_score
-    driver_labels = [label.split(' (')[0] for label in labels]
-    if len(set(driver_labels)) > 1:
-        score = silhouette_score(latents, driver_labels)
-        print(f"Driver Silhouette Score: {score:.4f} (-1 to 1, higher is better separation)")
-    else:
-        print("Driver Silhouette Score: N/A (Only 1 driver found)")
 
 def plot_history(metrics, save_dir, warmup_epochs=0):
     print(f"Plotting training history (excluding first {warmup_epochs} epochs)...")

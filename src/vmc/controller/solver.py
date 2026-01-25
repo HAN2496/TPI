@@ -5,8 +5,8 @@ import scipy.linalg
 from scipy import sparse
 from scipy.linalg import solve_discrete_are
 
-from src.env.components.vehicle_model import VehicleModel
-from configs import Environment_Parameters
+from src.vmc.env.components.vehicle_model import VehicleModel
+from src.vmc.configs import Environment_Parameters
 
 class LQRSolver:
     def __init__(self, vehicle=None, x0=None, ueq=None, zeq=None, dt=None):

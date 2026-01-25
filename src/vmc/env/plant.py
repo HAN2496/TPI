@@ -1,9 +1,9 @@
 import numpy as np
 import gymnasium
 
-from src.controller import HumanController
-from src.env.components import Bump, compile_vehicle_model
-from configs import Environment_Parameters, Vehicle_Parameters
+from src.vmc.controller import HumanController
+from src.vmc.env.components import Bump, compile_vehicle_model
+from src.vmc.configs import Environment_Parameters, Vehicle_Parameters
 
 STATE_KEYS = ["dz_com", "dtheta", "dz_us_f", "dz_us_r", "dx_com", 
               "z_com", "theta", "z_us_f", "z_us_r", "x_com"]
@@ -27,7 +27,7 @@ class SuspensionEnv(gymnasium.Env):
         self.human_controller = human_controller if human_controller is not None else HumanController()
 
         if reward_fn is None:
-            from src.env.rewards import create_weighted_reward
+            from src.vmc.env.rewards import create_weighted_reward
             self.reward_fn = create_weighted_reward()
         else:
             self.reward_fn = reward_fn
