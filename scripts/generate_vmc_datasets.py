@@ -1,9 +1,9 @@
 import os
-
-import numpy as np
 import pickle
-import matplotlib.pyplot as plt
+import numpy as np
 from tqdm import tqdm
+import matplotlib.pyplot as plt
+from multiprocessing import Pool, cpu_count
 
 from src.vmc.env.plant import ErideEnv
 from src.vmc.controller import PController
@@ -72,83 +72,78 @@ def create_synthetic_drivers():
     drivers['Aggressive_strong'] = OracleBuilder().add_pitch(weight=0.01).add_longitudinal(weight=0.1).build()
     return drivers
 
-def collect_data(num_pairs_per_driver=1000):
+def process_single_pair(args):
+    """하나의 에피소드 쌍을 생성하고 데이터를 반환합니다."""
+    name, oracle, seed = args
+    
+    # Controller 설정 (랜덤)
+    kp_a = float(np.random.uniform(30, 300))
+    controller_a = PController(kp=kp_a)
+    env_a = ErideEnv(controller_a)
+
+    kp_b = float(np.random.uniform(30, 300))
+    controller_b = PController(kp=kp_b)
+    env_b = ErideEnv(controller_b)
+    
+    # Trajectory 생성
+    traj_a = generate_trajectory(env_a, controller_a, seed=seed)
+    traj_b = generate_trajectory(env_b, controller_b, seed=seed)
+    
+    # 길이 맞춤 (둘 중 짧은 쪽으로)
+    min_len = min(len(traj_a), len(traj_b))
+    traj_a = traj_a[:min_len]
+    traj_b = traj_b[:min_len]
+    
+    # Labeling & Reward
+    def to_dict(traj):
+        return {k: traj[:, i] for i, k in enumerate(FEATURE_KEYS)}
+    
+    dict_a = to_dict(traj_a)
+    dict_b = to_dict(traj_b)
+    
+    r_a = oracle.calculate_episode_reward(dict_a)
+    r_b = oracle.calculate_episode_reward(dict_b)
+    label = oracle.compare(dict_a, dict_b)
+    
+    return traj_a, traj_b, label, name, (r_a, r_b), (kp_a, kp_b)
+
+def collect_data(num_pairs_per_driver, num_workers):
     drivers = create_synthetic_drivers()
     
-    dataset = {
-        'observations': [],
-        'observations_2': [],
-        'labels': [],
-        'driver_name': [],
-        'rewards': [], # Store calculated rewards for visualization
-        'params': []   # Store controller params (kp_a, kp_b)
-    }
-    
-    print(f"Generating {num_pairs_per_driver} pairs for {len(drivers)} drivers...")
-    
+    # 1. 작업 목록 생성 (Flatten tasks)
+    tasks = []
     for name, oracle in drivers.items():
-        print(f"  Processing Driver: {name}")
-        
-        for i in tqdm(range(num_pairs_per_driver)):
-            # 1. Setup Context (Seed)
-            seed = i
-            # seed = np.random.randint(0, 100000)
-            
-            # 2. Controller A
-            kp_a = float(np.random.uniform(30, 300))
-            controller_a = PController(kp=kp_a)
-            env_a = ErideEnv(controller_a)
-
-            # 3. Controller B
-            kp_b = float(np.random.uniform(30, 300))
-            controller_b = PController(kp=kp_b)
-            env_b = ErideEnv(controller_b)
-            
-            # 4. Generate Trajectories
-            traj_a = generate_trajectory(env_a, controller_a, seed=seed)
-            traj_b = generate_trajectory(env_b, controller_b, seed=seed)
-            
-            # Truncate to min length
-            min_len = min(len(traj_a), len(traj_b))
-            traj_a = traj_a[:min_len]
-            traj_b = traj_b[:min_len]
-            
-            # 5. Labeling & Reward Calculation
-            def to_dict(traj):
-                return {k: traj[:, i] for i, k in enumerate(FEATURE_KEYS)}
-            
-            dict_a = to_dict(traj_a)
-            dict_b = to_dict(traj_b)
-            
-            # Calculate explicit rewards for metadata/visualization
-            r_a = oracle.calculate_episode_reward(dict_a)
-            r_b = oracle.calculate_episode_reward(dict_b)
-            
-            label = oracle.compare(dict_a, dict_b) # 1 if A > B, 0 if B > A
-            
-            # 6. Store
-            dataset['observations'].append(traj_a)
-            dataset['observations_2'].append(traj_b)
-            dataset['labels'].append([float(label)])
-            dataset['driver_name'].append(name)
-            dataset['rewards'].append((r_a, r_b))
-            dataset['params'].append((kp_a, kp_b))
-
-    # Convert to numpy arrays
-    lengths = [len(x) for x in dataset['observations']]
-    min_len = min(lengths)
-    print(f"  Trimming all trajectories to min length: {min_len}")
+        for i in range(num_pairs_per_driver):
+            tasks.append((name, oracle, i)) # (Driver, Oracle, Seed)
     
-    dataset['observations'] = np.stack([x[:min_len] for x in dataset['observations']])
-    dataset['observations_2'] = np.stack([x[:min_len] for x in dataset['observations_2']])
-    dataset['labels'] = np.array(dataset['labels'], dtype=np.float32)
-    dataset['driver_name'] = np.array(dataset['driver_name']).reshape(-1, 1)
-    dataset['rewards'] = np.array(dataset['rewards'], dtype=np.float32)
-    dataset['params'] = np.array(dataset['params'], dtype=np.float32)
+    print(f"Generating {len(tasks)} pairs using {num_workers}/{cpu_count()} cores...")
+
+    # 2. 병렬 처리 실행
+    # imap을 사용하여 tqdm과 연동
+    with Pool(processes=num_workers) as pool:
+        results = list(tqdm(pool.imap(process_single_pair, tasks), total=len(tasks)))
+    
+    # 3. 데이터 정리 (Unzip results)
+    # results는 [(traj_a, traj_b, label, name, rewards, params), ...] 형태임
+    obs_a_list, obs_b_list, labels_list, names_list, rewards_list, params_list = zip(*results)
+
+    # 4. 전체 데이터셋 최소 길이로 맞춤 (배치 처리를 위해 필수)
+    lengths = [len(x) for x in obs_a_list]
+    global_min_len = min(lengths)
+    print(f"Trimming all trajectories to global min length: {global_min_len}")
+    
+    dataset = {
+        'observations': np.stack([x[:global_min_len] for x in obs_a_list]),
+        'observations_2': np.stack([x[:global_min_len] for x in obs_b_list]),
+        'labels': np.array(labels_list, dtype=np.float32).reshape(-1, 1),
+        'driver_name': np.array(names_list).reshape(-1, 1),
+        'rewards': np.array(rewards_list, dtype=np.float32),
+        'params': np.array(params_list, dtype=np.float32)
+    }
 
     return dataset
 
-def visualize_dataset(dataset, save_dir="artifacts/vmc/datasets/plots"):
+def visualize_dataset(dataset, save_dir="artifacts/vmc_vpl/datasets"):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
@@ -156,50 +151,65 @@ def visualize_dataset(dataset, save_dir="artifacts/vmc/datasets/plots"):
     
     driver_names = np.unique(dataset['driver_name'])
     
-    # 2. KP vs Reward Scatter
-    fig, axs = plt.subplots(len(driver_names), 2, figsize=(16, 4 * len(driver_names)), constrained_layout=True)
-    if len(driver_names) == 1: axs = [axs] # Ensure 2D array-like access if single driver
-    
-    # Feature index for dtheta
-    dtheta_idx = FEATURE_KEYS.index('dtheta')
+    # 1. Label Statistics
+    stats_path = os.path.join(save_dir, "label_stats.txt")
+    print("Computing label statistics...")
+    with open(stats_path, "w") as f:
+        f.write("Driver Label Statistics:\n")
+        print("Driver Label Statistics:")
+        
+        for name in driver_names:
+            mask = (dataset['driver_name'][:, 0] == name)
+            labels = dataset['labels'][mask].flatten()
+            
+            n_total = len(labels)
+            n_0 = np.sum(labels == 0)
+            n_1 = np.sum(labels == 1)
+            ratio_0 = n_0 / n_total * 100
+            ratio_1 = n_1 / n_total * 100
+            
+            stat_line = f"  {name}: Total={n_total}, Label 0={n_0} ({ratio_0:.1f}%), Label 1={n_1} ({ratio_1:.1f}%)"
+            f.write(stat_line + "\n")
+            print(stat_line)
+            
+    # 2. KP vs Reward Scatter (Single Column)
+    fig, axs = plt.subplots(len(driver_names), 1, figsize=(8, 4 * len(driver_names)), constrained_layout=True)
+    if len(driver_names) == 1: axs = [axs] 
 
     for i, name in enumerate(driver_names):
         mask = (dataset['driver_name'][:, 0] == name)
         params = dataset['params'][mask].flatten() # [kp_a, kp_b, kp_a, ...]
         rewards = dataset['rewards'][mask].flatten()
         
-        # Calculate Mean Squared Pitch Rate for each trajectory
-        obs_a = dataset['observations'][mask]
-        obs_b = dataset['observations_2'][mask]
-        
-        # Calculate mean(dtheta^2) for each trajectory
-        pitch_cost_a = np.mean(obs_a[:, :, dtheta_idx]**2, axis=1)
-        pitch_cost_b = np.mean(obs_b[:, :, dtheta_idx]**2, axis=1)
-        
-        pitch_costs = np.concatenate([pitch_cost_a, pitch_cost_b]) # Same order as params flatten
-        
-        # Plot 1: Kp vs Reward
-        ax_rew = axs[i][0] if len(driver_names) > 1 else axs[0][0]
-        ax_rew.scatter(params, rewards, alpha=0.3, s=10)
-        ax_rew.set_title(f"Kp vs Reward ({name})")
-        ax_rew.set_xlabel("Kp (P-Gain)")
-        ax_rew.set_ylabel("Reward")
-        ax_rew.grid(True, alpha=0.3)
-        
-        # Plot 2: Kp vs Pitch Cost
-        ax_cost = axs[i][1] if len(driver_names) > 1 else axs[0][1]
-        ax_cost.scatter(params, pitch_costs, alpha=0.3, s=10, color='orange')
-        ax_cost.set_title(f"Kp vs Mean Pitch Cost (dtheta^2) ({name})")
-        ax_cost.set_xlabel("Kp (P-Gain)")
-        ax_cost.set_ylabel("Mean dtheta^2")
-        ax_cost.set_yscale('log') # Log scale for cost as it can vary widely
-        ax_cost.grid(True, alpha=0.3)
+        ax = axs[i]
+        ax.scatter(params, rewards, alpha=0.7, s=10)
+        ax.set_title(f"Kp vs Reward ({name})")
+        ax.set_xlabel("Kp (P-Gain)")
+        ax.set_ylabel("Reward")
+        ax.grid(True, alpha=0.3)
         
     plt.savefig(os.path.join(save_dir, "kp_analysis.png"))
     plt.close()
-
-    # 3. Trajectory Examples (Good vs Bad)
-    # Plot feature trajectories for high reward vs low reward examples
+    
+    # 3. Reward Distribution Histogram
+    fig, axs = plt.subplots(len(driver_names), 1, figsize=(8, 4 * len(driver_names)), constrained_layout=True)
+    if len(driver_names) == 1: axs = [axs]
+    
+    for i, name in enumerate(driver_names):
+        mask = (dataset['driver_name'][:, 0] == name)
+        rewards = dataset['rewards'][mask].flatten()
+        
+        ax = axs[i]
+        ax.hist(rewards, bins=50, alpha=0.7, color='skyblue', edgecolor='black')
+        ax.set_title(f"Reward Distribution ({name})")
+        ax.set_xlabel("Reward")
+        ax.set_ylabel("Count")
+        ax.grid(True, alpha=0.3)
+    
+    plt.savefig(os.path.join(save_dir, "reward_dist.png"))
+    plt.close()
+    
+    # 4. Average Trajectory Comparison (Label 0 vs Label 1)
     feature_indices = {
         'dtheta': FEATURE_KEYS.index('dtheta'),
         'ddx_com': FEATURE_KEYS.index('ddx_com'),
@@ -208,53 +218,122 @@ def visualize_dataset(dataset, save_dir="artifacts/vmc/datasets/plots"):
     
     for name in driver_names:
         mask = (dataset['driver_name'][:, 0] == name)
-        driver_indices = np.where(mask)[0]
+        labels = dataset['labels'][mask].flatten()
         
-        subset_rewards = dataset['rewards'][mask] # (N_subset, 2)
+        obs_a = dataset['observations'][mask] # (N, T, F)
+        obs_b = dataset['observations_2'][mask]
         
-        # Best
-        best_idx_flat = np.argmax(subset_rewards)
-        best_pair_idx = driver_indices[best_idx_flat // 2]
-        best_is_b = best_idx_flat % 2
+        # Collect trajectories based on preference
+        # Label 1: A is better -> Preferred: A, Non-Preferred: B
+        # Label 0: B is better -> Preferred: B, Non-Preferred: A
         
-        # Worst
-        worst_idx_flat = np.argmin(subset_rewards)
-        worst_pair_idx = driver_indices[worst_idx_flat // 2]
-        worst_is_b = worst_idx_flat % 2
+        pref_trajs = []
+        non_pref_trajs = []
         
-        best_traj = dataset['observations_2'][best_pair_idx] if best_is_b else dataset['observations'][best_pair_idx]
-        worst_traj = dataset['observations_2'][worst_pair_idx] if worst_is_b else dataset['observations'][worst_pair_idx]
+        for idx, lbl in enumerate(labels):
+            if lbl == 1:
+                pref_trajs.append(obs_a[idx])
+                non_pref_trajs.append(obs_b[idx])
+            else:
+                pref_trajs.append(obs_b[idx])
+                non_pref_trajs.append(obs_a[idx])
+                
+        if not pref_trajs: continue
         
-        best_kp = dataset['params'][best_pair_idx][best_is_b]
-        worst_kp = dataset['params'][worst_pair_idx][worst_is_b]
+        pref_trajs = np.stack(pref_trajs)
+        non_pref_trajs = np.stack(non_pref_trajs)
         
-        fig, ax = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
-        t = np.arange(len(best_traj))
+        fig, ax = plt.subplots(3, 1, figsize=(10, 10), sharex=True)
+        t = np.arange(pref_trajs.shape[1])
         
         for i, (feat_name, feat_idx) in enumerate(feature_indices.items()):
-            ax[i].plot(t, best_traj[:, feat_idx], label=f"Best (Rew={np.max(subset_rewards):.2f}, Kp={best_kp:.1f})", color='tab:green')
-            ax[i].plot(t, worst_traj[:, feat_idx], label=f"Worst (Rew={np.min(subset_rewards):.2f}, Kp={worst_kp:.1f})", color='tab:red', alpha=0.7)
+            # Calculate Mean & Std
+            mu_p = pref_trajs[:, :, feat_idx].mean(axis=0)
+            std_p = pref_trajs[:, :, feat_idx].std(axis=0)
+            
+            mu_np = non_pref_trajs[:, :, feat_idx].mean(axis=0)
+            std_np = non_pref_trajs[:, :, feat_idx].std(axis=0)
+            
+            # Plot Preferred
+            ax[i].plot(t, mu_p, label="Preferred (Mean)", color='blue')
+            ax[i].fill_between(t, mu_p - std_p, mu_p + std_p, color='blue', alpha=0.1)
+            
+            # Plot Non-Preferred
+            ax[i].plot(t, mu_np, label="Non-Preferred (Mean)", color='red', linestyle='--')
+            ax[i].fill_between(t, mu_np - std_np, mu_np + std_np, color='red', alpha=0.1)
+            
             ax[i].set_ylabel(feat_name)
             ax[i].grid(True, alpha=0.3)
             
         ax[0].legend()
-        ax[0].set_title(f"Trajectory Comparison - {name}")
+        ax[0].set_title(f"Average Trajectory Comparison - {name}")
         ax[-1].set_xlabel("Time Step")
         
-        plt.savefig(os.path.join(save_dir, f"traj_example_{name}.png"))
+        plt.tight_layout()
+        plt.savefig(os.path.join(save_dir, f"traj_comparison_avg_{name}.png"))
         plt.close()
+
+    # 5. Reward Difference vs Label Probability (Oracle Check)
+    plt.figure(figsize=(8, 6))
     
+    all_diffs = []
+    all_labels = []
+    
+    for name in driver_names:
+        mask = (dataset['driver_name'][:, 0] == name)
+        r_a = dataset['rewards'][mask][:, 0]
+        r_b = dataset['rewards'][mask][:, 1]
+        lbls = dataset['labels'][mask].flatten()
+        
+        diffs = r_a - r_b
+        all_diffs.extend(diffs)
+        all_labels.extend(lbls)
+        
+    all_diffs = np.array(all_diffs)
+    all_labels = np.array(all_labels)
+    
+    # Binning
+    bins = np.linspace(all_diffs.min(), all_diffs.max(), 30)
+    bin_indices = np.digitize(all_diffs, bins)
+    
+    bin_means = []
+    prob_means = []
+    
+    for i in range(1, len(bins)):
+        in_bin = all_labels[bin_indices == i]
+        if len(in_bin) > 0:
+            bin_means.append((bins[i-1] + bins[i]) / 2)
+            prob_means.append(in_bin.mean())
+            
+    plt.scatter(all_diffs, all_labels, alpha=0.05, label='Samples', color='gray', s=5)
+    plt.plot(bin_means, prob_means, 'r-o', label='Empirical Prob', linewidth=2)
+    
+    # Theoretical Sigmoid
+    x = np.linspace(all_diffs.min(), all_diffs.max(), 100)
+    y = 1 / (1 + np.exp(-x))
+    plt.plot(x, y, 'b--', label='Sigmoid (Theoretical)')
+    
+    plt.title("Oracle Check: Reward Diff vs P(Label=1)")
+    plt.xlabel("Reward Difference (R_a - R_b)")
+    plt.ylabel("Probability (Label=1)")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    
+    plt.savefig(os.path.join(save_dir, "oracle_check.png"))
+    plt.close()
+
     print("Visualization complete.")
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--num_pairs", type=int, default=5000, help="Number of pairs per driver")
+    parser.add_argument("--num_workers", type=int, default=6, help="Number of parallel workers")
     args = parser.parse_args()
 
-    dataset = collect_data(num_pairs_per_driver=args.num_pairs)
+    dataset = collect_data(args.num_pairs, args.num_workers)
     
-    save_path = os.path.join(DATASET_DIR, "vmc_pairwise_dataset.pkl")
+    save_path = os.path.join(DATASET_DIR, f"vmc_pairwise_dataset_{args.num_pairs}.pkl")
     with open(save_path, 'wb') as f:
         pickle.dump(dataset, f)
     

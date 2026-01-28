@@ -61,7 +61,8 @@ class Oracle:
         return sum(components.values())
 
     def diff_to_probability(self, r1, r2):
-        return r1 / (np.exp(r1) + np.exp(r2))
+        # return np.exp(r1) / (np.exp(r1) + np.exp(r2))
+        return 1/(1 + np.exp(-(r1 - r2)))
 
     def sample_response(self, probability):
         return 1 if np.random.random() < probability else 0

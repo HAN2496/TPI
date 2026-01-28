@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 
 import numpy as np
+import optuna
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -19,6 +20,8 @@ import matplotlib.pyplot as plt
 
 from src.utils.utils import _load_dataset_sequences
 from src.model.CoPL_new.gcf import CoPLGCF  # <-- 너가 수정해둔 CoPLGCF(아이템-아이템 + pointwise) 사용
+from src.model.CoPL_new.gcf_gcn import CoPLGCF_GCN
+from src.model.CoPL_new.visualization import plot_distance_gamma_analysis, plot_driver_similarity_matrix, plot_roc, plot_reward_scatter, compare_viz_plot, plot_test_item_bridge
 
 plt.rcParams['font.family'] = 'Malgun Gothic'
 plt.rcParams['axes.unicode_minus'] = False
@@ -28,12 +31,17 @@ plt.rcParams['axes.unicode_minus'] = False
 # =========================
 @dataclass
 class CFG:
+    model_type: str = "gcf"  # "gcf" or "gcf_gcn"
+
+    timestamp = None # None for timestamp training, test for debug, else load from string
+
     # data
     features: tuple = ("IMU_VerAccelVal", "Bounce_rate_6D", "Pitch_rate_6D", "IMU_LongAccelVal")
     train_driver_names: tuple = ("김진명", "김태근", "조현석", "한규택", "박재일", "이지환")
     test_driver_name: str = "강신길"
     time_range: tuple = (5, 7)
     downsample: int = 5
+    context_size: int = 16  # context size for chunk-based visualization
 
     # item-item graph (검증 결과 반영)
     pca_dim: int = 2
@@ -45,16 +53,16 @@ class CFG:
     hidden_dim: int = 128
     gcf_layers: int = 2
     gcf_dropout: float = 0.2
-    item_item_weight: float = 1.0
-    gcf_lr: float = 5e-3
+    item_item_weight: float = 0.72
+    gcf_lr: float = 0.00068
     gcf_weight_decay: float = 0.0
-    gcf_epochs: int = 100
-    gcf_lambda_reg: float = 1e-4
+    gcf_epochs: int = 200
+    gcf_lambda_reg: float = 0.01
 
     # RM
-    rm_hidden: int = 64
+    rm_hidden: int = 32
     rm_mlp_hidden: int = 64
-    rm_lr: float = 3e-4
+    rm_lr: float = 0.00026
     rm_weight_decay: float = 0.0
     rm_epochs: int = 200
     rm_batch_size: int = 256
@@ -66,8 +74,8 @@ class CFG:
 
     # adaptation for test user
     adapt_use_neg: bool = True
-    adapt_neg_weight: float = 1.0
-    adapt_user_softmax_temp: float = 1.0
+    adapt_neg_weight: float = 0.81
+    adapt_user_softmax_temp: float = 1.15
     attach_topk_items: int = 20  # test item -> train items topk for embedding
 
     # viz
@@ -138,71 +146,6 @@ def median_heuristic_gamma(Z: np.ndarray, max_pairs: int = 200000, seed: int = 0
         dist = np.sqrt((di * di).sum(axis=1))
         sigma = np.median(dist)
     return float(1.0 / (2.0 * (sigma ** 2) + 1e-12))
-
-
-def plot_roc(y_true, y_score, save_path: Path, title: str):
-    fpr, tpr, _ = roc_curve(y_true, y_score)
-    auc = roc_auc_score(y_true, y_score) if len(np.unique(y_true)) > 1 else 0.0
-    plt.figure(figsize=(7, 6))
-    plt.plot(fpr, tpr, label=f"AUC={auc:.4f}")
-    plt.plot([0, 1], [0, 1], linestyle="--", alpha=0.5)
-    plt.xlabel("False Positive Rate")
-    plt.ylabel("True Positive Rate")
-    plt.title(title)
-    plt.grid(True, alpha=0.3)
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(save_path, dpi=150)
-    plt.close()
-
-
-def plot_reward_scatter(y_true, y_prob, save_path: Path, title: str):
-    idx = np.arange(len(y_true))
-    y_true = np.asarray(y_true)
-    y_prob = np.asarray(y_prob)
-
-    m0 = (y_true == 0)
-    m1 = (y_true == 1)
-
-    plt.figure(figsize=(10, 5))
-    plt.scatter(idx[m0], y_prob[m0], s=10, alpha=0.5, label="Bad(0)")
-    plt.scatter(idx[m1], y_prob[m1], s=10, alpha=0.7, label="Good(1)")
-    plt.axhline(0.5, linestyle="--", alpha=0.5)
-    plt.ylim(-0.05, 1.05)
-    plt.xlabel("Sample index")
-    plt.ylabel("Predicted probability")
-    plt.title(title)
-    plt.grid(True, alpha=0.3)
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(save_path, dpi=150)
-    plt.close()
-
-
-def tsne_plot(cfg: CFG, emb: np.ndarray, labels: list[str], save_path: Path, title: str, star_mask=None):
-    # labels -> int
-    uniq = sorted(list(set(labels)))
-    lab2i = {l: i for i, l in enumerate(uniq)}
-    y = np.array([lab2i[l] for l in labels], dtype=np.int64)
-
-    n = emb.shape[0]
-    perp = min(cfg.tsne_perplexity, max(5, (n - 1) // 3))
-    Z2 = TSNE(n_components=2, random_state=cfg.seed, perplexity=perp).fit_transform(emb)
-
-    plt.figure(figsize=(9, 7))
-    for l in uniq:
-        m = np.array([x == l for x in labels])
-        if star_mask is not None and m.any() and star_mask[m].all():
-            plt.scatter(Z2[m, 0], Z2[m, 1], marker="*", s=120, alpha=1.0, label=l, edgecolors="black")
-        else:
-            plt.scatter(Z2[m, 0], Z2[m, 1], s=18, alpha=0.7, label=l)
-
-    plt.title(title)
-    plt.grid(True, alpha=0.3)
-    plt.legend(loc="best", fontsize=9)
-    plt.tight_layout()
-    plt.savefig(save_path, dpi=150)
-    plt.close()
 
 
 # =========================
@@ -318,6 +261,7 @@ def adapt_test_user_embedding(
     Apos_bin: torch.Tensor,          # (n_users, n_items) binary sparse
     Aneg_bin: torch.Tensor | None,   # optional
     E_u_train: torch.Tensor,         # (n_users, d)
+    item_owner_uid: np.ndarray,
     device: torch.device
 ):
     """
@@ -442,20 +386,51 @@ def rm_collate(batch):
 # =========================
 # Main
 # =========================
-def run_copl_training(cfg: CFG):
+def run_copl_training(cfg: CFG, trial: optuna.Trial = None):
     seed_all(cfg.seed)
     device = torch.device(cfg.device if torch.cuda.is_available() else "cpu")
 
+    # Determine mode & log_dir
+    is_training = True
     log_dir = None
-    if cfg.verbose > 0:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_dir = Path(cfg.save_root) / timestamp
+    
+    if cfg.timestamp is not None:
+        if cfg.timestamp == "test":
+            log_dir = Path(cfg.save_root) / "test"
+        else:
+            log_dir = Path(cfg.save_root) / cfg.timestamp
+            is_training = False
+            print(f"Inference Mode: Loading model from {log_dir}")
+    else:
+        if cfg.verbose > 0:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            log_dir = Path(cfg.save_root) / timestamp
+
+    if log_dir is not None:
         log_dir.mkdir(parents=True, exist_ok=True)
 
-        with open(log_dir / "cfg.json", "w", encoding="utf-8") as f:
-            json.dump(cfg.__dict__, f, ensure_ascii=False, indent=2)
+        # Inference: Load saved config to match model architecture
+        if not is_training:
+            cfg_path = log_dir / "cfg.json"
+            if cfg_path.exists():
+                print(f"Loading config from {cfg_path}...")
+                with open(cfg_path, "r", encoding="utf-8") as f:
+                    saved_cfg = json.load(f)
+                for k, v in saved_cfg.items():
+                    # Don't overwrite the timestamp (which controls the mode)
+                    if k == "timestamp":
+                        continue
+                    if hasattr(cfg, k):
+                        setattr(cfg, k, v)
+            else:
+                print("Warning: cfg.json not found. Using current script config.")
 
+        if is_training and cfg.verbose > 0:
+            with open(log_dir / "cfg.json", "w", encoding="utf-8") as f:
+                json.dump(cfg.__dict__, f, ensure_ascii=False, indent=2)
         print("Log dir:", log_dir)
+
+    if cfg.verbose > 0:
         print("\n[1] Loading train drivers...")
 
     # -------------------------
@@ -565,19 +540,32 @@ def run_copl_training(cfg: CFG):
     if cfg.verbose > 0:
         print("\n[3] Training GCF (pointwise BCE)...")
     
-    gcf = CoPLGCF(
-        n_u=n_users,
-        n_i=n_items,
-        d=cfg.hidden_dim,
-        pos_adj_norm=Apos_norm,
-        neg_adj_norm=Aneg_norm,
-        dropout=cfg.gcf_dropout,
-        l=cfg.gcf_layers,
-        item_item_adj_norm=Aii_norm,
-        item_item_weight=cfg.item_item_weight,
-    ).to(device)
-
-    opt_gcf = torch.optim.AdamW(gcf.parameters(), lr=cfg.gcf_lr, weight_decay=cfg.gcf_weight_decay)
+    if cfg.model_type == "gcf":
+        gcf = CoPLGCF(
+            n_u=n_users,
+            n_i=n_items,
+            d=cfg.hidden_dim,
+            pos_adj_norm=Apos_norm,
+            neg_adj_norm=Aneg_norm,
+            dropout=cfg.gcf_dropout,
+            l=cfg.gcf_layers,
+            item_item_adj_norm=Aii_norm,
+            item_item_weight=cfg.item_item_weight,
+        ).to(device)
+    elif cfg.model_type == "gcf_gcn":
+        gcf = CoPLGCF_GCN(
+            n_u=n_users,
+            n_i=n_items,
+            d=cfg.hidden_dim,
+            pos_adj_norm=Apos_norm,
+            neg_adj_norm=Aneg_norm,
+            dropout=cfg.gcf_dropout,
+            l=cfg.gcf_layers,
+            item_item_adj_norm=Aii_norm,
+            item_item_weight=cfg.item_item_weight,
+        ).to(device)
+    else:
+        raise NotImplementedError
 
     tr_u_t = torch.tensor(tr_u, dtype=torch.long, device=device)
     tr_i_t = torch.tensor(tr_i, dtype=torch.long, device=device)
@@ -586,54 +574,72 @@ def run_copl_training(cfg: CFG):
     va_i_t = torch.tensor(va_i, dtype=torch.long, device=device)
     va_y_np = va_y.astype(np.int64)
 
-    pos_cnt = int(tr_y.sum())
-    neg_cnt = int((1 - tr_y).sum())
-    pos_weight = torch.tensor([neg_cnt / max(1, pos_cnt)], dtype=torch.float32, device=device)
-
     best_auc = -1.0
     best_gcf_state_dict = None
 
-    for epoch in range(cfg.gcf_epochs):
-        gcf.train()
-        opt_gcf.zero_grad()
-        loss, _ = gcf.forward_pointwise(
-            tr_u_t, tr_i_t, tr_y_t,
-            pos_weight=pos_weight,
-            sample_weight=None,
-            test=False,
-            lambda_reg=cfg.gcf_lambda_reg,
-        )
-        loss.backward()
-        opt_gcf.step()
+    if is_training:
+        opt_gcf = torch.optim.AdamW(gcf.parameters(), lr=cfg.gcf_lr, weight_decay=cfg.gcf_weight_decay)
 
-        gcf.eval()
-        with torch.no_grad():
-            _, val_logits = gcf.forward_pointwise(
-                va_u_t, va_i_t, torch.tensor(va_y_np, dtype=torch.float32, device=device),
-                pos_weight=None,
+        pos_cnt = int(tr_y.sum())
+        neg_cnt = int((1 - tr_y).sum())
+        pos_weight = torch.tensor([neg_cnt / max(1, pos_cnt)], dtype=torch.float32, device=device)
+
+        for epoch in range(cfg.gcf_epochs):
+            gcf.train()
+            opt_gcf.zero_grad()
+            loss, _ = gcf.forward_pointwise(
+                tr_u_t, tr_i_t, tr_y_t,
+                pos_weight=pos_weight,
                 sample_weight=None,
-                test=True,
-                lambda_reg=0.0,
+                test=False,
+                lambda_reg=cfg.gcf_lambda_reg,
             )
-            val_prob = torch.sigmoid(val_logits).detach().cpu().numpy()
-            val_auc = roc_auc_score(va_y_np, val_prob) if len(np.unique(va_y_np)) > 1 else 0.0
+            loss.backward()
+            opt_gcf.step()
 
-        if val_auc > best_auc:
-            best_auc = val_auc
-            best_gcf_state_dict = {k: v.cpu() for k, v in gcf.state_dict().items()}
+            gcf.eval()
+            with torch.no_grad():
+                _, val_logits = gcf.forward_pointwise(
+                    va_u_t, va_i_t, torch.tensor(va_y_np, dtype=torch.float32, device=device),
+                    pos_weight=None,
+                    sample_weight=None,
+                    test=True,
+                    lambda_reg=0.0,
+                )
+                val_prob = torch.sigmoid(val_logits).detach().cpu().numpy()
+                val_auc = roc_auc_score(va_y_np, val_prob) if len(np.unique(va_y_np)) > 1 else 0.0
 
-        if cfg.verbose > 0 and (epoch % 10 == 0 or epoch == cfg.gcf_epochs - 1):
-            print(f"  [GCF] epoch={epoch:03d} loss={float(loss.item()):.4f} val_auc={val_auc:.4f} best={best_auc:.4f}")
+            if val_auc > best_auc:
+                best_auc = val_auc
+                best_gcf_state_dict = {k: v.cpu() for k, v in gcf.state_dict().items()}
 
-    if cfg.verbose > 0:
-        print("Best GCF val AUC:", best_auc)
+            if cfg.verbose > 0 and (epoch % 10 == 0 or epoch == cfg.gcf_epochs - 1):
+                print(f"  [GCF] epoch={epoch:03d} loss={float(loss.item()):.4f} val_auc={val_auc:.4f} best={best_auc:.4f}")
+
+            # Optuna Pruning
+            if trial is not None:
+                trial.report(val_auc, step=epoch)
+                if trial.should_prune():
+                    raise optuna.TrialPruned()
+
+        if cfg.verbose > 0:
+            print("Best GCF val AUC:", best_auc)
+            if best_gcf_state_dict is not None:
+                torch.save(best_gcf_state_dict, log_dir / "best_gcf.pt")
+                print("Saved:", log_dir / "best_gcf.pt")
+
+        # load best & extract embeddings
         if best_gcf_state_dict is not None:
-            torch.save(best_gcf_state_dict, log_dir / "best_gcf.pt")
-            print("Saved:", log_dir / "best_gcf.pt")
-
-    # load best & extract embeddings
-    if best_gcf_state_dict is not None:
-        gcf.load_state_dict({k: v.to(device) for k, v in best_gcf_state_dict.items()})
+            gcf.load_state_dict({k: v.to(device) for k, v in best_gcf_state_dict.items()})
+    else:
+        # Inference: Load
+        p = log_dir / "best_gcf.pt"
+        if p.exists():
+            print(f"Loading GCF model from {p}")
+            st = torch.load(p, map_location=device)
+            gcf.load_state_dict(st)
+        else:
+            print(f"Warning: {p} not found. Using random init.")
     
     gcf.eval()
     with torch.no_grad():
@@ -646,79 +652,96 @@ def run_copl_training(cfg: CFG):
         print("\n[4] Training RM (time-series, pointwise BCE)...")
     
     rm = TSRewardModel(obs_dim=obs_dim, user_dim=E_u_train.shape[1], hidden=cfg.rm_hidden, mlp_hidden=cfg.rm_mlp_hidden).to(device)
-    opt_rm = torch.optim.AdamW(rm.parameters(), lr=cfg.rm_lr, weight_decay=cfg.rm_weight_decay)
-
-    # RM datasets use same split (tr_u,tr_i,tr_y) and (va_u,va_i,va_y)
-    tr_ds = RMEdgeDataset(tr_u, tr_i, tr_y, item_series)
-    va_ds = RMEdgeDataset(va_u, va_i, va_y, item_series)
-
-    tr_loader = torch.utils.data.DataLoader(tr_ds, batch_size=cfg.rm_batch_size, shuffle=True, collate_fn=rm_collate, drop_last=True)
-    va_loader = torch.utils.data.DataLoader(va_ds, batch_size=cfg.rm_batch_size, shuffle=False, collate_fn=rm_collate, drop_last=False)
-
-    pos_cnt_rm = int(tr_y.sum())
-    neg_cnt_rm = int((1 - tr_y).sum())
-    pos_weight_rm = torch.tensor([neg_cnt_rm / max(1, pos_cnt_rm)], dtype=torch.float32, device=device)
-
     best_rm_auc = -1.0
     best_rm_state_dict = None
 
-    for epoch in range(cfg.rm_epochs):
-        rm.train()
-        tr_loss_accum = 0.0
-        n_seen = 0
+    if is_training:
+        opt_rm = torch.optim.AdamW(rm.parameters(), lr=cfg.rm_lr, weight_decay=cfg.rm_weight_decay)
 
-        for uids_b, obs_b, y_b in tr_loader:
-            uids_b = uids_b.to(device)
-            obs_b = obs_b.to(device)
-            y_b = y_b.to(device)
+        # RM datasets use same split (tr_u,tr_i,tr_y) and (va_u,va_i,va_y)
+        tr_ds = RMEdgeDataset(tr_u, tr_i, tr_y, item_series)
+        va_ds = RMEdgeDataset(va_u, va_i, va_y, item_series)
 
-            user_emb = E_u_train[uids_b]  # fixed user embedding
+        tr_loader = torch.utils.data.DataLoader(tr_ds, batch_size=cfg.rm_batch_size, shuffle=True, collate_fn=rm_collate, drop_last=True)
+        va_loader = torch.utils.data.DataLoader(va_ds, batch_size=cfg.rm_batch_size, shuffle=False, collate_fn=rm_collate, drop_last=False)
 
-            logits = rm(user_emb, obs_b)
-            loss_bce = weighted_bce_logits(logits, y_b, pos_weight=pos_weight_rm)
-            loss_reg = (user_emb.norm(2).pow(2).mean())  # small reg (optional)
-            loss = loss_bce + cfg.rm_lambda_reg * loss_reg
+        pos_cnt_rm = int(tr_y.sum())
+        neg_cnt_rm = int((1 - tr_y).sum())
+        pos_weight_rm = torch.tensor([neg_cnt_rm / max(1, pos_cnt_rm)], dtype=torch.float32, device=device)
 
-            opt_rm.zero_grad()
-            loss.backward()
-            opt_rm.step()
+        for epoch in range(cfg.rm_epochs):
+            rm.train()
+            tr_loss_accum = 0.0
+            n_seen = 0
 
-            tr_loss_accum += float(loss.item()) * len(uids_b)
-            n_seen += len(uids_b)
-
-        rm.eval()
-        all_prob = []
-        all_y = []
-        with torch.no_grad():
-            for uids_b, obs_b, y_b in va_loader:
+            for uids_b, obs_b, y_b in tr_loader:
                 uids_b = uids_b.to(device)
                 obs_b = obs_b.to(device)
                 y_b = y_b.to(device)
-                user_emb = E_u_train[uids_b]
+
+                user_emb = E_u_train[uids_b]  # fixed user embedding
+
                 logits = rm(user_emb, obs_b)
-                prob = torch.sigmoid(logits).detach().cpu().numpy()
-                all_prob.append(prob)
-                all_y.append(y_b.detach().cpu().numpy())
+                loss_bce = weighted_bce_logits(logits, y_b, pos_weight=pos_weight_rm)
+                loss_reg = (user_emb.norm(2).pow(2).mean())  # small reg (optional)
+                loss = loss_bce + cfg.rm_lambda_reg * loss_reg
 
-        all_prob = np.concatenate(all_prob) if all_prob else np.array([])
-        all_y = np.concatenate(all_y).astype(np.int64) if all_y else np.array([])
-        val_auc = roc_auc_score(all_y, all_prob) if len(np.unique(all_y)) > 1 else 0.0
+                opt_rm.zero_grad()
+                loss.backward()
+                opt_rm.step()
 
-        if val_auc > best_rm_auc:
-            best_rm_auc = val_auc
-            best_rm_state_dict = {k: v.cpu() for k, v in rm.state_dict().items()}
+                tr_loss_accum += float(loss.item()) * len(uids_b)
+                n_seen += len(uids_b)
 
-        if cfg.verbose > 0 and (epoch % 5 == 0 or epoch == cfg.rm_epochs - 1):
-            print(f"  [RM ] epoch={epoch:03d} train_loss={tr_loss_accum/max(1,n_seen):.4f} val_auc={val_auc:.4f} best={best_rm_auc:.4f}")
+            rm.eval()
+            all_prob = []
+            all_y = []
+            with torch.no_grad():
+                for uids_b, obs_b, y_b in va_loader:
+                    uids_b = uids_b.to(device)
+                    obs_b = obs_b.to(device)
+                    y_b = y_b.to(device)
+                    user_emb = E_u_train[uids_b]
+                    logits = rm(user_emb, obs_b)
+                    prob = torch.sigmoid(logits).detach().cpu().numpy()
+                    all_prob.append(prob)
+                    all_y.append(y_b.detach().cpu().numpy())
 
-    if cfg.verbose > 0:
-        print("Best RM val AUC:", best_rm_auc)
+            all_prob = np.concatenate(all_prob) if all_prob else np.array([])
+            all_y = np.concatenate(all_y).astype(np.int64) if all_y else np.array([])
+            val_auc = roc_auc_score(all_y, all_prob) if len(np.unique(all_y)) > 1 else 0.0
+
+            if val_auc > best_rm_auc:
+                best_rm_auc = val_auc
+                best_rm_state_dict = {k: v.cpu() for k, v in rm.state_dict().items()}
+
+            if cfg.verbose > 0 and (epoch % 5 == 0 or epoch == cfg.rm_epochs - 1):
+                print(f"  [RM ] epoch={epoch:03d} train_loss={tr_loss_accum/max(1,n_seen):.4f} val_auc={val_auc:.4f} best={best_rm_auc:.4f}")
+            
+            # Optuna Pruning
+            if trial is not None:
+                current_step = cfg.gcf_epochs + epoch
+                trial.report(val_auc, step=current_step)
+                if trial.should_prune():
+                    raise optuna.TrialPruned()
+
+        if cfg.verbose > 0:
+            print("Best RM val AUC:", best_rm_auc)
+            if best_rm_state_dict is not None:
+                torch.save(best_rm_state_dict, log_dir / "best_rm.pt")
+                print("Saved:", log_dir / "best_rm.pt")
+
         if best_rm_state_dict is not None:
-            torch.save(best_rm_state_dict, log_dir / "best_rm.pt")
-            print("Saved:", log_dir / "best_rm.pt")
-
-    if best_rm_state_dict is not None:
-        rm.load_state_dict({k: v.to(device) for k, v in best_rm_state_dict.items()})
+            rm.load_state_dict({k: v.to(device) for k, v in best_rm_state_dict.items()})
+    else:
+        # Inference: Load
+        p = log_dir / "best_rm.pt"
+        if p.exists():
+            print(f"Loading RM model from {p}")
+            st = torch.load(p, map_location=device)
+            rm.load_state_dict(st)
+        else:
+            print(f"Warning: {p} not found. Using random init.")
     rm.eval()
 
     # -------------------------
@@ -750,6 +773,7 @@ def run_copl_training(cfg: CFG):
         Apos_bin=Apos_bin,
         Aneg_bin=Aneg_bin,
         E_u_train=E_u_train,
+        item_owner_uid=item_owner_uid,
         device=device,
     )
 
@@ -790,7 +814,7 @@ def run_copl_training(cfg: CFG):
         user_labels = train_drivers + [f"{test_driver} (Test)"]
         star_mask = np.array([False] * len(train_drivers) + [True])
 
-        tsne_plot(
+        compare_viz_plot(
             cfg=cfg,
             emb=user_emb_all,
             labels=user_labels,
@@ -810,7 +834,7 @@ def run_copl_training(cfg: CFG):
             take = min(cfg.tsne_max_items_per_driver, len(ids))
             picked = rng.choice(ids, size=take, replace=False)
             train_item_idx.append(picked)
-            train_item_labels += [f"{uname} (TrainItem)"] * take
+            train_item_labels += [f"{uname} (Train)"] * take
 
         train_item_idx = np.concatenate(train_item_idx) if train_item_idx else np.array([], dtype=np.int64)
         E_i_train_sample = E_i_train[torch.tensor(train_item_idx, dtype=torch.long, device=device)].detach().cpu().numpy()
@@ -820,13 +844,13 @@ def run_copl_training(cfg: CFG):
         take_test = min(cfg.tsne_max_items_per_driver, n_test_items)
         test_pick = rng.choice(np.arange(n_test_items), size=take_test, replace=False) if n_test_items > take_test else np.arange(n_test_items)
         E_i_test_sample = E_i_test[torch.tensor(test_pick, dtype=torch.long, device=device)].detach().cpu().numpy()
-        test_item_labels = [f"{test_driver} (TestItem)"] * len(test_pick)
+        test_item_labels = [f"{test_driver} (Test)"] * len(test_pick)
 
         item_emb_all = np.concatenate([E_i_train_sample, E_i_test_sample], axis=0)
         item_labels_all = train_item_labels + test_item_labels
 
         star_mask_items = np.array([False] * len(train_item_labels) + [True] * len(test_item_labels))
-        tsne_plot(
+        compare_viz_plot(
             cfg=cfg,
             emb=item_emb_all,
             labels=item_labels_all,
@@ -835,6 +859,104 @@ def run_copl_training(cfg: CFG):
             star_mask=star_mask_items,
         )
 
+        # -------------------------
+        # 8-2) Chunk-based User t-SNE
+        # -------------------------
+        print("\n[7] t-SNE visualization (Context-based)...")
+        chunk_embs = []
+        chunk_labels = []
+
+        def process_chunks_for_viz(X_full, y_full, label_name):
+            # 1. Attach items to train (get weights)
+            # Note: For train items, this finds their position in Z_train via nearest neighbors (likely themselves).
+            _, neigh_idx_all, neigh_w_all = attach_test_items_to_train(
+                X_test=X_full,
+                mu=mu, sd=sd, pca=pca,
+                Z_train=Z_train,
+                gamma=gamma,
+                E_i_train=E_i_train,
+                topk=cfg.attach_topk_items,
+                device=device
+            )
+            
+            # Shuffle to get random chunks
+            n_samples = len(X_full)
+            rng = np.random.default_rng(cfg.seed)
+            perm = rng.permutation(n_samples)
+            
+            y_shuff = y_full[perm]
+            neigh_idx_shuff = neigh_idx_all[perm]
+            neigh_w_shuff = neigh_w_all[perm]
+            
+            num_chunks = n_samples // cfg.context_size
+            for i in range(num_chunks):
+                st = i * cfg.context_size
+                ed = st + cfg.context_size
+                
+                # Adapt: chunk -> user embedding
+                e_u_chunk, _ = adapt_test_user_embedding(
+                    cfg=cfg,
+                    y_test=y_shuff[st:ed],
+                    neigh_idx=neigh_idx_shuff[st:ed],
+                    neigh_w=neigh_w_shuff[st:ed],
+                    Apos_bin=Apos_bin,
+                    Aneg_bin=Aneg_bin,
+                    E_u_train=E_u_train,
+                    item_owner_uid=item_owner_uid,
+                    device=device
+                )
+                chunk_embs.append(e_u_chunk.detach().cpu().numpy())
+                chunk_labels.append(label_name)
+
+        # Train users
+        for uid, uname in enumerate(train_drivers):
+            item_ids, y_u = per_user_items[uid]
+            X_u = item_series[item_ids]
+            process_chunks_for_viz(X_u.astype(np.float32), y_u, f"{uname} (Train)")
+            
+        # Test user
+        process_chunks_for_viz(X_test.astype(np.float32), y_test, f"{test_driver} (Test)")
+        
+        if chunk_embs:
+            chunk_embs = np.stack(chunk_embs)
+            is_test_chunk = np.array(["(Test)" in l for l in chunk_labels])
+            
+            compare_viz_plot(
+                cfg=cfg,
+                emb=chunk_embs,
+                labels=chunk_labels,
+                save_path=log_dir / "tsne_users_chunks.png",
+                title=f"t-SNE: User Embeddings by Context (size={cfg.context_size})",
+                star_mask=is_test_chunk
+            )
+        
+        if cfg.verbose > 0:
+            print("\n[8] Deep Analysis of Item-Item Graph & Adaptation...")
+            # 1. Gamma & Distance 분석
+            plot_distance_gamma_analysis(
+                Z_train=Z_train, 
+                gamma=gamma, 
+                save_path=log_dir / "analysis_gamma_dist.png"
+            )
+
+            # 2. 드라이버 간 아이템 연결성 (Adjacency Matrix 기반)
+            plot_driver_similarity_matrix(
+                Aii_norm=Aii_norm, 
+                item_owner_uid=item_owner_uid, 
+                train_drivers=train_drivers, 
+                save_path=log_dir / "analysis_driver_sim_matrix.png"
+            )
+
+            # 3. 테스트 드라이버가 누구로부터 임베딩을 빌려왔는가?
+            plot_test_item_bridge(
+                neigh_idx=neigh_idx, 
+                neigh_w=neigh_w, 
+                item_owner_uid=item_owner_uid, 
+                train_drivers=train_drivers, 
+                save_path=log_dir / "analysis_test_bridge_weights.png"
+            )
+
+        print(f"Deep analysis plots saved to {log_dir}")
         # -------------------------
         # Save summary
         # -------------------------

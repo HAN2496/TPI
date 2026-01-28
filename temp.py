@@ -1,358 +1,125 @@
-import os
-import json
-import torch
-import numpy as np
-import pickle
-from datetime import datetime
-from pathlib import Path
-from tqdm import tqdm
-from sklearn.neighbors import NearestNeighbors
-from torch.utils.data import DataLoader, TensorDataset
-from collections import defaultdict
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import numpy as np
 
-# User's util imports
-from src.utils.utils import _load_dataset_sequences
-from src.utils.logger import ExperimentLogger
+def draw_copl_diagram():
+    fig, ax = plt.subplots(1, 2, figsize=(16, 7))
+    
+    # ==========================================
+    # Panel 1: Graph Construction (Disjoint but Connected)
+    # ==========================================
+    ax[0].set_title("(a) Graph Construction with Item-Item Similarity", fontsize=14, pad=20)
+    ax[0].set_xlim(0, 10)
+    ax[0].set_ylim(0, 10)
+    ax[0].axis('off')
+    
+    # User Nodes
+    users = {'u1': (2, 7.5), 'u2': (2, 2.5)}
+    # Item Nodes (Disjoint sets for u1 and u2)
+    # u1's items
+    items_u1 = {'i1': (5, 8.5), 'i2': (5, 6.5)}
+    # u2's items
+    items_u2 = {'i3': (5, 3.5), 'i4': (5, 1.5)}
+    
+    all_items = {**items_u1, **items_u2}
+    
+    # Draw Nodes
+    for name, pos in users.items():
+        circle = patches.Circle(pos, 0.4, facecolor='#333333', edgecolor='black', zorder=10)
+        ax[0].add_patch(circle)
+        ax[0].text(pos[0], pos[1], name, color='white', ha='center', va='center', fontweight='bold', fontsize=12, zorder=11)
+        ax[0].text(pos[0]-0.8, pos[1], "User", ha='center', va='center', fontsize=10, color='gray')
 
-# CoPL Models
-from models_copl import CoPLGCF_Optimized, CoPLControlRM
+    for name, pos in all_items.items():
+        rect = patches.FancyBboxPatch((pos[0]-0.4, pos[1]-0.3), 0.8, 0.6, boxstyle="round,pad=0.1", 
+                                      facecolor='#ffffff', edgecolor='black', zorder=10)
+        ax[0].add_patch(rect)
+        ax[0].text(pos[0], pos[1], name, color='black', ha='center', va='center', fontsize=12, zorder=11)
+        # Dummy waveform
+        x_wave = np.linspace(pos[0]-0.3, pos[0]+0.3, 20)
+        y_wave = pos[1] - 0.2 + 0.1 * np.sin(4 * np.pi * (x_wave - pos[0]))
+        ax[0].plot(x_wave, y_wave, color='gray', linewidth=0.5, zorder=11)
 
-# --- Configuration ---
-FLAGS = {
-    # Data Config
-    "features": ["IMU_VerAccelVal", "Bounce_rate_6D", "Pitch_rate_6D", "IMU_LongAccelVal"],
-    "test_driver_name": "강신길",
-    "train_driver_names": ["김진명", "김태근", "조현석", "한규택", "박재일", "이지환"],
-    "time_range": (5, 7),
-    "downsample": 1,
-    "context_size": 1, # CoPL uses trajectory-level items
-    'normalize': True,
+    # Draw User-Item Edges (Bipartite)
+    # u1 -> i1 (Good/Blue), u1 -> i2 (Bad/Red)
+    ax[0].plot([users['u1'][0], items_u1['i1'][0]], [users['u1'][1], items_u1['i1'][1]], color='#4285F4', linewidth=2, label='Pos (Good)')
+    ax[0].plot([users['u1'][0], items_u1['i2'][0]], [users['u1'][1], items_u1['i2'][1]], color='#EA4335', linewidth=2, label='Neg (Bad)')
+    
+    # u2 -> i3 (Good/Blue), u2 -> i4 (Bad/Red)
+    ax[0].plot([users['u2'][0], items_u2['i3'][0]], [users['u2'][1], items_u2['i3'][1]], color='#4285F4', linewidth=2)
+    ax[0].plot([users['u2'][0], items_u2['i4'][0]], [users['u2'][1], items_u2['i4'][1]], color='#EA4335', linewidth=2)
 
-    # CoPL GCF Config
-    "gcf_hidden_dim": 64, # User embedding size
-    "gcf_layers": 3,
-    "gcf_dropout": 0.1,
-    "gcf_lambda_ii": 0.3, # Item-Item weight
-    "gcf_lr": 1e-3,
-    "gcf_epochs": 100,
-    "knn_k": 5, # Item-Item graph neighbor count
+    # Draw Item-Item Edges (Similarity) - THE KEY PART
+    # i1 <-> i3 (Similar patterns)
+    ax[0].plot([items_u1['i1'][0], items_u2['i3'][0]], [items_u1['i1'][1], items_u2['i3'][1]], 
+               color='#34A853', linewidth=3, linestyle='--', zorder=5)
+    ax[0].text(5.2, 6, "High Similarity\n(Feature-based)", ha='left', va='center', color='#34A853', fontweight='bold', fontsize=10)
 
-    # CoPL RM Config
-    "rm_hidden_dim": 128,
-    "rm_experts": 4,
-    "rm_lr": 5e-4,
-    "rm_epochs": 100,
-    "rm_batch_size": 256,
+    # i2 <-> i4 (Similar patterns)
+    ax[0].plot([items_u1['i2'][0], items_u2['i4'][0]], [items_u1['i2'][1], items_u2['i4'][1]], 
+               color='#34A853', linewidth=3, linestyle='--', zorder=5)
     
-    "device": "cuda" if torch.cuda.is_available() else "cpu",
-}
+    # Legend
+    ax[0].legend(loc='upper left', fontsize=10)
+    ax[0].text(5, 9.5, "Sensor Data Items (Disjoint IDs)", ha='center', fontsize=12, fontweight='bold')
+    
+    # ==========================================
+    # Panel 2: Message Passing Flow
+    # ==========================================
+    ax[1].set_title("(b) Collaborative Information Flow", fontsize=14, pad=20)
+    ax[1].set_xlim(0, 10)
+    ax[1].set_ylim(0, 10)
+    ax[1].axis('off')
 
-def create_graph_data(driver_names, features, time_range, downsample, normalize=True):
-    """
-    Loads data and creates Bipartite Graph + Item-Item Graph.
-    Unlike VPL, here 'Item' is a unique trajectory segment.
-    """
-    print("Loading data for Graph Construction...")
+    # Draw nodes again for context
+    # Only draw relevant path: u2 -> i3 -> i1 -> u1
     
-    # 1. Load All Data & Normalize
-    all_obs = []
-    all_labels = []
-    all_users = []
-    
-    user_map = {name: i for i, name in enumerate(driver_names)}
-    
-    # Temp storage for normalization
-    raw_obs_list = []
-    
-    for name in driver_names:
-        config = {'features': features}
-        X, y = _load_dataset_sequences(name, time_range, downsample, config)
-        # X: (N, T, D)
-        raw_obs_list.append(X)
-        
-        # Flatten for Item ID creation
-        u_idx = user_map[name]
-        all_users.extend([u_idx] * len(X))
-        all_labels.extend(y)
-        
-    raw_obs_concat = np.concatenate(raw_obs_list, axis=0)
-    mean = np.mean(raw_obs_concat, axis=(0, 1))
-    std = np.std(raw_obs_concat, axis=(0, 1)) + 1e-6
-    
-    # 2. Create Items (Unique Trajectories)
-    # In control data, every sample is usually unique.
-    # We assign a unique Item ID to every sample.
-    
-    n_items = len(raw_obs_concat)
-    n_users = len(driver_names)
-    
-    normalized_obs = (raw_obs_concat - mean) / std if normalize else raw_obs_concat
-    
-    # 3. Construct Adjacency Lists
-    # Pos Edge: User -> Item (if label=1)
-    # Neg Edge: User -> Item (if label=0)
-    
-    pos_indices = [[], []] # [User_idx, Item_idx]
-    neg_indices = [[], []]
-    
-    for item_idx, (u_idx, label) in enumerate(zip(all_users, all_labels)):
-        if label == 1:
-            pos_indices[0].append(u_idx)
-            pos_indices[1].append(item_idx)
-        else:
-            neg_indices[0].append(u_idx)
-            neg_indices[1].append(item_idx)
-            
-    # Convert to Sparse Tensor
-    def make_adj(indices, shape):
-        if len(indices[0]) == 0: return torch.sparse_coo_tensor(torch.empty(2,0), [], shape)
-        idx = torch.LongTensor(indices)
-        val = torch.ones(len(indices[0]))
-        # Normalize (simplified row normalization)
-        return torch.sparse_coo_tensor(idx, val, shape).coalesce()
+    # Positions (slightly shifted for flow visualization)
+    pos_u2 = (8, 2)
+    pos_i3 = (5, 3)
+    pos_i1 = (5, 7)
+    pos_u1 = (2, 8)
 
-    pos_adj = make_adj(pos_indices, (n_users, n_items))
-    neg_adj = make_adj(neg_indices, (n_users, n_items))
-    
-    # 4. Construct Item-Item Graph (Essential for CoPL in this setting)
-    # Use k-NN on flattened trajectories
-    print("Constructing Item-Item Similarity Graph (k-NN)...")
-    flat_obs = normalized_obs.reshape(n_items, -1)
-    
-    # Use CPU for k-NN to save GPU memory if N is large
-    knn = NearestNeighbors(n_neighbors=FLAGS['knn_k']+1, metric='cosine', n_jobs=-1)
-    knn.fit(flat_obs)
-    distances, neighbors = knn.kneighbors(flat_obs)
-    
-    # Build sparse item-item matrix
-    ii_rows = []
-    ii_cols = []
-    for i in range(n_items):
-        for n_idx in neighbors[i][1:]: # Skip self
-            ii_rows.append(i)
-            ii_cols.append(n_idx)
-            
-    item_adj = torch.sparse_coo_tensor(
-        torch.LongTensor([ii_rows, ii_cols]), 
-        torch.ones(len(ii_rows)), 
-        (n_items, n_items)
-    ).coalesce()
-    
-    print(f"Graph Ready: Users={n_users}, Items={n_items}, PosEdges={len(pos_indices[0])}, ItemEdges={len(ii_rows)}")
-    
-    # Data for RM Training (Item Features, Labels, UserIDs)
-    rm_data = {
-        'obs': torch.FloatTensor(normalized_obs),
-        'labels': torch.FloatTensor(all_labels),
-        'uids': torch.LongTensor(all_users)
-    }
-    
-    return pos_adj, neg_adj, item_adj, rm_data, (n_users, n_items)
+    # Nodes
+    ax[1].add_patch(patches.Circle(pos_u2, 0.4, facecolor='#333333', edgecolor='black'))
+    ax[1].text(pos_u2[0], pos_u2[1], "u2", color='white', ha='center', va='center', fontweight='bold')
 
-def train_gcf(model, pos_adj, neg_adj, rm_data, config):
-    print("\n--- Phase 1: Training CoPL GCF (User Embeddings) ---")
-    optimizer = torch.optim.Adam(model.parameters(), lr=config['gcf_lr'])
+    ax[1].add_patch(patches.FancyBboxPatch((pos_i3[0]-0.4, pos_i3[1]-0.3), 0.8, 0.6, boxstyle="round,pad=0.1", facecolor='white', edgecolor='black'))
+    ax[1].text(pos_i3[0], pos_i3[1], "i3", color='black', ha='center', va='center')
     
-    # Prepare BPR Sampling
-    # We need triplets (User, Pos_Item, Neg_Item)
-    # Since specific items are unique, we sample: User -> (Any of his Pos Items) vs (Any of his Neg Items)
-    
-    uids = rm_data['uids'].numpy()
-    labels = rm_data['labels'].numpy()
-    
-    user_pos_items = defaultdict(list)
-    user_neg_items = defaultdict(list)
-    
-    for i, (u, l) in enumerate(zip(uids, labels)):
-        if l == 1: user_pos_items[u].append(i)
-        else: user_neg_items[u].append(i)
-        
-    # Training Loop
-    model.train()
-    for epoch in range(config['gcf_epochs']):
-        # Sample Batch (Simplified: 1 epoch = 1 full batch of random pairs per user)
-        batch_u = []
-        batch_p = []
-        batch_n = []
-        
-        for u in user_pos_items.keys():
-            if len(user_pos_items[u]) == 0 or len(user_neg_items[u]) == 0: continue
-            
-            # Sample balanced pairs
-            n_samples = min(len(user_pos_items[u]), 100) # Limit samples per user
-            ps = np.random.choice(user_pos_items[u], n_samples)
-            ns = np.random.choice(user_neg_items[u], n_samples)
-            
-            batch_u.extend([u]*n_samples)
-            batch_p.extend(ps)
-            batch_n.extend(ns)
-            
-        b_u = torch.LongTensor(batch_u).to(config['device'])
-        b_p = torch.LongTensor(batch_p).to(config['device'])
-        b_n = torch.LongTensor(batch_n).to(config['device'])
-        
-        optimizer.zero_grad()
-        (loss_seen, loss_reg), _ = model(b_u, b_p, b_n)
-        loss = loss_seen + 1e-4 * loss_reg
-        loss.backward()
-        optimizer.step()
-        
-        if epoch % 10 == 0:
-            print(f"Epoch {epoch}: Loss {loss.item():.4f} (Seen {loss_seen.item():.4f})")
-            
-    # Extract User Embeddings
-    model.eval()
-    with torch.no_grad():
-        E_u, _ = model(None, None, None, test=True) # Runs propagation one last time
-    return E_u.detach()
+    ax[1].add_patch(patches.FancyBboxPatch((pos_i1[0]-0.4, pos_i1[1]-0.3), 0.8, 0.6, boxstyle="round,pad=0.1", facecolor='white', edgecolor='black'))
+    ax[1].text(pos_i1[0], pos_i1[1], "i1", color='black', ha='center', va='center')
 
-def train_rm(rm_model, user_embeddings, rm_data, config):
-    print("\n--- Phase 2: Training CoPL Reward Model ---")
-    optimizer = torch.optim.Adam(rm_model.parameters(), lr=config['rm_lr'])
-    criterion = nn.BCEWithLogitsLoss()
-    
-    obs = rm_data['obs'].to(config['device'])
-    labels = rm_data['labels'].to(config['device']).unsqueeze(1)
-    uids = rm_data['uids'].to(config['device'])
-    
-    dataset = TensorDataset(obs, uids, labels)
-    loader = DataLoader(dataset, batch_size=config['rm_batch_size'], shuffle=True)
-    
-    rm_model.train()
-    for epoch in range(config['rm_epochs']):
-        total_loss = 0
-        correct = 0
-        total = 0
-        
-        for b_obs, b_uid, b_y in loader:
-            # Flatten observation for MLP: (B, T, D) -> (B, T*D)
-            b_obs_flat = b_obs.view(b_obs.size(0), -1)
-            
-            # Get User Embedding
-            b_u_emb = user_embeddings[b_uid]
-            
-            optimizer.zero_grad()
-            logits, _ = rm_model(b_obs_flat, b_u_emb)
-            
-            loss = criterion(logits, b_y)
-            loss.backward()
-            optimizer.step()
-            
-            total_loss += loss.item()
-            preds = (torch.sigmoid(logits) > 0.5).float()
-            correct += (preds == b_y).sum().item()
-            total += b_y.size(0)
-            
-        if epoch % 10 == 0:
-            print(f"Epoch {epoch}: Loss {total_loss/len(loader):.4f}, Acc {correct/total:.4f}")
-            
-    return rm_model
+    ax[1].add_patch(patches.Circle(pos_u1, 0.4, facecolor='#333333', edgecolor='black'))
+    ax[1].text(pos_u1[0], pos_u1[1], "u1", color='white', ha='center', va='center', fontweight='bold')
 
-def evaluate_test_driver(gcf_model, rm_model, test_driver_name, features, time_range, downsample):
-    print(f"\nEvaluating Test Driver: {test_driver_name}")
-    # 1. Load Test Data
-    config = {'features': features}
-    X, y = _load_dataset_sequences(test_driver_name, time_range, downsample, config)
-    
-    # Note: Normalization stats should ideally come from training, 
-    # but for simplicity here we assume X is pre-processed or we re-calc locally (simplified).
-    # In real pipeline, pass 'mean/std' from training.
-    
-    # 2. Unseen User Adaptation (Eq 11 in Paper)
-    # We need to find "similar users" in the training graph.
-    # CoPL uses 2-hop neighbors. Since we don't have the graph edges for the new user,
-    # we use the "Optimization-free adaptation" logic:
-    # "Users who have similar responses have similar preferences."
-    
-    # Simplified Adaptation:
-    # Since we can't easily link the new user's items to the graph (they are new items),
-    # we will skip the complex Graph Adaptation for this script and 
-    # use the "Average User Embedding" or a "Generic Expert" for inference.
-    # *Better Approach:* If the test user provides a few labeled samples, we can find 
-    # training items similar to these samples, identify who liked them, and aggregate their embeddings.
-    
-    print("  (Note: Using Average User Embedding for Unseen User - Zero-shot)")
-    avg_user_emb = gcf_model.E_u.mean(dim=0, keepdim=True) # (1, D)
-    
-    # 3. Inference
-    rm_model.eval()
-    device = next(rm_model.parameters()).device
-    
-    X_tensor = torch.FloatTensor(X).to(device)
-    X_flat = X_tensor.view(X.shape[0], -1)
-    u_emb_batch = avg_user_emb.repeat(X.shape[0], 1).to(device)
-    
-    with torch.no_grad():
-        logits, gate_weights = rm_model(X_flat, u_emb_batch)
-        probs = torch.sigmoid(logits).cpu().numpy().flatten()
-        
-    # 4. Viz
-    from sklearn.metrics import roc_auc_score
-    auc = roc_auc_score(y, probs)
-    print(f"  Test AUROC: {auc:.4f}")
-    
-    # Plot Experts usage
-    avg_gates = gate_weights.mean(dim=0).cpu().numpy()
-    print(f"  Expert Usage: {avg_gates}")
+    # Flow Arrows
+    # 1. u2 preference embedded into i3
+    ax[1].annotate("", xy=pos_i3, xytext=pos_u2, arrowprops=dict(arrowstyle="->", color='#4285F4', lw=3))
+    ax[1].text(6.8, 2.2, "1. Preference\nSignal", color='#4285F4', fontsize=10)
 
-    return probs, y
+    # 2. Item-Item similarity flow (i3 -> i1)
+    ax[1].annotate("", xy=(pos_i1[0], pos_i1[1]-0.4), xytext=(pos_i3[0], pos_i3[1]+0.4), 
+                   arrowprops=dict(arrowstyle="->", color='#34A853', lw=4, ls='--'))
+    ax[1].text(5.2, 5, "2. Feature Sharing\n(Item-Item Edge)", color='#34A853', fontweight='bold', fontsize=11, ha='left')
 
-def main():
-    # 1. Data & Graph Construction
-    pos_adj, neg_adj, item_adj, rm_data, (n_u, n_i) = create_graph_data(
-        FLAGS['train_driver_names'], 
-        FLAGS['features'], 
-        FLAGS['time_range'], 
-        FLAGS['downsample'],
-        normalize=FLAGS['normalize']
+    # 3. Aggregated info to u1
+    ax[1].annotate("", xy=(pos_u1[0]+0.4, pos_u1[1]), xytext=(pos_i1[0]-0.4, pos_i1[1]), 
+                   arrowprops=dict(arrowstyle="->", color='#4285F4', lw=3))
+    ax[1].text(3.5, 7.2, "3. Update u1\nwith u2's logic", color='black', fontsize=10)
+
+    # Explanation Box
+    text_str = (
+        "Even though u1 and u2 never rated the same item,\n"
+        "information flows because i1 and i3 are similar.\n\n"
+        r"$h_{i1} \leftarrow h_{i1} + \lambda_{ii} A_{i1,i3} h_{i3}$" "\n"
+        r"$e_{u1} \leftarrow e_{u1} + \alpha (W e_{i1})$"
     )
-    
-    device = torch.device(FLAGS['device'])
-    pos_adj, neg_adj, item_adj = pos_adj.to(device), neg_adj.to(device), item_adj.to(device)
-    
-    # 2. GCF Training
-    gcf_model = CoPLGCF_Optimized(
-        n_u=n_u, n_i=n_i, 
-        d=FLAGS['gcf_hidden_dim'],
-        pos_adj_norm=pos_adj, 
-        neg_adj_norm=neg_adj, 
-        item_adj_norm=item_adj,
-        dropout=FLAGS['gcf_dropout'],
-        lambda_ii=FLAGS['gcf_lambda_ii'],
-        l=FLAGS['gcf_layers']
-    ).to(device)
-    
-    user_embeddings = train_gcf(gcf_model, pos_adj, neg_adj, rm_data, FLAGS)
-    
-    # 3. RM Training
-    # Input dim for RM is Flattened trajectory: T * Num_Features
-    sample_obs = rm_data['obs'][0] # (T, D)
-    input_dim = sample_obs.shape[0] * sample_obs.shape[1]
-    
-    rm_model = CoPLControlRM(
-        input_dim=input_dim,
-        hidden_dim=FLAGS['rm_hidden_dim'],
-        user_emb_dim=FLAGS['gcf_hidden_dim'],
-        num_experts=FLAGS['rm_experts']
-    ).to(device)
-    
-    rm_model = train_rm(rm_model, user_embeddings, rm_data, FLAGS)
-    
-    # 4. Evaluation
-    evaluate_test_driver(
-        gcf_model, rm_model, 
-        FLAGS['test_driver_name'], 
-        FLAGS['features'], 
-        FLAGS['time_range'], 
-        FLAGS['downsample']
-    )
-    
-    # Save Models
-    os.makedirs("artifacts/copl", exist_ok=True)
-    torch.save(gcf_model.state_dict(), "artifacts/copl/gcf_model.pt")
-    torch.save(rm_model.state_dict(), "artifacts/copl/rm_model.pt")
-    print("Models saved.")
+    ax[1].text(5, 0.5, text_str, ha='center', va='bottom', fontsize=11, 
+               bbox=dict(boxstyle="round", facecolor="#f0f0f0", edgecolor="gray"))
+
+    plt.tight_layout()
+    plt.savefig('copl_variant_diagram.png', dpi=150)
 
 if __name__ == "__main__":
-    main()
+    draw_copl_diagram()

@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from collections import defaultdict
 from pathlib import Path
+from datetime import datetime
 from sklearn.metrics import roc_auc_score, accuracy_score
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
@@ -19,23 +20,23 @@ from src.utils.logger import ExperimentLogger
 # --- Configuration ---
 FLAGS = {
     # Data
-    "dataset_path": "datasets/vmc/vmc_pairwise_dataset.pkl",
+    "dataset_name": 5000,
     "test_driver_name": "Aggressive_weak",
     "train_driver_names": ["Comfort_strong", "Comfort_weak", "Aggressive_strong"],
     "features": ["ddx_com", "dtheta"], # Selected features
-    
+
     # Preprocessing
     "downsample": 20,      # Reduce 1000 steps to ~50
-    "context_size": 10,    # Number of pairs per context batch
+    "context_size": 50,    # Number of pairs per context batch
     "val_split": 0.1,      # Validation split from training drivers
-    
+
     # Model
     "hidden_dim": 64,
     "batch_size": 128,
     "latent_dim": 8,
     "kl_weight": 0.001,
-    "flow_prior": True,
-    "use_annealing": True,
+    "flow_prior": False,
+    "use_annealing": False,
     "annealer_baseline": 0.0,
     "annealer_type": "cosine",
     "annealer_cycles": 4,
@@ -43,8 +44,8 @@ FLAGS = {
     
     # Training
     "batch_size": 32,
-    "n_epochs": 500,
-    "lr": 1e-3,
+    "n_epochs": 300,
+    "lr": 3e-4,
     "weight_decay": 0.0,
     "early_stop": False,
     "patience": 15,
@@ -53,19 +54,21 @@ FLAGS = {
     
     # Inference
     "eval_freq": 10,
-    "query_size": 10,      # Number of pairs to query for adaptation
+    "timestamp": "test",   # None: new training, "test": debug training, else: inference only
+
+    # Preprocessing
+    "normalize": True,
 }
 
 # Must match generate_vmc_datasets.py
 FEATURE_KEYS = [
-    "dtheta", "ddx_com"
-    # # State
-    # "dz_com", "dtheta", "dz_us_f", "dz_us_r", "dx_com", 
-    # "z_com", "theta", "z_us_f", "z_us_r", "x_com",
-    # # Acceleration
-    # "ddz_com", "ddtheta", "ddz_us_f", "ddz_us_r", "ddx_com",
-    # # Control
-    # "u_eride"
+    # State
+    "dz_com", "dtheta", "dz_us_f", "dz_us_r", "dx_com", 
+    "z_com", "theta", "z_us_f", "z_us_r", "x_com",
+    # Acceleration
+    "ddz_com", "ddtheta", "ddz_us_f", "ddz_us_r", "ddx_com",
+    # Control
+    "u_eride"
 ]
 
 def collate_fn(batch):
@@ -184,22 +187,24 @@ def adapt_and_evaluate(model, driver_data, driver_name, FLAGS):
     Adapt to a new driver using a small query set and evaluate on the rest.
     """
     print(f"\nEvaluating adaptation for {driver_name}...")
-    
+
     # Data is dict: obs, obs2, labels (N, T, F)
     n_total = len(driver_data['labels'])
     indices = np.random.permutation(n_total)
-    
-    query_idx = indices[:FLAGS['query_size']]
-    eval_idx = indices[FLAGS['query_size']:]
-    
+
+    # Use context_size for query (must match model's expected input dimension)
+    context_size = FLAGS['context_size']
+    query_idx = indices[:context_size]
+    eval_idx = indices[context_size:]
+
     # Downsample
     ds = FLAGS['downsample']
-    
+
     # Prepare Query Context
     q_obs = driver_data['observations'][query_idx][:, ::ds, :]
     q_obs2 = driver_data['observations_2'][query_idx][:, ::ds, :]
     q_lbl = driver_data['labels'][query_idx]
-    
+
     # Infer z
     z_mean = estimate_latent(model, q_obs, q_obs2, q_lbl, FLAGS['device'])
     print(f"  Inferred z: {z_mean[:4]}...")
@@ -213,6 +218,8 @@ def adapt_and_evaluate(model, driver_data, driver_name, FLAGS):
     eval_obs2 = driver_data['observations_2'][eval_idx][:, ::ds, :]
     eval_lbl = driver_data['labels'][eval_idx].flatten() # (N,)
     
+    print(f"  Eval Stats: Total {len(eval_lbl)} | Label 0: {(eval_lbl==0).sum()} | Label 1: {(eval_lbl==1).sum()}")
+
     # Compute rewards
     # compute_step_rewards handles (N, T, F) and z (D,) -> returns (N, T)
     r1_seq = compute_step_rewards(model, eval_obs, z_mean, FLAGS['device'])
@@ -377,6 +384,7 @@ def visualize_latent_space(model, grouped_data, train_drivers, test_driver, devi
 def plot_reward_distribution(r1, r2, labels, driver_name, save_path):
     """Plot reward distribution for pairs."""
     print(f"Plotting reward distribution for {driver_name}...")
+    print(f"  Labels unique values: {np.unique(labels)}")
 
     fig, axs = plt.subplots(1, 3, figsize=(15, 5))
 
@@ -424,20 +432,70 @@ def plot_reward_distribution(r1, r2, labels, driver_name, save_path):
 
 
 def main():
-    # Setup Logger
-    logger = ExperimentLogger(log_dir="artifacts/vmc_vpl", experiment_name="vmc_vpl_train")
+    # Setup Logger with timestamp handling
+    os.makedirs("artifacts/vmc_vpl", exist_ok=True)
+    if FLAGS["timestamp"] == "test":
+        timestamp = "test"
+        log_dir = Path("artifacts/vmc_vpl") / timestamp
+        is_training = True
+    elif FLAGS["timestamp"] is None:
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        log_dir = Path("artifacts/vmc_vpl") / timestamp
+        is_training = True
+    else:
+        timestamp = FLAGS["timestamp"]
+        log_dir = Path("artifacts/vmc_vpl") / timestamp
+        is_training = False
+        print(f"Inference Mode: Loading model from {log_dir}")
+
+    logger = ExperimentLogger(log_dir=log_dir, experiment_name="vmc_vpl_train", add_timestamp=False)
+    print(f"Experiment Directory: {logger.log_dir}")
+
+    if is_training:
+        with open(logger.log_dir / "flags.json", "w", encoding='utf-8') as f:
+            json.dump(FLAGS, f, indent=4, ensure_ascii=False)
     
     # 1. Load Data
-    print(f"Loading dataset from {FLAGS['dataset_path']}...")
-    if not os.path.exists(FLAGS['dataset_path']):
-        print("Dataset not found. Please run 'scripts/generate_vmc_datasets.py' first.")
-        return
-
-    with open(FLAGS['dataset_path'], 'rb') as f:
+    dataset_path = f"datasets/vmc/vmc_pairwise_dataset_{FLAGS['dataset_name']}.pkl"
+    print(f"Loading dataset from {dataset_path}...")
+    with open(dataset_path, 'rb') as f:
         raw_data = pickle.load(f)
-        
-    grouped_data = group_data_by_driver(raw_data, FLAGS['features'])
     
+    # 1.1 Feature Selection & Normalization
+    feature_indices = get_feature_indices(FLAGS['features'])
+    print(f"Selected features: {FLAGS['features']} -> Indices: {feature_indices}")
+    
+    # Select features immediately
+    raw_data['observations'] = raw_data['observations'][:, :, feature_indices]
+    raw_data['observations_2'] = raw_data['observations_2'][:, :, feature_indices]
+    
+    if FLAGS['normalize']:
+        print("Normalizing data (StandardScaler)...")
+        # Compute stats on all data (obs and obs2) to ensure consistent scaling
+        all_obs = np.concatenate([raw_data['observations'], raw_data['observations_2']], axis=0)
+        # Flatten to (N*T, F) for computing mean/std per feature
+        mean = np.mean(all_obs, axis=(0, 1))
+        std = np.std(all_obs, axis=(0, 1))
+        std[std < 1e-6] = 1.0 # Prevent div by zero
+        
+        print(f"  Mean: {mean}")
+        print(f"  Std : {std}")
+        
+        raw_data['observations'] = (raw_data['observations'] - mean) / std
+        raw_data['observations_2'] = (raw_data['observations_2'] - mean) / std
+        
+    grouped_data = group_data_by_driver(raw_data, selected_features=None)
+    
+    # --- Debug: Print Label Statistics ---
+    print("\nDataset Label Statistics:")
+    for d_name, data in grouped_data.items():
+        lbls = data['labels'].flatten()
+        n_0 = (lbls == 0).sum()
+        n_1 = (lbls == 1).sum()
+        n_tie = (lbls == 0.5).sum()
+        print(f"  {d_name}: Total {len(lbls)} | Label 0: {n_0} ({n_0/len(lbls):.1%}) | Label 1: {n_1} ({n_1/len(lbls):.1%}) | Tie: {n_tie}")
+    print("-" * 30)
+
     # 2. Create Train Dataset (Contexts)
     print("Creating training contexts...")
     train_dict = create_context_dataset(
@@ -476,6 +534,14 @@ def main():
     encoder_input = ctx_size * pair_dim
     decoder_input = F + FLAGS['latent_dim']
     
+    annealer = None
+    if FLAGS['use_annealing']:
+        annealer = Annealer(
+            total_steps=FLAGS['n_epochs'] // FLAGS['annealer_cycles'],
+            shape=FLAGS['annealer_type'],
+            cyclical=FLAGS['annealer_cycles'] > 1
+        )
+
     model = VAEModel(
         encoder_input=encoder_input,
         decoder_input=decoder_input,
@@ -485,19 +551,25 @@ def main():
         size_segment=T,
         kl_weight=FLAGS['kl_weight'],
         flow_prior=FLAGS['flow_prior'],
-        annealer=Annealer(FLAGS['n_epochs'], shape='cosine') if FLAGS['use_annealing'] else None
+        annealer=annealer
     ).to(FLAGS['device'])
     
     # 4. Train
-    trainer = VPLTrainer(model, logger, FLAGS)
-    print("Starting training...")
-    metrics, _ = trainer.train(train_loader, val_loader)
+    if is_training:
+        trainer = VPLTrainer(model, logger, FLAGS)
+        print("Starting training...")
+        metrics, _ = trainer.train(train_loader, val_loader)
 
-    # Plot training history
-    plot_history(metrics, logger.log_dir, warmup_epochs=10)
+        # Plot training history
+        plot_history(metrics, logger.log_dir, warmup_epochs=10)
+    else:
+        print("Skipping training (Inference Mode)...")
 
     # 5. Evaluate on Test Driver
-    model.load_state_dict(torch.load(logger.log_dir / "best_model.pt"))
+    print("\n" + "="*50 + "\nStarting Evaluation\n" + "="*50)
+    model_path = logger.log_dir / "best_model.pt"
+    print(f"Loading best model from {model_path}")
+    model.load_state_dict(torch.load(model_path))
 
     if FLAGS['test_driver_name'] in grouped_data:
         acc, auroc, r1, r2, eval_lbl = adapt_and_evaluate(
