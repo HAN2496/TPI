@@ -1,26 +1,22 @@
 # scripts/train_copl.py
-import os
 import json
-import random
-from dataclasses import dataclass
-from datetime import datetime
-from pathlib import Path
-
-import numpy as np
+import wandb
 import optuna
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import roc_auc_score, roc_curve
-from sklearn.decomposition import PCA
-from sklearn.neighbors import NearestNeighbors
-from sklearn.manifold import TSNE
+import numpy as np
+from pathlib import Path
+from datetime import datetime
 import matplotlib.pyplot as plt
+from dataclasses import dataclass
 
-from src.utils.utils import _load_dataset_sequences
-from src.model.CoPL_new.gcf import CoPLGCF  # <-- 너가 수정해둔 CoPLGCF(아이템-아이템 + pointwise) 사용
+import torch
+
+from sklearn.metrics import roc_auc_score, roc_curve
+
+from src.utils.utils import seed_all
+from src.model.CoPL_new.utils import CoPLGraphDataset
+from src.model.CoPL_new.gcf import CoPLGCF, CoPLGCFCosine, CoPLGCFPointwiseBPR, CoPLGCFSoftmax, CoPLGCFMargin
 from src.model.CoPL_new.gcf_gcn import CoPLGCF_GCN
+from src.model.CoPL_new.rm import RewardModel, CNNRewardModel, weighted_bce_logits, rm_collate, RMEdgeDataset
 from src.model.CoPL_new.visualization import plot_distance_gamma_analysis, plot_driver_similarity_matrix, plot_roc, plot_reward_scatter, compare_viz_plot, plot_test_item_bridge
 
 plt.rcParams['font.family'] = 'Malgun Gothic'
@@ -31,7 +27,7 @@ plt.rcParams['axes.unicode_minus'] = False
 # =========================
 @dataclass
 class CFG:
-    model_type: str = "gcf"  # "gcf" or "gcf_gcn"
+    model_type: str = "gcf_margin"  # "gcf" or "gcf_gcn" or "gcf_cosine" or "gcf_pointwise_bpr" or "gcf_softmax" or "gcf_margin"
 
     timestamp = None # None for timestamp training, test for debug, else load from string
 
@@ -43,23 +39,43 @@ class CFG:
     downsample: int = 5
     context_size: int = 16  # context size for chunk-based visualization
 
-    # item-item graph (검증 결과 반영)
-    pca_dim: int = 2
+    # item-item graph
+    similarity_method: str = "vae"  # "pca" or "vae" or "kernel_pca" or "dtw"
     gamma_mul: float = 8.0              # gamma = median_gamma * gamma_mul
     knn_k: int = 5
     mutual: bool = False
 
+    # PCA similarity (only used when similarity_method="pca")
+    pca_dim: int = 2
+
+    # VAE similarity (only used when similarity_method="vae")
+    vae_latent_dim: int = 16
+    vae_epochs: int = 100
+    vae_lr: float = 0.001
+    vae_kl_weight: float = 0.1          # β-VAE weight
+    vae_batch_size: int = 128
+    vae_hidden_channels: int = 32
+    vae_metric: str = "cosine"        # "euclidean" or "cosine"
+
     # GCF
     hidden_dim: int = 128
     gcf_layers: int = 2
-    gcf_dropout: float = 0.2
+    gcf_dropout: float = 0.3
     item_item_weight: float = 0.72
     gcf_lr: float = 0.00068
-    gcf_weight_decay: float = 0.0
-    gcf_epochs: int = 200
-    gcf_lambda_reg: float = 0.01
+    gcf_weight_decay: float = 0.001
+    gcf_epochs: int = 100
+    gcf_lambda_reg: float = 0.0
+
+    # Loss weights
+    use_pos_weight: bool = True
+
+    # Other GCF Hyperparams
+    margin: float = 0.5  # for pointwise BPR
+    temperature: float = 0.1 # for softmax
 
     # RM
+    rm_model_type: str = "cnn"  # "mlp" or "cnn"
     rm_hidden: int = 32
     rm_mlp_hidden: int = 64
     rm_lr: float = 0.00026
@@ -68,15 +84,20 @@ class CFG:
     rm_batch_size: int = 256
     rm_lambda_reg: float = 1e-6
 
-    # split
-    val_size: float = 0.1
-    seed: int = 42
+    # WandB
+    wandb_project: str = "TPI-CoPL"
+    wandb_entity: str = None  # None -> use default user
+    wandb_mode: str = "online"  # "online", "offline", "disabled"
 
     # adaptation for test user
     adapt_use_neg: bool = True
     adapt_neg_weight: float = 0.81
     adapt_user_softmax_temp: float = 1.15
     attach_topk_items: int = 20  # test item -> train items topk for embedding
+
+    # split
+    val_size: float = 0.1
+    seed: int = 42
 
     # viz
     tsne_max_items_per_driver: int = 400
@@ -88,485 +109,17 @@ class CFG:
     verbose: int = 1
 
 
-# =========================
-# Utilities
-# =========================
-def seed_all(seed: int):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-
-
-def standardize_fit(X: np.ndarray):
-    mu = X.mean(axis=0, keepdims=True)
-    sd = X.std(axis=0, keepdims=True) + 1e-6
-    return mu, sd
-
-
-def standardize_apply(X: np.ndarray, mu: np.ndarray, sd: np.ndarray):
-    return (X - mu) / sd
-
-
-def normalize_bipartite_adj(adj: torch.Tensor, eps: float = 1e-12) -> torch.Tensor:
-    """D_u^-1/2 * A * D_i^-1/2 for (n_u x n_i) sparse COO."""
-    adj = adj.coalesce()
-    row_deg = torch.sparse.sum(adj, dim=1).to_dense()
-    col_deg = torch.sparse.sum(adj, dim=0).to_dense()
-    idx = adj.indices()
-    val = adj.values()
-    norm = torch.sqrt(row_deg[idx[0]] * col_deg[idx[1]] + eps)
-    val = val / norm
-    return torch.sparse_coo_tensor(idx, val, adj.size()).coalesce()
-
-
-def normalize_square_adj(adj: torch.Tensor, eps: float = 1e-12) -> torch.Tensor:
-    """D^-1/2 * A * D^-1/2 for (n x n) sparse COO."""
-    adj = adj.coalesce()
-    deg = torch.sparse.sum(adj, dim=1).to_dense()
-    idx = adj.indices()
-    val = adj.values()
-    norm = torch.sqrt(deg[idx[0]] * deg[idx[1]] + eps)
-    val = val / norm
-    return torch.sparse_coo_tensor(idx, val, adj.size()).coalesce()
-
-
-def median_heuristic_gamma(Z: np.ndarray, max_pairs: int = 200000, seed: int = 0) -> float:
-    rng = np.random.default_rng(seed)
-    N = Z.shape[0]
-    if N <= 2000:
-        from scipy.spatial.distance import pdist
-        d = pdist(Z, metric="euclidean")
-        sigma = np.median(d)
-    else:
-        i = rng.integers(0, N, size=max_pairs)
-        j = rng.integers(0, N, size=max_pairs)
-        mask = i != j
-        di = Z[i[mask]] - Z[j[mask]]
-        dist = np.sqrt((di * di).sum(axis=1))
-        sigma = np.median(dist)
-    return float(1.0 / (2.0 * (sigma ** 2) + 1e-12))
 
 
 # =========================
-# Item-item graph builder (train items)
+# Training: GCF
 # =========================
-def build_train_similarity_space(cfg: CFG, item_series: np.ndarray):
+def train_gcf(cfg, gcf, tr_u, tr_i, tr_y, va_u, va_i, va_y,
+              device, log_dir, is_training, trial=None):
     """
-    item_series: (n_items, T, d)
-    returns:
-      mu, sd, pca, Z_train, gamma
-      Aii_norm (train items only)
+    GCF 모델 학습 루프.
+    Returns: (best_auc, best_val_loss, E_u_train, E_i_train)
     """
-    N, T, D = item_series.shape
-    X = item_series.reshape(N, T * D).astype(np.float32)
-
-    mu, sd = standardize_fit(X)
-    Xs = standardize_apply(X, mu, sd)
-
-    pca = PCA(n_components=min(cfg.pca_dim, Xs.shape[1]), random_state=cfg.seed)
-    Z = pca.fit_transform(Xs)
-
-    gamma_med = median_heuristic_gamma(Z, seed=cfg.seed)
-    gamma = gamma_med * cfg.gamma_mul
-
-    # kNN on Z to build Aii among train items
-    nnbrs = NearestNeighbors(n_neighbors=min(cfg.knn_k + 1, N), metric="euclidean")
-    nnbrs.fit(Z)
-    dist, nbr = nnbrs.kneighbors(Z, return_distance=True)
-
-    rows, cols, vals = [], [], []
-    for i in range(N):
-        for j, dij in zip(nbr[i], dist[i]):
-            if j == i:
-                continue
-            w = float(np.exp(-gamma * (dij ** 2)))
-            if w <= 0:
-                continue
-            rows.append(i); cols.append(int(j)); vals.append(w)
-
-    if cfg.mutual:
-        S = set(zip(rows, cols))
-        keep = [(j, i) in S for (i, j) in zip(rows, cols)]
-        rows = [r for r, k in zip(rows, keep) if k]
-        cols = [c for c, k in zip(cols, keep) if k]
-        vals = [v for v, k in zip(vals, keep) if k]
-
-    idx = torch.tensor([rows, cols], dtype=torch.long)
-    val = torch.tensor(vals, dtype=torch.float32)
-    A = torch.sparse_coo_tensor(idx, val, size=(N, N)).coalesce()
-    A = (A + A.transpose(0, 1)).coalesce()
-    A = torch.sparse_coo_tensor(A.indices(), 0.5 * A.values(), A.size()).coalesce()
-
-    Aii_norm = normalize_square_adj(A)
-
-    meta = {
-        "pca_dim": cfg.pca_dim,
-        "explained_var_sum": float(pca.explained_variance_ratio_.sum()),
-        "gamma_med": gamma_med,
-        "gamma_mul": cfg.gamma_mul,
-        "gamma": gamma,
-        "knn_k": cfg.knn_k,
-        "mutual": cfg.mutual,
-    }
-    return mu, sd, pca, Z, gamma, Aii_norm, meta
-
-
-def attach_test_items_to_train(
-    X_test: np.ndarray,         # (n_test, T, d)
-    mu: np.ndarray,
-    sd: np.ndarray,
-    pca: PCA,
-    Z_train: np.ndarray,
-    gamma: float,
-    E_i_train: torch.Tensor,    # (n_train_items, d)
-    topk: int,
-    device: torch.device
-):
-    """
-    Map each test item to a train-item embedding by similarity-weighted top-k neighbors in PCA space.
-    returns:
-      E_i_test: (n_test, d) torch tensor
-      neigh_idx: (n_test, topk) np int
-      neigh_w:   (n_test, topk) np float
-    """
-    n_test, T, D = X_test.shape
-    Xf = X_test.reshape(n_test, T * D).astype(np.float32)
-    Xs = standardize_apply(Xf, mu, sd)
-    Zt = pca.transform(Xs)
-
-    nnbrs = NearestNeighbors(n_neighbors=min(topk, Z_train.shape[0]), metric="euclidean")
-    nnbrs.fit(Z_train)
-    dist, nbr = nnbrs.kneighbors(Zt, return_distance=True)  # (n_test, topk)
-
-    w = np.exp(-gamma * (dist ** 2)).astype(np.float32)
-    w_sum = w.sum(axis=1, keepdims=True) + 1e-8
-    w = w / w_sum
-
-    # build E_i_test = sum_k w * E_i_train[nbr]
-    E_i_test = []
-    E_i_train_cpu = E_i_train.detach().cpu().numpy()
-    for i in range(n_test):
-        e = (w[i][:, None] * E_i_train_cpu[nbr[i]]).sum(axis=0)
-        E_i_test.append(e)
-    E_i_test = torch.tensor(np.stack(E_i_test), dtype=torch.float32, device=device)
-    return E_i_test, nbr, w
-
-
-def adapt_test_user_embedding(
-    cfg: CFG,
-    y_test: np.ndarray,              # (n_test,)
-    neigh_idx: np.ndarray,           # (n_test, topk) neighbors in train items
-    neigh_w: np.ndarray,             # (n_test, topk) normalized weights
-    Apos_bin: torch.Tensor,          # (n_users, n_items) binary sparse
-    Aneg_bin: torch.Tensor | None,   # optional
-    E_u_train: torch.Tensor,         # (n_users, d)
-    item_owner_uid: np.ndarray,
-    device: torch.device
-):
-    """
-    Build test user embedding via item-item bridge:
-      v_item[j] = sum_{t in pos} w(t->j)  -  eta * sum_{t in neg} w(t->j)
-      c_u = sum_{j in N_u^+} v_item[j]    (and optionally neg term)
-      w_u = softmax(c_u / temp)
-      e_u_test = sum_u w_u * e_u
-    """
-    y_test = y_test.astype(np.int64)
-    topk = neigh_idx.shape[1]
-    n_train_items = Apos_bin.size(1)
-
-    # accumulate v_item on train items (numpy -> torch)
-    v = np.zeros((n_train_items,), dtype=np.float32)
-
-    pos_mask = (y_test == 1)
-    neg_mask = (y_test == 0)
-
-    # pos contribution
-    if pos_mask.any():
-        idx_pos = neigh_idx[pos_mask].reshape(-1)
-        w_pos = neigh_w[pos_mask].reshape(-1)
-        np.add.at(v, idx_pos, w_pos)
-
-    # neg contribution (optional)
-    if cfg.adapt_use_neg and neg_mask.any():
-        idx_neg = neigh_idx[neg_mask].reshape(-1)
-        w_neg = neigh_w[neg_mask].reshape(-1)
-        np.add.at(v, idx_neg, -cfg.adapt_neg_weight * w_neg)
-
-    v_t = torch.tensor(v, dtype=torch.float32, device=device)
-
-    # user scores from positive train edges
-    c_u = torch.spmm(Apos_bin.to(device), v_t.unsqueeze(-1)).squeeze(-1)  # (n_users,)
-
-    # optionally include neg edges too (push away)
-    if cfg.adapt_use_neg and Aneg_bin is not None:
-        c_u = c_u - torch.spmm(Aneg_bin.to(device), v_t.unsqueeze(-1)).squeeze(-1)
-
-    # softmax weighting
-    temp = max(1e-6, cfg.adapt_user_softmax_temp)
-    w_u = torch.softmax(c_u / temp, dim=0)  # (n_users,)
-
-    # if everything is flat -> fallback
-    if torch.isnan(w_u).any() or float(w_u.sum().item()) < 1e-6:
-        w_u = torch.ones_like(w_u) / w_u.numel()
-
-    e_u_test = (w_u.unsqueeze(-1) * E_u_train).sum(dim=0)  # (d,)
-    return e_u_test, w_u.detach().cpu().numpy()
-
-
-# =========================
-# Reward Model (time-series, Linear encoder)
-# =========================
-class TSRewardModel(nn.Module):
-    """
-    time-series RM:
-      - per-timestep linear projection
-      - user conditioning via linear projection
-      - nonlinearity + mean pooling
-      - head -> logit
-    """
-    def __init__(self, obs_dim: int, user_dim: int, hidden: int = 128, mlp_hidden: int = 128):
-        super().__init__()
-        self.obs_proj = nn.Linear(obs_dim, hidden)
-        self.user_proj = nn.Linear(user_dim, hidden)
-        self.mlp = nn.Sequential(
-            nn.Linear(hidden, mlp_hidden),
-            nn.ReLU(),
-            nn.Linear(mlp_hidden, hidden),
-            nn.ReLU(),
-        )
-        self.head = nn.Linear(hidden, 1)
-
-    def forward(self, user_emb: torch.Tensor, obs: torch.Tensor):
-        """
-        user_emb: (B, user_dim)
-        obs:      (B, T, obs_dim)
-        """
-        # project
-        h_obs = self.obs_proj(obs)  # (B,T,H)
-        h_u = self.user_proj(user_emb).unsqueeze(1)  # (B,1,H)
-        h = torch.tanh(h_obs + h_u)  # (B,T,H)
-        h = h.mean(dim=1)            # (B,H)
-        h = self.mlp(h)              # (B,H)
-        return self.head(h).squeeze(-1)  # (B,)
-
-
-def weighted_bce_logits(logits, labels, pos_weight=None):
-    labels = labels.float()
-    if pos_weight is not None:
-        return F.binary_cross_entropy_with_logits(logits, labels, pos_weight=pos_weight)
-    return F.binary_cross_entropy_with_logits(logits, labels)
-
-
-class RMEdgeDataset(torch.utils.data.Dataset):
-    def __init__(self, uids, iids, labels, item_series):
-        self.uids = uids.astype(np.int64)
-        self.iids = iids.astype(np.int64)
-        self.labels = labels.astype(np.int64)
-        self.item_series = item_series.astype(np.float32)
-
-    def __len__(self):
-        return len(self.uids)
-
-    def __getitem__(self, idx):
-        u = self.uids[idx]
-        i = self.iids[idx]
-        y = self.labels[idx]
-        obs = self.item_series[i]  # (T,d)
-        return u, obs, y
-
-
-def rm_collate(batch):
-    u = torch.tensor([b[0] for b in batch], dtype=torch.long)
-    obs = torch.tensor(np.stack([b[1] for b in batch]), dtype=torch.float32)
-    y = torch.tensor([b[2] for b in batch], dtype=torch.float32)
-    return u, obs, y
-
-
-# =========================
-# Main
-# =========================
-def run_copl_training(cfg: CFG, trial: optuna.Trial = None):
-    seed_all(cfg.seed)
-    device = torch.device(cfg.device if torch.cuda.is_available() else "cpu")
-
-    # Determine mode & log_dir
-    is_training = True
-    log_dir = None
-    
-    if cfg.timestamp is not None:
-        if cfg.timestamp == "test":
-            log_dir = Path(cfg.save_root) / "test"
-        else:
-            log_dir = Path(cfg.save_root) / cfg.timestamp
-            is_training = False
-            print(f"Inference Mode: Loading model from {log_dir}")
-    else:
-        if cfg.verbose > 0:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            log_dir = Path(cfg.save_root) / timestamp
-
-    if log_dir is not None:
-        log_dir.mkdir(parents=True, exist_ok=True)
-
-        # Inference: Load saved config to match model architecture
-        if not is_training:
-            cfg_path = log_dir / "cfg.json"
-            if cfg_path.exists():
-                print(f"Loading config from {cfg_path}...")
-                with open(cfg_path, "r", encoding="utf-8") as f:
-                    saved_cfg = json.load(f)
-                for k, v in saved_cfg.items():
-                    # Don't overwrite the timestamp (which controls the mode)
-                    if k == "timestamp":
-                        continue
-                    if hasattr(cfg, k):
-                        setattr(cfg, k, v)
-            else:
-                print("Warning: cfg.json not found. Using current script config.")
-
-        if is_training and cfg.verbose > 0:
-            with open(log_dir / "cfg.json", "w", encoding="utf-8") as f:
-                json.dump(cfg.__dict__, f, ensure_ascii=False, indent=2)
-        print("Log dir:", log_dir)
-
-    if cfg.verbose > 0:
-        print("\n[1] Loading train drivers...")
-
-    # -------------------------
-    # 1) Load train drivers -> global items + edges
-    # -------------------------
-    config = {"features": list(cfg.features)}
-
-    train_drivers = list(cfg.train_driver_names)
-    test_driver = cfg.test_driver_name
-
-    user_to_uid = {name: i for i, name in enumerate(train_drivers)}
-
-    item_series_list = []
-    item_owner_uid = []  # item -> which train driver
-    edge_u = []
-    edge_i = []
-    edge_y = []
-
-    per_user_items = {}  # uid -> (item_ids, y)
-
-    item_offset = 0
-    for uname in train_drivers:
-        X, y = _load_dataset_sequences(uname, cfg.time_range, cfg.downsample, config)
-        uid = user_to_uid[uname]
-        n = X.shape[0]
-
-        item_ids = np.arange(item_offset, item_offset + n, dtype=np.int64)
-        per_user_items[uid] = (item_ids, y.astype(np.int64))
-
-        item_series_list.append(X.astype(np.float32))
-        item_owner_uid.append(np.full((n,), uid, dtype=np.int64))
-
-        edge_u.append(np.full((n,), uid, dtype=np.int64))
-        edge_i.append(item_ids)
-        edge_y.append(y.astype(np.int64))
-
-        item_offset += n
-        if cfg.verbose > 0:
-            print(f"  - {uname}: items={n}, pos={int(y.sum())}, neg={int((1-y).sum())}")
-
-    item_series = np.concatenate(item_series_list, axis=0)          # (n_items,T,d)
-    item_owner_uid = np.concatenate(item_owner_uid, axis=0)         # (n_items,)
-    edge_u = np.concatenate(edge_u, axis=0)
-    edge_i = np.concatenate(edge_i, axis=0)
-    edge_y = np.concatenate(edge_y, axis=0)
-
-    n_users = len(train_drivers)
-    n_items = item_series.shape[0]
-    T, obs_dim = item_series.shape[1], item_series.shape[2]
-    
-    if cfg.verbose > 0:
-        print(f"Total train users={n_users}, train items={n_items}, obs_dim={obs_dim}, T={T}")
-
-    # -------------------------
-    # 2) per-user train/val split (stratified)
-    # -------------------------
-    tr_u, tr_i, tr_y = [], [], []
-    va_u, va_i, va_y = [], [], []
-    for uid, (item_ids, y) in per_user_items.items():
-        if len(np.unique(y)) < 2:
-            tr_u.append(np.full_like(item_ids, uid))
-            tr_i.append(item_ids)
-            tr_y.append(y)
-            continue
-        it_tr, it_va, y_tr, y_va = train_test_split(
-            item_ids, y, test_size=cfg.val_size, random_state=cfg.seed, stratify=y
-        )
-        tr_u.append(np.full_like(it_tr, uid)); tr_i.append(it_tr); tr_y.append(y_tr)
-        va_u.append(np.full_like(it_va, uid)); va_i.append(it_va); va_y.append(y_va)
-
-    tr_u = np.concatenate(tr_u); tr_i = np.concatenate(tr_i); tr_y = np.concatenate(tr_y)
-    va_u = np.concatenate(va_u); va_i = np.concatenate(va_i); va_y = np.concatenate(va_y)
-
-    # -------------------------
-    # 3) Build A_pos/A_neg from TRAIN edges only
-    # -------------------------
-    tr_pos = (tr_y == 1)
-    tr_neg = (tr_y == 0)
-
-    # binary adjacency for adaptation (NOT normalized)
-    pos_idx_bin = torch.as_tensor(np.vstack((tr_u[tr_pos], tr_i[tr_pos])), dtype=torch.long)
-    neg_idx_bin = torch.as_tensor(np.vstack((tr_u[tr_neg], tr_i[tr_neg])), dtype=torch.long)
-    Apos_bin = torch.sparse_coo_tensor(pos_idx_bin, torch.ones(pos_idx_bin.size(1)), size=(n_users, n_items)).coalesce()
-    Aneg_bin = torch.sparse_coo_tensor(neg_idx_bin, torch.ones(neg_idx_bin.size(1)), size=(n_users, n_items)).coalesce()
-
-    # normalized adjacency for GCF propagation
-    Apos_norm = normalize_bipartite_adj(Apos_bin).to(device)
-    Aneg_norm = normalize_bipartite_adj(Aneg_bin).to(device)
-
-    # -------------------------
-    # 4) Build A_ii (검증 설정 그대로)
-    # -------------------------
-    if cfg.verbose > 0:
-        print("\n[2] Building item-item graph A_ii (train items only)...")
-    
-    mu, sd, pca, Z_train, gamma, Aii_norm, Aii_meta = build_train_similarity_space(cfg, item_series)
-    Aii_norm = Aii_norm.to(device)
-
-    if cfg.verbose > 0:
-        with open(log_dir / "Aii_meta.json", "w", encoding="utf-8") as f:
-            json.dump(Aii_meta, f, ensure_ascii=False, indent=2)
-        print("Aii meta:", Aii_meta)
-
-    # -------------------------
-    # 5) Train GCF (pointwise BCE, imbalance via pos_weight)
-    # -------------------------
-    if cfg.verbose > 0:
-        print("\n[3] Training GCF (pointwise BCE)...")
-    
-    if cfg.model_type == "gcf":
-        gcf = CoPLGCF(
-            n_u=n_users,
-            n_i=n_items,
-            d=cfg.hidden_dim,
-            pos_adj_norm=Apos_norm,
-            neg_adj_norm=Aneg_norm,
-            dropout=cfg.gcf_dropout,
-            l=cfg.gcf_layers,
-            item_item_adj_norm=Aii_norm,
-            item_item_weight=cfg.item_item_weight,
-        ).to(device)
-    elif cfg.model_type == "gcf_gcn":
-        gcf = CoPLGCF_GCN(
-            n_u=n_users,
-            n_i=n_items,
-            d=cfg.hidden_dim,
-            pos_adj_norm=Apos_norm,
-            neg_adj_norm=Aneg_norm,
-            dropout=cfg.gcf_dropout,
-            l=cfg.gcf_layers,
-            item_item_adj_norm=Aii_norm,
-            item_item_weight=cfg.item_item_weight,
-        ).to(device)
-    else:
-        raise NotImplementedError
-
     tr_u_t = torch.tensor(tr_u, dtype=torch.long, device=device)
     tr_i_t = torch.tensor(tr_i, dtype=torch.long, device=device)
     tr_y_t = torch.tensor(tr_y, dtype=torch.float32, device=device)
@@ -576,13 +129,17 @@ def run_copl_training(cfg: CFG, trial: optuna.Trial = None):
 
     best_auc = -1.0
     best_gcf_state_dict = None
+    best_val_loss = float("inf")
 
     if is_training:
         opt_gcf = torch.optim.AdamW(gcf.parameters(), lr=cfg.gcf_lr, weight_decay=cfg.gcf_weight_decay)
 
         pos_cnt = int(tr_y.sum())
         neg_cnt = int((1 - tr_y).sum())
-        pos_weight = torch.tensor([neg_cnt / max(1, pos_cnt)], dtype=torch.float32, device=device)
+        if cfg.use_pos_weight:
+            pos_weight = torch.tensor([neg_cnt / max(1, pos_cnt)], dtype=torch.float32, device=device)
+        else:
+            pos_weight = None
 
         for epoch in range(cfg.gcf_epochs):
             gcf.train()
@@ -599,7 +156,7 @@ def run_copl_training(cfg: CFG, trial: optuna.Trial = None):
 
             gcf.eval()
             with torch.no_grad():
-                _, val_logits = gcf.forward_pointwise(
+                val_loss, val_logits = gcf.forward_pointwise(
                     va_u_t, va_i_t, torch.tensor(va_y_np, dtype=torch.float32, device=device),
                     pos_weight=None,
                     sample_weight=None,
@@ -611,10 +168,21 @@ def run_copl_training(cfg: CFG, trial: optuna.Trial = None):
 
             if val_auc > best_auc:
                 best_auc = val_auc
+            #     best_gcf_state_dict = {k: v.cpu() for k, v in gcf.state_dict().items()}
+
+            if val_loss.item() < best_val_loss:
+                best_val_loss = val_loss.item()
                 best_gcf_state_dict = {k: v.cpu() for k, v in gcf.state_dict().items()}
 
             if cfg.verbose > 0 and (epoch % 10 == 0 or epoch == cfg.gcf_epochs - 1):
                 print(f"  [GCF] epoch={epoch:03d} loss={float(loss.item()):.4f} val_auc={val_auc:.4f} best={best_auc:.4f}")
+
+            if is_training:
+                wandb.log({
+                    "GCF/loss": loss.item(),
+                    "GCF/val_auc": val_auc,
+                    "GCF/epoch": epoch
+                })
 
             # Optuna Pruning
             if trial is not None:
@@ -645,13 +213,18 @@ def run_copl_training(cfg: CFG, trial: optuna.Trial = None):
     with torch.no_grad():
         E_u_train, E_i_train = gcf.encode_graph(test=True)  # (n_users,d), (n_items,d)
 
-    # -------------------------
-    # 6) Train Reward Model (RM) using fixed user embeddings
-    # -------------------------
-    if cfg.verbose > 0:
-        print("\n[4] Training RM (time-series, pointwise BCE)...")
-    
-    rm = TSRewardModel(obs_dim=obs_dim, user_dim=E_u_train.shape[1], hidden=cfg.rm_hidden, mlp_hidden=cfg.rm_mlp_hidden).to(device)
+    return best_auc, best_val_loss, E_u_train, E_i_train
+
+
+# =========================
+# Training: RM
+# =========================
+def train_rm(cfg, rm, E_u_train, tr_u, tr_i, tr_y, va_u, va_i, va_y,
+             item_series, device, log_dir, is_training, trial=None):
+    """
+    Reward Model 학습 루프.
+    Returns: best_rm_auc
+    """
     best_rm_auc = -1.0
     best_rm_state_dict = None
 
@@ -667,7 +240,9 @@ def run_copl_training(cfg: CFG, trial: optuna.Trial = None):
 
         pos_cnt_rm = int(tr_y.sum())
         neg_cnt_rm = int((1 - tr_y).sum())
-        pos_weight_rm = torch.tensor([neg_cnt_rm / max(1, pos_cnt_rm)], dtype=torch.float32, device=device)
+        pos_weight_rm = None
+        if cfg.use_pos_weight:
+            pos_weight_rm = torch.tensor([neg_cnt_rm / max(1, pos_cnt_rm)], dtype=torch.float32, device=device)
 
         for epoch in range(cfg.rm_epochs):
             rm.train()
@@ -718,6 +293,13 @@ def run_copl_training(cfg: CFG, trial: optuna.Trial = None):
             if cfg.verbose > 0 and (epoch % 5 == 0 or epoch == cfg.rm_epochs - 1):
                 print(f"  [RM ] epoch={epoch:03d} train_loss={tr_loss_accum/max(1,n_seen):.4f} val_auc={val_auc:.4f} best={best_rm_auc:.4f}")
             
+            if is_training:
+                wandb.log({
+                    "RM/train_loss": tr_loss_accum/max(1,n_seen),
+                    "RM/val_auc": val_auc,
+                    "RM/epoch": epoch
+                })
+
             # Optuna Pruning
             if trial is not None:
                 current_step = cfg.gcf_epochs + epoch
@@ -744,38 +326,206 @@ def run_copl_training(cfg: CFG, trial: optuna.Trial = None):
             print(f"Warning: {p} not found. Using random init.")
     rm.eval()
 
+    return best_rm_auc
+
+
+# =========================
+# Main
+# =========================
+def run_copl_training(cfg: CFG, trial: optuna.Trial = None):
+    seed_all(cfg.seed)
+    device = torch.device(cfg.device if torch.cuda.is_available() else "cpu")
+
+    # Determine mode & log_dir
+    is_training = True
+    log_dir = None
+
+    if cfg.timestamp is not None:
+        if cfg.timestamp == "test":
+            log_dir = Path(cfg.save_root) / "test"
+        else:
+            log_dir = Path(cfg.save_root) / cfg.timestamp
+            is_training = False
+            print(f"Inference Mode: Loading model from {log_dir}")
+    else:
+        if cfg.verbose > 0:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            log_dir = Path(cfg.save_root) / timestamp
+
+    # WandB Init
+    if is_training:
+        run_name = f"{cfg.model_type}-{cfg.test_driver_name}"
+        if cfg.timestamp: # If timestamp is explicitly set for training, use it in run name
+            run_name = f"{cfg.timestamp}-{run_name}"
+        wandb.init(
+            project=cfg.wandb_project,
+            entity=cfg.wandb_entity,
+            config=cfg.__dict__,
+            name=run_name,
+            mode=cfg.wandb_mode,
+            dir=log_dir # Save wandb files in the log directory
+        )
+        wandb.run.log_code(".") # Log current code
+
+    if log_dir is not None:
+        log_dir.mkdir(parents=True, exist_ok=True)
+
+        # Inference: Load saved config to match model architecture
+        if not is_training:
+            cfg_path = log_dir / "cfg.json"
+            if cfg_path.exists():
+                print(f"Loading config from {cfg_path}...")
+                with open(cfg_path, "r", encoding="utf-8") as f:
+                    saved_cfg = json.load(f)
+                for k, v in saved_cfg.items():
+                    # Don't overwrite the timestamp (which controls the mode)
+                    if k == "timestamp":
+                        continue
+                    if hasattr(cfg, k):
+                        setattr(cfg, k, v)
+            else:
+                print("Warning: cfg.json not found. Using current script config.")
+
+        if is_training and cfg.verbose > 0:
+            with open(log_dir / "cfg.json", "w", encoding="utf-8") as f:
+                json.dump(cfg.__dict__, f, ensure_ascii=False, indent=2)
+        print("Log dir:", log_dir)
+
+    # -------------------------
+    # 1-4) Build dataset (load drivers, split, build graphs)
+    # -------------------------
+    if cfg.verbose > 0:
+        print("\n[1] Loading train drivers & building graphs...")
+
+    dataset = CoPLGraphDataset(cfg)
+    dataset.to(device)
+
+    # Convenience aliases (minimize downstream code changes)
+    train_drivers = dataset.train_drivers
+    test_driver = cfg.test_driver_name
+    n_users, n_items = dataset.n_users, dataset.n_items
+    obs_dim = dataset.obs_dim
+    item_series = dataset.item_series
+    item_owner_uid = dataset.item_owner_uid
+    per_user_items = dataset.per_user_items
+    tr_u, tr_i, tr_y = dataset.tr_u, dataset.tr_i, dataset.tr_y
+    va_u, va_i, va_y = dataset.va_u, dataset.va_i, dataset.va_y
+    Apos_norm, Aneg_norm = dataset.Apos_norm, dataset.Aneg_norm
+    Aii_norm = dataset.Aii_norm
+
+    if cfg.verbose > 0 and log_dir is not None:
+        with open(log_dir / "Aii_meta.json", "w", encoding="utf-8") as f:
+            json.dump(dataset.Aii_meta, f, ensure_ascii=False, indent=2)
+    if is_training:
+        wandb.log({"Aii_meta": dataset.Aii_meta})
+
+    # -------------------------
+    # 5) Train GCF (pointwise BCE, imbalance via pos_weight)
+    # -------------------------
+    if cfg.verbose > 0:
+        print("\n[3] Training GCF (pointwise BCE)...")
+    
+    GCF_REGISTRY = {
+        "gcf":               CoPLGCF,
+        "gcf_cosine":        CoPLGCFCosine,
+        "gcf_pointwise_bpr": CoPLGCFPointwiseBPR,
+        "gcf_softmax":       CoPLGCFSoftmax,
+        "gcf_gcn":           CoPLGCF_GCN,
+        "gcf_margin":        CoPLGCFMargin,
+    }
+    common_kwargs = dict(
+        n_u=n_users, n_i=n_items, d=cfg.hidden_dim,
+        pos_adj_norm=Apos_norm, neg_adj_norm=Aneg_norm,
+        dropout=cfg.gcf_dropout, l=cfg.gcf_layers,
+        item_item_adj_norm=Aii_norm, item_item_weight=cfg.item_item_weight,
+    )
+    extra_kwargs = {}
+    if cfg.model_type == "gcf_cosine" or cfg.model_type == "gcf_margin":
+        extra_kwargs["margin"] = cfg.margin
+    elif cfg.model_type == "gcf_softmax":
+        extra_kwargs["temperature"] = cfg.temperature
+
+    gcf_cls = GCF_REGISTRY.get(cfg.model_type)
+    if gcf_cls is None:
+        raise NotImplementedError(f"Unknown model_type: {cfg.model_type}")
+    gcf = gcf_cls(**common_kwargs, **extra_kwargs).to(device)
+
+    best_auc, best_val_loss, E_u_train, E_i_train = train_gcf(
+        cfg=cfg, gcf=gcf,
+        tr_u=tr_u, tr_i=tr_i, tr_y=tr_y,
+        va_u=va_u, va_i=va_i, va_y=va_y,
+        device=device, log_dir=log_dir,
+        is_training=is_training, trial=trial,
+    )
+
+    # -------------------------
+    # 6) Train Reward Model (RM) using fixed user embeddings
+    # -------------------------
+    if cfg.verbose > 0:
+        print("\n[4] Training RM (time-series, pointwise BCE)...")
+    
+    if cfg.rm_model_type == "mlp":
+        rm = RewardModel(
+            obs_dim=obs_dim, 
+            user_dim=E_u_train.shape[1], 
+            hidden=cfg.rm_hidden, 
+            mlp_hidden=cfg.rm_mlp_hidden
+        ).to(device)
+    elif cfg.rm_model_type == "cnn":
+        rm = CNNRewardModel(
+            obs_dim=obs_dim, 
+            user_dim=E_u_train.shape[1], 
+            hidden=cfg.rm_hidden, 
+            mlp_hidden=cfg.rm_mlp_hidden,
+            kernel_size=3,
+            layers=2
+        ).to(device)
+    else:
+        raise NotImplementedError
+    best_rm_auc = train_rm(
+        cfg=cfg, rm=rm, E_u_train=E_u_train,
+        tr_u=tr_u, tr_i=tr_i, tr_y=tr_y,
+        va_u=va_u, va_i=va_i, va_y=va_y,
+        item_series=item_series,
+        device=device, log_dir=log_dir,
+        is_training=is_training, trial=trial,
+    )
+
     # -------------------------
     # 7) Test driver evaluation (AUROC + plots) using adaptation
     # -------------------------
     if cfg.verbose > 0:
         print("\n[5] Evaluating on test driver:", test_driver)
     
-    X_test, y_test = _load_dataset_sequences(test_driver, cfg.time_range, cfg.downsample, config)
-    y_test = y_test.astype(np.int64)
+    X_test, y_test = dataset.load_test_driver(test_driver)
 
     # attach test items into train item embedding space
-    E_i_test, neigh_idx, neigh_w = attach_test_items_to_train(
+    E_i_test, neigh_idx, neigh_w = dataset.attach_test_items(
         X_test=X_test.astype(np.float32),
-        mu=mu, sd=sd, pca=pca,
-        Z_train=Z_train,
-        gamma=gamma,
         E_i_train=E_i_train,
         topk=cfg.attach_topk_items,
         device=device,
     )
 
     # adapt test user embedding using item-item bridge + train pos edges
-    e_u_test, w_u = adapt_test_user_embedding(
-        cfg=cfg,
+    e_u_test, w_u = dataset.adapt_test_user(
         y_test=y_test,
         neigh_idx=neigh_idx,
         neigh_w=neigh_w,
-        Apos_bin=Apos_bin,
-        Aneg_bin=Aneg_bin,
         E_u_train=E_u_train,
-        item_owner_uid=item_owner_uid,
         device=device,
     )
+
+    # -------------------------
+    # Evaluation: GCF (Dot Product)
+    # -------------------------
+    with torch.no_grad():
+        # scores = (test items) dot (test user)
+        # E_i_test: (n_test, d), e_u_test: (d,)
+        logits_gcf = (E_i_test * e_u_test.unsqueeze(0)).sum(dim=1)
+        prob_gcf = torch.sigmoid(logits_gcf).detach().cpu().numpy()
+    
+    test_auc_gcf = roc_auc_score(y_test, prob_gcf) if len(np.unique(y_test)) > 1 else 0.0
 
     # RM prediction on test
     with torch.no_grad():
@@ -787,21 +537,40 @@ def run_copl_training(cfg: CFG, trial: optuna.Trial = None):
     test_auc = roc_auc_score(y_test, prob_test) if len(np.unique(y_test)) > 1 else 0.0
     
     if cfg.verbose > 0:
+        print(f"Test AUROC (GCF): {test_auc_gcf:.4f}")
         print(f"Test AUROC (RM): {test_auc:.4f}")
+
+        # Filename with AUC
+        roc_test_filename = f"roc_test_{test_driver}_auc{test_auc:.4f}.png"
+        scatter_test_filename = f"scatter_test_{test_driver}_auc{test_auc:.4f}.png"
 
         plot_roc(
             y_true=y_test,
             y_score=prob_test,
-            save_path=log_dir / f"roc_test_{test_driver}.png",
+            save_path=log_dir / roc_test_filename,
             title=f"ROC (RM) - Test Driver {test_driver} (AUC={test_auc:.4f})"
         )
 
         plot_reward_scatter(
             y_true=y_test,
             y_prob=prob_test,
-            save_path=log_dir / f"scatter_test_{test_driver}.png",
+            save_path=log_dir / scatter_test_filename,
             title=f"RM Prediction Scatter - Test Driver {test_driver}"
         )
+
+        if is_training:
+            # Log metrics
+            wandb.log({"Test/AUROC": test_auc})
+            wandb.log({"Test/AUROC_GCF": test_auc_gcf}) # Log GCF AUC too
+            
+            # Log plots
+            roc_img_path = log_dir / roc_test_filename
+            scatter_img_path = log_dir / scatter_test_filename
+            
+            if roc_img_path.exists():
+                wandb.log({"Test/ROC_Curve": wandb.Image(str(roc_img_path))})
+            if scatter_img_path.exists():
+                wandb.log({"Test/Reward_Scatter": wandb.Image(str(scatter_img_path))})
 
     # -------------------------
     # 8) t-SNE visualization (users + items)
@@ -822,6 +591,8 @@ def run_copl_training(cfg: CFG, trial: optuna.Trial = None):
             title="t-SNE: User Embeddings (Train + Test)",
             star_mask=star_mask,
         )
+        if is_training:
+            wandb.log({"Viz/tSNE_Users": wandb.Image(str(log_dir / "tsne_users.png"))})
 
         # items: sample train items per driver + all test items (or sample)
         rng = np.random.default_rng(cfg.seed)
@@ -850,6 +621,7 @@ def run_copl_training(cfg: CFG, trial: optuna.Trial = None):
         item_labels_all = train_item_labels + test_item_labels
 
         star_mask_items = np.array([False] * len(train_item_labels) + [True] * len(test_item_labels))
+
         compare_viz_plot(
             cfg=cfg,
             emb=item_emb_all,
@@ -858,103 +630,108 @@ def run_copl_training(cfg: CFG, trial: optuna.Trial = None):
             title="t-SNE: Item Embeddings (Train Items + Attached Test Items)",
             star_mask=star_mask_items,
         )
+        if is_training:
+            wandb.log({"Viz/tSNE_Items": wandb.Image(str(log_dir / "tsne_items.png"))})
 
         # -------------------------
-        # 8-2) Chunk-based User t-SNE
-        # -------------------------
-        print("\n[7] t-SNE visualization (Context-based)...")
-        chunk_embs = []
-        chunk_labels = []
+        if cfg.context_size > 0:
+            print("\n[7] t-SNE visualization (Context-based)...")
+            chunk_embs = []
+            chunk_labels = []
 
-        def process_chunks_for_viz(X_full, y_full, label_name):
-            # 1. Attach items to train (get weights)
-            # Note: For train items, this finds their position in Z_train via nearest neighbors (likely themselves).
-            _, neigh_idx_all, neigh_w_all = attach_test_items_to_train(
-                X_test=X_full,
-                mu=mu, sd=sd, pca=pca,
-                Z_train=Z_train,
-                gamma=gamma,
-                E_i_train=E_i_train,
-                topk=cfg.attach_topk_items,
-                device=device
-            )
-            
-            # Shuffle to get random chunks
-            n_samples = len(X_full)
-            rng = np.random.default_rng(cfg.seed)
-            perm = rng.permutation(n_samples)
-            
-            y_shuff = y_full[perm]
-            neigh_idx_shuff = neigh_idx_all[perm]
-            neigh_w_shuff = neigh_w_all[perm]
-            
-            num_chunks = n_samples // cfg.context_size
-            for i in range(num_chunks):
-                st = i * cfg.context_size
-                ed = st + cfg.context_size
-                
-                # Adapt: chunk -> user embedding
-                e_u_chunk, _ = adapt_test_user_embedding(
-                    cfg=cfg,
-                    y_test=y_shuff[st:ed],
-                    neigh_idx=neigh_idx_shuff[st:ed],
-                    neigh_w=neigh_w_shuff[st:ed],
-                    Apos_bin=Apos_bin,
-                    Aneg_bin=Aneg_bin,
-                    E_u_train=E_u_train,
-                    item_owner_uid=item_owner_uid,
+            def process_chunks_for_viz(X_full, y_full, label_name):
+                # 1. Attach items to train (get weights)
+                _, neigh_idx_all, neigh_w_all = dataset.attach_test_items(
+                    X_test=X_full,
+                    E_i_train=E_i_train,
+                    topk=cfg.attach_topk_items,
                     device=device
                 )
-                chunk_embs.append(e_u_chunk.detach().cpu().numpy())
-                chunk_labels.append(label_name)
+                
+                # Shuffle to get random chunks
+                n_samples = len(X_full)
+                rng = np.random.default_rng(cfg.seed)
+                perm = rng.permutation(n_samples)
+                
+                y_shuff = y_full[perm]
+                neigh_idx_shuff = neigh_idx_all[perm]
+                neigh_w_shuff = neigh_w_all[perm]
+                
+                num_chunks = n_samples // cfg.context_size
+                for i in range(num_chunks):
+                    st = i * cfg.context_size
+                    ed = st + cfg.context_size
+                    
+                    # Adapt: chunk -> user embedding
+                    e_u_chunk, _ = dataset.adapt_test_user(
+                        y_test=y_shuff[st:ed],
+                        neigh_idx=neigh_idx_shuff[st:ed],
+                        neigh_w=neigh_w_shuff[st:ed],
+                        E_u_train=E_u_train,
+                        device=device
+                    )
+                    chunk_embs.append(e_u_chunk.detach().cpu().numpy())
+                    chunk_labels.append(label_name)
 
-        # Train users
-        for uid, uname in enumerate(train_drivers):
-            item_ids, y_u = per_user_items[uid]
-            X_u = item_series[item_ids]
-            process_chunks_for_viz(X_u.astype(np.float32), y_u, f"{uname} (Train)")
+            # Train users
+            for uid, uname in enumerate(train_drivers):
+                item_ids, y_u = per_user_items[uid]
+                X_u = item_series[item_ids]
+                process_chunks_for_viz(X_u.astype(np.float32), y_u, f"{uname} (Train)")
+                
+            # Test user
+            process_chunks_for_viz(X_test.astype(np.float32), y_test, f"{test_driver} (Test)")
             
-        # Test user
-        process_chunks_for_viz(X_test.astype(np.float32), y_test, f"{test_driver} (Test)")
-        
-        if chunk_embs:
-            chunk_embs = np.stack(chunk_embs)
-            is_test_chunk = np.array(["(Test)" in l for l in chunk_labels])
-            
-            compare_viz_plot(
-                cfg=cfg,
-                emb=chunk_embs,
-                labels=chunk_labels,
-                save_path=log_dir / "tsne_users_chunks.png",
-                title=f"t-SNE: User Embeddings by Context (size={cfg.context_size})",
-                star_mask=is_test_chunk
-            )
-        
-        if cfg.verbose > 0:
-            print("\n[8] Deep Analysis of Item-Item Graph & Adaptation...")
-            # 1. Gamma & Distance 분석
-            plot_distance_gamma_analysis(
-                Z_train=Z_train, 
-                gamma=gamma, 
-                save_path=log_dir / "analysis_gamma_dist.png"
-            )
+            if chunk_embs:
+                chunk_embs = np.stack(chunk_embs)
+                is_test_chunk = np.array(["(Test)" in l for l in chunk_labels])
+                
+                compare_viz_plot(
+                    cfg=cfg,
+                    emb=chunk_embs,
+                    labels=chunk_labels,
+                    save_path=log_dir / "tsne_users_chunks.png",
+                    title=f"t-SNE: User Embeddings by Context (size={cfg.context_size})",
+                    star_mask=is_test_chunk
+                )
+                if is_training:
+                    wandb.log({"Viz/tSNE_User_Chunks": wandb.Image(str(log_dir / "tsne_users_chunks.png"))})
 
-            # 2. 드라이버 간 아이템 연결성 (Adjacency Matrix 기반)
-            plot_driver_similarity_matrix(
-                Aii_norm=Aii_norm, 
-                item_owner_uid=item_owner_uid, 
-                train_drivers=train_drivers, 
-                save_path=log_dir / "analysis_driver_sim_matrix.png"
-            )
 
-            # 3. 테스트 드라이버가 누구로부터 임베딩을 빌려왔는가?
-            plot_test_item_bridge(
-                neigh_idx=neigh_idx, 
-                neigh_w=neigh_w, 
-                item_owner_uid=item_owner_uid, 
-                train_drivers=train_drivers, 
-                save_path=log_dir / "analysis_test_bridge_weights.png"
-            )
+    # -------------------------
+    # 9) Deep Analysis (Visualization)
+    # -------------------------
+    if cfg.verbose > 0:
+        print("\n[8] Deep analysis visualization...")
+        
+        # 1. Distance & Gamma Analysis
+        plot_distance_gamma_analysis(
+            dataset.Z_train, dataset.gamma, 
+            save_path=log_dir / "analysis_distance_gamma.png"
+        )
+        if is_training:
+            wandb.log({"Analysis/DistanceGamma": wandb.Image(str(log_dir / "analysis_distance_gamma.png"))})
+
+        # 2. Driver Similarity Matrix (based on Item-Item graph connectivity)
+        plot_driver_similarity_matrix(
+            Aii_norm=Aii_norm, 
+            item_owner_uid=item_owner_uid, 
+            train_drivers=train_drivers, 
+            save_path=log_dir / "analysis_driver_sim_matrix.png"
+        )
+        if is_training:
+            wandb.log({"Analysis/DriverSimMatrix": wandb.Image(str(log_dir / "analysis_driver_sim_matrix.png"))})
+
+        # 3. 테스트 드라이버가 누구로부터 임베딩을 빌려왔는가?
+        plot_test_item_bridge(
+            neigh_idx=neigh_idx, 
+            neigh_w=neigh_w, 
+            item_owner_uid=item_owner_uid, 
+            train_drivers=train_drivers, 
+            save_path=log_dir / "analysis_test_bridge_weights.png"
+        )
+        if is_training:
+            wandb.log({"Analysis/TestBridgeWeights": wandb.Image(str(log_dir / "analysis_test_bridge_weights.png"))})
 
         print(f"Deep analysis plots saved to {log_dir}")
         # -------------------------
@@ -964,7 +741,7 @@ def run_copl_training(cfg: CFG, trial: optuna.Trial = None):
             "gcf_best_val_auc": float(best_auc),
             "rm_best_val_auc": float(best_rm_auc),
             "rm_test_auc": float(test_auc),
-            "Aii_meta": Aii_meta,
+            "Aii_meta": dataset.Aii_meta,
             "test_user_weight_top5": sorted(
                 [(train_drivers[i], float(w_u[i])) for i in range(len(train_drivers))],
                 key=lambda x: -x[1]
@@ -975,6 +752,9 @@ def run_copl_training(cfg: CFG, trial: optuna.Trial = None):
 
         print("\nSaved artifacts to:", log_dir)
         print("Summary:", summary)
+
+    if is_training:
+        wandb.finish()
 
     return test_auc
 

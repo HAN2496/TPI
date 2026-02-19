@@ -81,17 +81,40 @@ def compare_viz_plot(cfg: CFG, emb: np.ndarray, labels: list[str], save_path: Pa
     plt.close()
 
 def plot_distance_gamma_analysis(Z_train, gamma, save_path):
-    from scipy.spatial.distance import pdist
-    dists = pdist(Z_train, metric="euclidean")
     plt.figure(figsize=(10, 5))
-    plt.hist(dists, bins=50, alpha=0.7, color='gray', label='Pairwise Distances')
-    ax2 = plt.gca().twinx()
-    d_range = np.linspace(0, dists.max(), 100)
-    w_range = np.exp(-gamma * (d_range**2))
-    ax2.plot(d_range, w_range, color='red', linewidth=2, label=f'RBF Kernel ($\gamma$={gamma:.4f})')
-    ax2.set_ylabel('Similarity Weight')
-    plt.title("PCA Space Distance Distribution vs. RBF Kernel")
-    plt.xlabel("Euclidean Distance in PCA space")
+    
+    if gamma is None:
+        # Plot Cosine Similarity Distribution
+        from sklearn.metrics.pairwise import cosine_similarity
+        # Sample if too large to avoid memory issues
+        N = Z_train.shape[0]
+        if N > 2000:
+            rng = np.random.default_rng(42)
+            idx = rng.choice(N, 2000, replace=False)
+            Z_sub = Z_train[idx]
+        else:
+            Z_sub = Z_train
+            
+        sims = cosine_similarity(Z_sub)
+        # Upper triangle only (exclude self-sim 1.0)
+        sim_vals = sims[np.triu_indices_from(sims, k=1)]
+        
+        plt.hist(sim_vals, bins=50, alpha=0.7, color='blue', label='Cosine Similarity')
+        plt.title("Latent Space Cosine Similarity Distribution")
+        plt.xlabel("Cosine Similarity")
+        plt.xlim(-1.0, 1.0)
+    else:
+        from scipy.spatial.distance import pdist
+        dists = pdist(Z_train, metric="euclidean")
+        plt.hist(dists, bins=50, alpha=0.7, color='gray', label='Pairwise Distances')
+        ax2 = plt.gca().twinx()
+        d_range = np.linspace(0, dists.max(), 100)
+        w_range = np.exp(-gamma * (d_range**2))
+        ax2.plot(d_range, w_range, color='red', linewidth=2, label=f'RBF Kernel ($\gamma$={gamma:.4f})')
+        ax2.set_ylabel('Similarity Weight')
+        plt.title("Latent Space Distance Distribution vs. RBF Kernel")
+        plt.xlabel("Euclidean Distance")
+
     plt.legend(loc='upper right'); plt.grid(True, alpha=0.2); plt.tight_layout()
     plt.savefig(save_path, dpi=150); plt.close()
 
@@ -151,3 +174,4 @@ def plot_test_item_bridge(neigh_idx, neigh_w, item_owner_uid, train_drivers, sav
     plt.tight_layout()
     plt.savefig(save_path, dpi=150)
     plt.close()
+

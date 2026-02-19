@@ -1,4 +1,5 @@
 import math
+import random
 import torch
 import numpy as np
 from ruamel.yaml import YAML
@@ -7,6 +8,12 @@ from torch.utils.data import DataLoader, TensorDataset, Subset
 from sklearn.model_selection import train_test_split, StratifiedKFold
 
 from .data_loader import DatasetManager
+
+def seed_all(seed: int):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(torch.cuda.current_device())
 
 def convert_driver_name(driver_name):
     if driver_name == "a" or driver_name == "kang":
