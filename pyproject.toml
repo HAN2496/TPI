@@ -11,6 +11,7 @@ requires-python = ">=3.12"
 dependencies = [
     "captum",
     "gymnasium>=1.2.3",
+    "higher>=0.2.1",
     "matplotlib>=3.10.7",
     "numba>=0.63.1",
     "numpy>=2.3.5",
@@ -33,7 +34,7 @@ dependencies = [
 ]
 
 [tool.setuptools]
-packages = ["scripts", "src"]
+packages = ["scripts", "src", "src_new"]
 
 [tool.uv.sources]
 torch = [{ index = "pytorch-cu126", marker = "sys_platform == 'linux' or sys_platform == 'win32'" }]

@@ -2,7 +2,7 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
-from src.model.CoPL_new.similarity.base import (
+from src.model.CoPL.similarity.base import (
     ItemSimilarityBuilder, median_heuristic_gamma, standardize_fit, standardize_apply
 )
 

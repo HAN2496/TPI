@@ -3,7 +3,14 @@
     "allow": [
       "Bash(cat:*)",
       "Bash(ls:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(find:*)",
+      "Bash(python:*)",
+      "Bash(grep -E \"\\\\.\\(py|yaml\\)$\")",
+      "Bash(xargs grep:*)",
+      "Bash(cd:*)",
+      "Bash(grep -E \"\\\\.py$\")",
+      "Bash(python3 -c \"import json; data=json.load\\(open\\(''/c/Users/Gooooood/Documents/GitHub/TPI/datasets/2025-08-07_39set/20250807_075637_info_True.txt''\\)\\); print\\(list\\(data.keys\\(\\)\\)[:10]\\)\")"
     ]
   }
 }

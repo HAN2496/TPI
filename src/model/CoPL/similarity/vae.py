@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset
 
-from src.model.CoPL_new.similarity.base import (
+from src.model.CoPL.similarity.base import (
     ItemSimilarityBuilder, standardize_fit, standardize_apply, median_heuristic_gamma
 )
 

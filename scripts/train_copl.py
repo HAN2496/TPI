@@ -13,11 +13,11 @@ import torch
 from sklearn.metrics import roc_auc_score, roc_curve
 
 from src.utils.utils import seed_all
-from src.model.CoPL_new.utils import CoPLGraphDataset
-from src.model.CoPL_new.gcf import CoPLGCF, CoPLGCFCosine, CoPLGCFPointwiseBPR, CoPLGCFSoftmax, CoPLGCFMargin
-from src.model.CoPL_new.gcf_gcn import CoPLGCF_GCN
-from src.model.CoPL_new.rm import RewardModel, CNNRewardModel, weighted_bce_logits, rm_collate, RMEdgeDataset
-from src.model.CoPL_new.visualization import plot_distance_gamma_analysis, plot_driver_similarity_matrix, plot_roc, plot_reward_scatter, compare_viz_plot, plot_test_item_bridge
+from src.model.CoPL.utils import CoPLGraphDataset
+from src.model.CoPL.gcf import CoPLGCF, CoPLGCFCosine, CoPLGCFPointwiseBPR, CoPLGCFSoftmax, CoPLGCFMargin
+from src.model.CoPL.gcf_gcn import CoPLGCF_GCN
+from src.model.CoPL.rm import RewardModel, CNNRewardModel, weighted_bce_logits, rm_collate, RMEdgeDataset, MoLECNNRewardModel
+from src.model.CoPL.visualization import plot_distance_gamma_analysis, plot_driver_similarity_matrix, plot_roc, plot_reward_scatter, compare_viz_plot, plot_test_item_bridge, plot_vae_reconstruction, plot_vae_latent, plot_vae_feature_mse
 
 plt.rcParams['font.family'] = 'Malgun Gothic'
 plt.rcParams['axes.unicode_minus'] = False
@@ -27,12 +27,12 @@ plt.rcParams['axes.unicode_minus'] = False
 # =========================
 @dataclass
 class CFG:
-    model_type: str = "gcf_margin"  # "gcf" or "gcf_gcn" or "gcf_cosine" or "gcf_pointwise_bpr" or "gcf_softmax" or "gcf_margin"
+    model_type: str = "inductive"  # "gcf" or "gcf_gcn" or "gcf_cosine" or "gcf_pointwise_bpr" or "gcf_softmax" or "gcf_margin" or "inductive"
 
-    timestamp = None # None for timestamp training, test for debug, else load from string
+    timestamp = "test" # None for timestamp training, test for debug, else load from string
 
     # data
-    features: tuple = ("IMU_VerAccelVal", "Bounce_rate_6D", "Pitch_rate_6D", "IMU_LongAccelVal")
+    features: tuple = ("IMU_VerAccelVal", "Pitch_rate_6D", "Bounce_rate_6D", "IMU_LongAccelVal")
     train_driver_names: tuple = ("김진명", "김태근", "조현석", "한규택", "박재일", "이지환")
     test_driver_name: str = "강신길"
     time_range: tuple = (5, 7)
@@ -75,7 +75,7 @@ class CFG:
     temperature: float = 0.1 # for softmax
 
     # RM
-    rm_model_type: str = "cnn"  # "mlp" or "cnn"
+    rm_model_type: str = "mole_cnn"  # "mlp" or "cnn" or "mole_cnn"
     rm_hidden: int = 32
     rm_mlp_hidden: int = 64
     rm_lr: float = 0.00026
@@ -87,7 +87,7 @@ class CFG:
     # WandB
     wandb_project: str = "TPI-CoPL"
     wandb_entity: str = None  # None -> use default user
-    wandb_mode: str = "online"  # "online", "offline", "disabled"
+    wandb_mode: str = "disabled"  # "online", "offline", "disabled"
 
     # adaptation for test user
     adapt_use_neg: bool = True
@@ -480,6 +480,15 @@ def run_copl_training(cfg: CFG, trial: optuna.Trial = None):
             kernel_size=3,
             layers=2
         ).to(device)
+    elif cfg.rm_model_type == "mole_cnn":
+        rm = MoLECNNRewardModel(
+            obs_dim=obs_dim, 
+            user_dim=E_u_train.shape[1], 
+            hidden=cfg.rm_hidden, 
+            mlp_hidden=cfg.rm_mlp_hidden,
+            kernel_size=3,
+            layers=2
+        ).to(device)
     else:
         raise NotImplementedError
     best_rm_auc = train_rm(
@@ -732,6 +741,31 @@ def run_copl_training(cfg: CFG, trial: optuna.Trial = None):
         )
         if is_training:
             wandb.log({"Analysis/TestBridgeWeights": wandb.Image(str(log_dir / "analysis_test_bridge_weights.png"))})
+
+        if cfg.similarity_method == "vae":
+            plot_vae_reconstruction(
+                vae=dataset.sim_builder.vae,
+                item_series=item_series,
+                feature_names=list(cfg.features),
+                mu_stats=dataset.sim_builder.mu_stats,
+                sd_stats=dataset.sim_builder.sd_stats,
+                save_path=log_dir / "vae_reconstruction.png",
+            )
+            plot_vae_latent(
+                Z_train=dataset.Z_train,
+                item_owner_uid=item_owner_uid,
+                train_drivers=train_drivers,
+                save_path=log_dir / "vae_latent_tsne.png",
+                seed=cfg.seed,
+            )
+            plot_vae_feature_mse(
+                vae=dataset.sim_builder.vae,
+                item_series=item_series,
+                feature_names=list(cfg.features),
+                mu_stats=dataset.sim_builder.mu_stats,
+                sd_stats=dataset.sim_builder.sd_stats,
+                save_path=log_dir / "vae_feature_mse.png",
+            )
 
         print(f"Deep analysis plots saved to {log_dir}")
         # -------------------------
