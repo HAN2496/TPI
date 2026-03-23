@@ -1,4 +1,8 @@
+import os
 import math
+import json
+import random
+import hashlib
 import torch
 import numpy as np
 from ruamel.yaml import YAML
@@ -7,6 +11,12 @@ from torch.utils.data import DataLoader, TensorDataset, Subset
 from sklearn.model_selection import train_test_split, StratifiedKFold
 
 from .data_loader import DatasetManager
+
+def seed_all(seed: int):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(torch.cuda.current_device())
 
 def convert_driver_name(driver_name):
     if driver_name == "a" or driver_name == "kang":
@@ -45,6 +55,48 @@ def _load_dataset_sequences(driver_name, time_range, downsample, config):
     dataset = manager.get(driver_name)
     t, X, y = dataset.to_sequences(config['features'], time_range, fill_value=0.0, pad=True)
     return X, y
+
+
+def get_cache_filename(drivers, time_range, downsample, features):
+    config_dict = {
+        'drivers': sorted(drivers) if isinstance(drivers, (list, tuple)) else [drivers],
+        'time_range': time_range,
+        'downsample': downsample,
+        'features': sorted(features)
+    }
+    config_str = json.dumps(config_dict, sort_keys=True)
+    hash_str = hashlib.md5(config_str.encode()).hexdigest()
+    return f"dataset_{hash_str}.npz"
+
+
+def load_cached_datasets(driver_names, time_range, downsample, config, cache_dir="datasets/cached"):
+    os.makedirs(cache_dir, exist_ok=True)
+    
+    if isinstance(driver_names, str):
+        driver_names = [driver_names]
+        
+    cache_file = get_cache_filename(driver_names, time_range, downsample, config['features'])
+    cache_path = os.path.join(cache_dir, cache_file)
+    
+    if os.path.exists(cache_path):
+        print(f" Loading cached dataset from: {cache_path}")
+        data = np.load(cache_path)
+        return data['X'], data['y']
+        
+    print(" Cache not found. Processing and merging raw data...")
+    all_X, all_y = [], []
+    for driver in driver_names:
+        X, y = _load_dataset_sequences(driver, time_range, downsample, config)
+        all_X.append(X)
+        all_y.extend(y)
+        
+    X_concat = np.concatenate(all_X, axis=0)
+    y_concat = np.array(all_y)
+    
+    print(f" Saving dataset to cache: {cache_path}")
+    np.savez_compressed(cache_path, X=X_concat, y=y_concat)
+    
+    return X_concat, y_concat
 
 
 def _create_data_loaders(X_train, X_val, y_train, y_val, batch_size):

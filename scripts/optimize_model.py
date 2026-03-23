@@ -1,7 +1,7 @@
 from src.optimizer import create_optimizer
 from src.utils import convert_driver_name
 
-from scripts.train_model_kfold import train_model_kfold
+from scripts.train_independent_kfold import train_model_kfold
 
 def optimize_model(driver_name, model_type, time_range, downsample, n_splits, test_ratio=0.1,
                    n_trials=100, use_feature_selection=False, device="cpu", optimizer_type="bayesian", tag="optuna", verbose=1):

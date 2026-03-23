@@ -24,6 +24,7 @@ online_mlp:
       dropout_rates: [0.3, 0.3, 0.3]
       hidden_dims: [64, 64, 32]
       use_batchnorm: true
+      input_dim: 4
   base_sum:
     <<: *_neural
     features:

@@ -1,11 +1,86 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import torch
+from captum.attr import visualization as viz
 
 FONTSIZE_TITLE = 14
 FONTSIZE_LABEL = 12
 FONTSIZE_LEGEND = 9
 FONTSIZE_TICK = 10
+
+def visualize_captum(attributions, x_sample, feature_names=None, title="Feature Attribution", method="heat_map", sign="all", save_path=None):
+    """
+    Custom visualization using matplotlib imshow with robust scaling.
+    Replaces captum.viz.visualize_image_attr for better control over time-series heatmaps.
+    
+    Args:
+        attributions (torch.Tensor or np.ndarray): Attribution matrix (T, F)
+        x_sample (torch.Tensor or np.ndarray): Original input matrix (T, F) - Not used in simple heatmap but kept for interface compatibility
+        feature_names (list, optional): List of feature names for x-axis labels.
+        title (str): Title of the plot.
+        method (str): Ignored in this custom implementation (default 'heat_map').
+        sign (str): Sign of attributions to visualize ('all', 'positive', 'negative', 'absolute_value').
+        save_path (str, optional): Path to save the figure.
+    """
+    
+    # Convert to numpy if tensors
+    if isinstance(attributions, torch.Tensor):
+        attributions = attributions.detach().cpu().numpy()
+    
+    # Calculate robust limits
+    abs_attr = np.abs(attributions)
+    vmax = np.percentile(abs_attr, 99)
+    if vmax == 0: vmax = abs_attr.max() # Fallback if all zero or sparse
+    if vmax == 0: vmax = 1e-5 # Prevent division by zero or empty plot errors
+    
+    vmin = -vmax
+    cmap = 'RdBu_r' # Red for positive, Blue for negative (diverging)
+
+    if sign == "absolute_value":
+        data_to_plot = abs_attr
+        vmin = 0
+        cmap = 'Reds'
+    elif sign == "positive":
+        data_to_plot = np.maximum(attributions, 0)
+        vmin = 0
+        cmap = 'Reds'
+    elif sign == "negative":
+        data_to_plot = np.minimum(attributions, 0)
+        vmax = 0
+        vmin = -np.percentile(abs_attr, 99) # Re-calc for negative range if asymmetric
+        cmap = 'Blues_r'
+    else: # "all"
+        data_to_plot = attributions
+    
+    fig, ax = plt.subplots(figsize=(10, 8))
+    
+    # Plot heatmap
+    im = ax.imshow(data_to_plot, aspect='auto', cmap=cmap, vmin=vmin, vmax=vmax, interpolation='nearest')
+    
+    # Colorbar
+    cbar = plt.colorbar(im, ax=ax)
+    cbar.set_label('Attribution Score')
+    
+    ax.set_title(title, fontsize=14)
+    ax.set_ylabel("Time Steps")
+    ax.set_xlabel("Features")
+    
+    # Set feature ticks
+    if feature_names:
+        ax.set_xticks(np.arange(len(feature_names)))
+        ax.set_xticklabels(feature_names, rotation=90, fontsize=10)
+    else:
+        ax.set_xticks(np.arange(data_to_plot.shape[1]))
+        
+    plt.tight_layout()
+    
+    if save_path:
+        plt.savefig(save_path, bbox_inches='tight', dpi=150)
+        print(f"Saved visualization to {save_path}")
+        plt.close(fig)
+        
+    return fig
 
 def plot_feature_importance(feature_importance, feature_names, save_path=None):
     """
