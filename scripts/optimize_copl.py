@@ -1,84 +1,90 @@
-import os
-import json
 import optuna
-import argparse
+from pathlib import Path
 
-from scripts.train_copl import CFG, run_copl_training
+from src.utils.seed import seed_all
+from src.model.copl.experiment import CoPLExperiment
+from scripts.run_copl import Config
 
 
-def objective(trial):
-    cfg = CFG()
-    cfg.verbose = 0
+# ── 설정 ──────────────────────────────────────────────────────────────────────
+VAE_TIMESTAMP = "test"   # 재사용할 VAE 폴더 (None이면 매 trial 학습)
+GCF_TIMESTAMP = None     # 재사용할 GCF 폴더 (None이면 매 trial 학습)
+RM_TIMESTAMP  = "test"     # 재사용할 RM 폴더  (None이면 매 trial 학습)
+STUDY_NAME    = "copl_opt_v1"       # 바꾸면 새 study 시작, 유지하면 resume
+N_TRIALS      = 50
+TEST_DRIVER   = "강신길"
+# ─────────────────────────────────────────────────────────────────────────────
 
-    # Graph Structure
-    cfg.pca_dim = trial.suggest_int('pca_dim', 4, 48)
-    cfg.gamma_mul = trial.suggest_float('gamma_mul', 0.1, 5.0, log=True)
-    cfg.knn_k = trial.suggest_int('knn_k', 3, 30)
 
-    # GCF Embedding Learning
-    cfg.hidden_dim = trial.suggest_categorical('hidden_dim', [64, 128, 256])
-    cfg.gcf_layers = trial.suggest_int('gcf_layers', 1, 5)
-    cfg.gcf_dropout = trial.suggest_float('gcf_dropout', 0.0, 0.5)
-    cfg.item_item_weight = trial.suggest_float('item_item_weight', 0.0, 10.0)
-    cfg.gcf_lr = trial.suggest_float('gcf_lr', 1e-5, 5e-3, log=True)
-    cfg.gcf_epochs = trial.suggest_int('gcf_epochs', 50, 300)
-    cfg.gcf_lambda_reg = trial.suggest_float('gcf_lambda_reg', 1e-6, 1e-2, log=True)
+def make_cfg(trial: optuna.Trial) -> Config:
+    cfg = Config()
+    cfg.verbose  = 0
+    cfg.load_vae = VAE_TIMESTAMP
+    if GCF_TIMESTAMP is not None:
+        cfg.load_gcf = GCF_TIMESTAMP
+    if RM_TIMESTAMP is not None:
+        cfg.load_rm = RM_TIMESTAMP
 
-    # Reward Model & Adaptation
-    cfg.rm_hidden = trial.suggest_categorical('rm_hidden', [32, 64, 128])
-    cfg.rm_mlp_hidden = trial.suggest_categorical('rm_mlp_hidden', [64, 128, 256])
-    cfg.rm_batch_size = trial.suggest_categorical('rm_batch_size', [128, 256, 512])
-    cfg.rm_lr = trial.suggest_float('rm_lr', 1e-5, 5e-3, log=True)
+    # ── GCF ──────────────────────────────────────────────────────────────────
+    # cfg.gcf_m_i_type     = trial.suggest_categorical("gcf_m_i_type", ["d", "e", "f"])
+    if cfg.gcf_m_i_type == "f":
+        cfg.gcf_loss_kwargs["w_ii"] = trial.suggest_float("gcf_w_ii", 0.1, 3.0)
+    # cfg.gcf_emb_dim      = trial.suggest_categorical("gcf_emb_dim", [32, 64, 128])
+    # cfg.gcf_layers       = trial.suggest_int("gcf_layers", 1, 3)
+    # cfg.gcf_weight_decay = trial.suggest_float("gcf_weight_decay", 1e-4, 1e-1, log=True)
+    # cfg.item_item_weight = trial.suggest_float("item_item_weight", 0.1, 3.0)
+    # cfg.gcf_loss_kwargs["lambda_div"] = trial.suggest_float("lambda_div", 0.0, 1.0)
 
-    cfg.attach_topk_items = trial.suggest_int('attach_topk_items', 3, 50)
-    cfg.adapt_neg_weight = trial.suggest_float('adapt_neg_weight', 0.0, 3.0)
-    cfg.adapt_user_softmax_temp = trial.suggest_float('adapt_user_softmax_temp', 0.1, 10.0)
+    # cfg.knn_k       = trial.suggest_int("knn_k", 5, 100)
 
-    cfg.save_root = f"artifacts/copl/opt/trial_{trial.number}"
+    # ── RM ───────────────────────────────────────────────────────────────────
+    # cfg.rm_hidden = trial.suggest_categorical("rm_hidden", [32, 64, 128])
+    # cfg.rm_layers = trial.suggest_int("rm_layers", 1, 3)
 
-    try:
-        test_auc = run_copl_training(cfg, trial=trial)
-        return test_auc
-    except optuna.TrialPruned:
-        raise
-    except Exception as e:
-        print(f"[ERROR] Trial {trial.number} failed: {e}")
-        return float('-inf')
+    # # ── Test-time adaptation ──────────────────────────────────────────────────
+    # cfg.adapt_topk              = trial.suggest_int("adapt_topk", 5, 50)
+    # cfg.adapt_neg_weight        = trial.suggest_float("adapt_neg_weight", 0.3, 1.5)
+    # cfg.adapt_user_softmax_temp = trial.suggest_float("adapt_user_softmax_temp", 0.5, 2.0)
+
+    return cfg
+
+
+def objective(trial: optuna.Trial) -> float:
+    cfg = make_cfg(trial)
+    seed_all(cfg.seed)
+
+    out_dir = Path(f"artifacts/copl/opt_{STUDY_NAME}/trial_{trial.number:03d}")
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    results = CoPLExperiment(cfg).run(out_dir, eval_only=False)
+    auroc = results.get(f"test/{TEST_DRIVER}", {}).get("auroc", float("nan"))
+
+    trial.set_user_attr("out_dir", str(out_dir))
+    trial.set_user_attr("auroc", auroc)
+    return auroc
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--n_trials", type=int, default=500)
-    parser.add_argument("--study_name", type=str, default="copl_optimization")
-    parser.add_argument("--db_path", type=str, default="artifacts/copl/opt/study.db")
-    args = parser.parse_args()
-
-    os.makedirs(os.path.dirname(args.db_path), exist_ok=True)
-
-    pruner = optuna.pruners.MedianPruner(
-        n_startup_trials=5,
-        n_warmup_steps=10,
-        interval_steps=1,
-    )
-
+    storage = f"sqlite:///artifacts/copl/opt_{STUDY_NAME}.db"
     study = optuna.create_study(
-        study_name=args.study_name,
+        study_name=STUDY_NAME,
+        storage=storage,
         direction="maximize",
-        storage=f"sqlite:///{args.db_path}",
-        load_if_exists=True,
-        pruner=pruner
+        load_if_exists=True,   # resume 지원
     )
 
-    study.optimize(objective, n_trials=args.n_trials, gc_after_trial=True)
+    completed = len([t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE])
+    print(f"[Optimize] Study: {STUDY_NAME}  |  완료된 trials: {completed}  |  목표: {N_TRIALS}")
 
-    print("\nOptimization Finished!")
-    print(f"Best value: {study.best_value:.4f}")
-    print(f"Best params: {study.best_params}")
+    study.optimize(objective, n_trials=N_TRIALS - completed)
 
-    best_path = "artifacts/copl/opt/best_params.json"
-    with open(best_path, "w") as f:
-        json.dump(study.best_params, f, indent=2)
-    print(f"Best params saved to {best_path}")
+    print("\n=== Best Trial ===")
+    best = study.best_trial
+    print(f"  AUROC   : {best.value:.4f}")
+    print(f"  out_dir : {best.user_attrs.get('out_dir', '-')}")
+    print("  Params  :")
+    for k, v in best.params.items():
+        print(f"    {k}: {v}")
 
 
 if __name__ == "__main__":

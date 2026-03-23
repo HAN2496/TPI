@@ -5,8 +5,10 @@ from sklearn.preprocessing import StandardScaler
 
 from ..base import NeuralModel, RegressionModel, build_mlp, _to_numpy
 
+
 class OfflineLSTM(NeuralModel):
     is_online = False
+
     def __init__(self, input_dim,
                  lstm_hidden_dim, lstm_layers, lstm_dropout, bidirectional,
                  hidden_dims, dropout_rates, act_name, use_batchnorm=False, reduce='mean'):
@@ -31,21 +33,15 @@ class OfflineLSTM(NeuralModel):
         return out.squeeze(-1)
 
 
-
 class OfflineRegression(RegressionModel):
     is_online = False
+
     def __init__(self, basis, C=1.0, solver="lbfgs", max_iter=100, random_state=None):
         super().__init__()
-
         self.basis = basis
-
         self.scaler = StandardScaler()
         self.model = LogisticRegression(
-            max_iter=max_iter,
-            C=C,
-            solver=solver,
-            random_state=random_state
-        )
+            max_iter=max_iter, C=C, solver=solver, random_state=random_state)
 
         self.ops = {
             "mean": lambda x: x.mean(axis=1),
@@ -60,14 +56,11 @@ class OfflineRegression(RegressionModel):
     def extract_features(self, X):
         X_np = _to_numpy(X)
         features = []
-
         for dim, (feat_name, stats) in enumerate(self.basis.items()):
             dim_data = X_np[:, :, dim]
-
             for stat_name in stats:
                 val = self.ops[stat_name](dim_data)
                 features.append(val)
-
         return np.stack(features, axis=1)
 
     def fit(self, X, y):

@@ -4,9 +4,11 @@ import torch
 import torch.nn as nn
 import numpy as np
 
+
 class BaseModel(ABC):
     is_neural: bool
     is_online: bool
+
     def __init__(self):
         self.best_threshold = 0.5
 
@@ -22,8 +24,10 @@ class BaseModel(ABC):
     def predict_label(self, x, threshold=None):
         raise NotImplementedError
 
+
 class NeuralModel(BaseModel, nn.Module):
     is_neural = True
+
     def __init__(self, reduce='mean'):
         BaseModel.__init__(self)
         nn.Module.__init__(self)
@@ -55,8 +59,10 @@ class NeuralModel(BaseModel, nn.Module):
             logits = self.forward(x)
             return torch.sigmoid(logits)
 
+
 class RegressionModel(BaseModel):
     is_neural = False
+
     def __init__(self):
         super().__init__()
 
@@ -74,12 +80,13 @@ class RegressionModel(BaseModel):
 
     def eval(self):
         return self
-    
+
     def load_state_dict(self, sd):
         return self
 
     def to(self, device):
         return self
+
 
 def build_mlp(in_dim, hidden_dims, act, dropout_rates, use_batchnorm=False):
     layers = []
@@ -102,6 +109,7 @@ def feature_map_dim(input_dim, form):
         return input_dim * 2
     raise ValueError(f"Unknown form: {form}")
 
+
 def feature_map_torch(x, form, w3=None, w4=None, clip=20.0):
     if form == "abs_quad":
         return torch.cat([torch.abs(x), x * x], dim=-1)
@@ -113,15 +121,14 @@ def feature_map_torch(x, form, w3=None, w4=None, clip=20.0):
         if w3 is None or w4 is None:
             raise ValueError("quad_exp requires w3, w4")
         quad = x * x
-
         w3_t = torch.as_tensor(w3, dtype=x.dtype, device=x.device)
         w4_t = torch.as_tensor(w4, dtype=x.dtype, device=x.device)
-
         shifted = torch.relu(torch.abs(x) - w4_t)
         expv = torch.exp(torch.clamp(w3_t * shifted, max=clip))
         return torch.cat([quad, expv], dim=-1)
 
     raise ValueError(f"Unknown form: {form}")
+
 
 def feature_map_np(X, form, w3=None, w4=None, clip=20.0):
     if form == "abs_quad":
@@ -134,15 +141,14 @@ def feature_map_np(X, form, w3=None, w4=None, clip=20.0):
         if w3 is None or w4 is None:
             raise ValueError("quad_exp requires w3, w4")
         quad = X * X
-
         w3_np = np.asarray(w3, dtype=X.dtype)
         w4_np = np.asarray(w4, dtype=X.dtype)
-
         shifted = np.maximum(np.abs(X) - w4_np, 0.0)
         expv = np.exp(np.clip(w3_np * shifted, None, clip))
         return np.concatenate([quad, expv], axis=-1)
 
     raise ValueError(f"Unknown form: {form}")
+
 
 def _to_numpy(x):
     if isinstance(x, np.ndarray):

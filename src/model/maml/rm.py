@@ -3,6 +3,7 @@ import torch.nn.functional as F
 
 from ..base import NeuralModel
 
+
 class MetaCNNModel(NeuralModel):
     def __init__(self, obs_dim, hidden_dim=32):
         super().__init__()
@@ -19,7 +20,6 @@ class MetaCNNModel(NeuralModel):
         )
 
     def forward(self, x):
-        x = x.transpose(1, 2)
-        x = self.conv(x)
+        x = self.conv(x.transpose(1, 2))
         x = F.max_pool1d(x, kernel_size=x.shape[-1]).squeeze(-1)
         return self.head(x).squeeze(-1)

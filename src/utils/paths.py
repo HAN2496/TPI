@@ -1,34 +1,17 @@
+from datetime import datetime
 from pathlib import Path
 
-class ExperimentPaths:
-    def __init__(self, driver_name, model_type, model_name, time_range, tag=None, tag_as_subdir=False):
-        run_id = f"t{time_range[0]}-{time_range[1]}"
 
-        if model_name:
-            self.run_dir = Path("artifacts") / driver_name / model_type / model_name / run_id
-        else:
-            self.run_dir = Path("artifacts") / driver_name / model_type / run_id
+def artifact_dir(method, timestamp=None) -> tuple[Path, bool]:
+    """
+    timestamp=None              -> 새 타임스탬프 폴더 생성, eval_only=False
+    timestamp="test"            -> 고정 test 폴더 (디버그용), eval_only=False
+    timestamp="20250101_120000" -> 기존 폴더 재사용, eval_only=True
 
-        if tag:
-            if tag_as_subdir:
-                self.run_dir = self.run_dir / tag
-            else:
-                if model_name:
-                    self.run_dir = Path("artifacts") / driver_name / model_type / model_name / f"{run_id}_{tag}"
-                else:
-                    self.run_dir = Path("artifacts") / driver_name / model_type / f"{run_id}_{tag}"
-
-    def get(self, filename, create=False):
-        if create:
-            self.run_dir.mkdir(parents=True, exist_ok=True)
-        return self.run_dir / filename
-
-    @property
-    def best_model(self):
-        return str(self.get("best_model.pt"))
-    @property
-    def config(self):
-        return str(self.get("config.yaml"))
-    @property
-    def history(self):
-        return str(self.get("history.json"))
+    Returns: (path, eval_only)
+    """
+    eval_only = timestamp is not None and timestamp != "test"
+    name = timestamp if timestamp is not None else datetime.now().strftime("%Y%m%d_%H%M%S")
+    d = Path("artifacts") / method / name
+    d.mkdir(parents=True, exist_ok=True)
+    return d, eval_only

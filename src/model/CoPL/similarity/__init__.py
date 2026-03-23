@@ -1,7 +1,7 @@
-from src.model.CoPL.similarity.base import ItemSimilarityBuilder
-from src.model.CoPL.similarity.pca import PCASimilarity, KernelPCASimilarity
-from src.model.CoPL.similarity.vae import VAESimilarity
-from src.model.CoPL.similarity.dtw import DTWSimilarity
+from .base import ItemSimilarityBuilder
+from .pca import PCASimilarity, KernelPCASimilarity
+from .vae import VAESimilarity
+from .dtw import DTWSimilarity
 
 SIMILARITY_REGISTRY = {
     "pca": PCASimilarity,
@@ -12,7 +12,6 @@ SIMILARITY_REGISTRY = {
 
 
 def build_similarity(method: str = "pca") -> ItemSimilarityBuilder:
-    """similarity_method 문자열로 적절한 빌더 인스턴스를 생성합니다."""
     cls = SIMILARITY_REGISTRY.get(method)
     if cls is None:
         raise ValueError(

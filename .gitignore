@@ -2,6 +2,7 @@ artifacts/
 datasets/
 temp.py
 
+.claude/
 CLAUDE.md
 
 .python-version
