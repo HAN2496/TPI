@@ -26,22 +26,28 @@ class Config:
     device: str = "cuda"
     verbose: int = 1
 
-    timestamp: str = "test"  # None=새 실험, "test"=디버그 고정폴더, "20250101_120000"=평가만
-
+    timestamp: str = "test"  # None=새 실험, "test"=디버그 고정폴더, "20250101_120000"=해당폴더 전체 로드
+    load_vae: str = "test"    # None=학습, "test"/"20250101_120000"=해당 폴더에서 로드 (timestamp=시간이면 무시)
+    load_gcf: str = None    # 동일
+    load_rm: str = None     # 동일
 
     # GCF model selection
-    gcf_model: str = "gcf"  # "gcf" | "gcf_gcn" | "gcf_cosine" | "gcf_pointwise_bpr" | "gcf_softmax" | "gcf_margin"
-    gcf_emb_dim: int = 128
+    gcf_model: str = "gcf"  # "gcf" | "gcf_gcn"
+    gcf_loss_type: str = "bce_diversity"  # "bce" | "bpr" | "cosine" | "softmax" | "margin"
+    gcf_emb_dim: int = 32
     gcf_layers: int = 2
     gcf_dropout: float = 0.0
-    item_item_weight: float = 0.72
+    item_item_weight: float = 0.5
     gcf_lr: float = 0.00068
     gcf_weight_decay: float = 0.001
     gcf_lambda_reg: float = 0.0
     gcf_epochs: int = 100
     use_pos_weight: bool = True
-    margin: float = 0.5
-    temperature: float = 0.1
+    gcf_loss_kwargs: dict = field(default_factory=lambda: {
+        "lambda_div": 0.5,   # bce_diversity loss
+        "margin": 0.5,       # cosine, margin loss
+        "temperature": 0.1,  # softmax loss
+    })
 
     # Similarity graph
     similarity_method: str = "vae"

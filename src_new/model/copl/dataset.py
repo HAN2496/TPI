@@ -19,7 +19,7 @@ def normalize_bipartite_adj(adj: torch.Tensor, eps: float = 1e-12) -> torch.Tens
 
 
 class CoPLGraphDataset:
-    def __init__(self, cfg):
+    def __init__(self, cfg, sim_builder=None):
         self.cfg = cfg
         train_drivers = list(cfg.train_driver_names)
         self.train_drivers = train_drivers
@@ -98,8 +98,12 @@ class CoPLGraphDataset:
         if cfg.verbose > 0:
             print("\n[Build] Item-item graph A_ii (train items only)...")
 
-        self.sim_builder = build_similarity(cfg.similarity_method)
-        result = self.sim_builder.fit(self.item_series, cfg)
+        if sim_builder is not None:
+            self.sim_builder = sim_builder
+            result = self.sim_builder.build_graph(self.item_series, cfg)
+        else:
+            self.sim_builder = build_similarity(cfg.similarity_method)
+            result = self.sim_builder.fit(self.item_series, cfg)
 
         self.Aii_norm = result["Aii_norm"]
         self.Z_train = result["Z_train"]

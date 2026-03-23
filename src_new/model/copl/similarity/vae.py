@@ -152,6 +152,16 @@ class VAESimilarity(ItemSimilarityBuilder):
                 print(f"  [VAE] Best val_loss={best_val_loss:.4f}")
 
         self.vae.eval()
+        return self.build_graph(item_series, cfg)
+
+    def build_graph(self, item_series: np.ndarray, cfg) -> dict:
+        N, T, D = item_series.shape
+        X = item_series.reshape(N, T * D).astype(np.float32)
+        Xs = standardize_apply(X, self.mu_stats, self.sd_stats)
+        X_tensor = torch.tensor(Xs.reshape(N, T, D).transpose(0, 2, 1), dtype=torch.float32)
+        device = next(self.vae.parameters()).device
+
+        self.vae.eval()
         with torch.no_grad():
             mu_z, logvar_z = self.vae.encode(X_tensor.to(device))
             Z = mu_z.cpu().numpy()
@@ -166,8 +176,7 @@ class VAESimilarity(ItemSimilarityBuilder):
             gamma_med = median_heuristic_gamma(np.concatenate([Z, Z_sigma], axis=1), seed=cfg.seed)
             self.gamma = gamma_med * cfg.gamma_mul
             Aii_norm = self.build_wasserstein_knn_graph(Z, Z_sigma, knn_k=cfg.knn_k, gamma=self.gamma,
-                                                        mutual=cfg.mutual,
-                                                        kernel=self.metric)
+                                                        mutual=cfg.mutual, kernel=self.metric)
         elif self.metric == "laplacian":
             gamma_med = median_heuristic_gamma(Z, seed=cfg.seed)
             self.gamma = gamma_med * cfg.gamma_mul
@@ -180,9 +189,7 @@ class VAESimilarity(ItemSimilarityBuilder):
         meta = {
             "method": "vae",
             "metric": self.metric,
-            "latent_dim": latent_dim,
-            "vae_epochs": vae_epochs,
-            "vae_best_val_loss": float(best_val_loss),
+            "latent_dim": self.vae.latent_dim,
             "knn_k": cfg.knn_k,
             "mutual": cfg.mutual,
         }
@@ -192,6 +199,27 @@ class VAESimilarity(ItemSimilarityBuilder):
             print(f"  [VAE] meta: {meta}")
 
         return {"Aii_norm": Aii_norm, "Z_train": Z, "gamma": self.gamma, "meta": meta}
+
+    def save(self, path):
+        torch.save({
+            "vae_state_dict": self.vae.state_dict(),
+            "obs_dim": self.vae.obs_dim, "seq_len": self.vae.seq_len,
+            "latent_dim": self.vae.latent_dim, "hidden_channels": self.vae._hidden_channels,
+            "mu_stats": self.mu_stats, "sd_stats": self.sd_stats,
+            "metric": self.metric, "temperature": self.temperature,
+            "gamma": self.gamma, "_T": self._T, "_D": self._D,
+            "history": self.history,
+        }, path)
+
+    def load(self, path, device):
+        ck = torch.load(path, map_location=device, weights_only=False)
+        self.vae = Conv1dVAE(ck["obs_dim"], ck["seq_len"], ck["latent_dim"], ck["hidden_channels"]).to(device)
+        self.vae.load_state_dict(ck["vae_state_dict"])
+        self.vae.eval()
+        self.mu_stats, self.sd_stats = ck["mu_stats"], ck["sd_stats"]
+        self.metric, self.temperature, self.gamma = ck["metric"], ck["temperature"], ck["gamma"]
+        self._T, self._D = ck["_T"], ck["_D"]
+        self.history = ck["history"]
 
     def transform_test(self, X_test: np.ndarray) -> np.ndarray:
         n_test, T, D = X_test.shape

@@ -1,3 +1,5 @@
+from dataclasses import asdict
+import json
 import numpy as np
 import torch
 from pathlib import Path
@@ -6,10 +8,11 @@ from torch.utils.data import DataLoader
 from sklearn.metrics import roc_auc_score
 
 from ..experiment import BaseExperiment
-from .gcf import CoPLGCF, CoPLGCFCosine, CoPLGCFPointwiseBPR, CoPLGCFSoftmax, CoPLGCFMargin
-from .gcf_gcn import CoPLGCF_GCN
+from .gcf import CoPLGCF
+from .gcf_gcn import CoPLGCF_PyG
 from .rm import RewardModel, CNNRewardModel, MoLECNNRewardModel, RMEdgeDataset, rm_collate
 from .dataset import CoPLGraphDataset
+from .similarity import build_similarity
 from .trainer import CoPLGCFTrainer, CoPLRMTrainer
 from .visualization import (plot_test_item_bridge, plot_item_embeddings,
                             plot_user_embeddings, plot_rm_distributions, plot_wu_evolution)
@@ -18,11 +21,46 @@ from ...evaluation import evaluate_predictions, save_metrics_txt, compute_sequen
 
 class CoPLExperiment(BaseExperiment):
 
+    def run(self, out_dir: Path, eval_only: bool = False) -> dict:
+        self._out_dir = out_dir
+        self._eval_only = eval_only
+        self.build()
+        if eval_only:
+            self.load(out_dir)
+            train_metrics = {}
+        else:
+            with open(out_dir / "cfg.json", "w", encoding="utf-8") as f:
+                json.dump(asdict(self.cfg), f, ensure_ascii=False, indent=2)
+            train_metrics = self.train(out_dir)
+            self.save(out_dir)
+        eval_metrics = self.evaluate(out_dir)
+        summary = self.make_summary(train_metrics, eval_metrics)
+        with open(out_dir / "summary.json", "w") as f:
+            json.dump(summary, f, indent=2, ensure_ascii=False)
+        return eval_metrics
+
+    def _get_load_path(self, component: str):
+        """컴포넌트를 로드할 Path 반환. None이면 학습."""
+        if self._eval_only:
+            return self._out_dir
+        load_ts = getattr(self.cfg, f"load_{component}", None)
+        if load_ts is None:
+            return None
+        return Path("artifacts") / "copl" / load_ts
+
     def build(self):
         self.device = torch.device(self.cfg.device)
         print("=" * 60)
         print("[CoPL] Building graph dataset...")
-        self.dataset = CoPLGraphDataset(self.cfg)
+        vae_path = self._get_load_path("vae")
+        if vae_path is not None:
+            print(f"  [VAE] Loading from {vae_path}...")
+            sim_builder = build_similarity(self.cfg.similarity_method)
+            sim_builder.load(vae_path / "vae.pt", device=self.device)
+            self.dataset = CoPLGraphDataset(self.cfg, sim_builder=sim_builder)
+        else:
+            self.dataset = CoPLGraphDataset(self.cfg)
+            self.dataset.sim_builder.save(self._out_dir / "vae.pt")
         self.dataset.to(self.device)
         self.gcf = self._build_gcf()
         self.rm = self._build_rm()
@@ -35,19 +73,21 @@ class CoPLExperiment(BaseExperiment):
             dropout=cfg.gcf_dropout, l=cfg.gcf_layers,
             item_item_adj_norm=ds.Aii_norm, item_item_weight=cfg.item_item_weight,
         )
-        if cfg.gcf_model == "gcf":
-            return CoPLGCF(**common).to(self.device)
-        elif cfg.gcf_model == "gcf_gcn":
-            return CoPLGCF_GCN(**common).to(self.device)
-        elif cfg.gcf_model == "gcf_cosine":
-            return CoPLGCFCosine(**common, margin=cfg.margin).to(self.device)
-        elif cfg.gcf_model == "gcf_pointwise_bpr":
-            return CoPLGCFPointwiseBPR(**common).to(self.device)
-        elif cfg.gcf_model == "gcf_softmax":
-            return CoPLGCFSoftmax(**common, temperature=cfg.temperature).to(self.device)
-        elif cfg.gcf_model == "gcf_margin":
-            return CoPLGCFMargin(**common, margin=cfg.margin).to(self.device)
-        raise ValueError(f"Unknown gcf_model: {cfg.gcf_model}")
+        if cfg.gcf_model == "gcf_gcn":
+            return CoPLGCF_PyG(**common).to(self.device)
+
+        Z = torch.tensor(self.dataset.Z_train, dtype=torch.float32)  # (n_items, vae_latent_dim)
+        if Z.shape[1] != cfg.gcf_emb_dim:
+            proj = torch.nn.Linear(Z.shape[1], cfg.gcf_emb_dim, bias=False)
+            torch.nn.init.xavier_uniform_(proj.weight)
+            with torch.no_grad():
+                item_feat_init = proj(Z)
+        else:
+            item_feat_init = Z
+
+        return CoPLGCF(**common, loss_type=cfg.gcf_loss_type,
+                       loss_kwargs=cfg.gcf_loss_kwargs,
+                       item_feat_init=item_feat_init).to(self.device)
 
     def _build_rm(self):
         cfg = self.cfg
@@ -66,32 +106,52 @@ class CoPLExperiment(BaseExperiment):
 
     def train(self, out_dir: Path) -> dict:
         cfg, ds = self.cfg, self.dataset
-        print("\n[1] Training GCF...")
-        gcf_trainer = CoPLGCFTrainer(self.gcf, {
-            'device': cfg.device, 'gcf_lr': cfg.gcf_lr,
-            'gcf_weight_decay': cfg.gcf_weight_decay, 'gcf_lambda_reg': cfg.gcf_lambda_reg,
-            'gcf_epochs': cfg.gcf_epochs, 'use_pos_weight': cfg.use_pos_weight,
-        }, log_dir=out_dir)
-        gcf_best_auc, _, E_u, E_i, gcf_metrics = gcf_trainer.train(
-            ds.tr_u, ds.tr_i, ds.tr_y, ds.va_u, ds.va_i, ds.va_y, verbose=cfg.verbose)
-        self.E_u = E_u.to(self.device)
-        self.E_i = E_i
-        print(f"  GCF Best Val AUC: {gcf_best_auc:.4f}")
 
-        print("\n[2] Training Reward Model...")
-        train_loader = DataLoader(
-            RMEdgeDataset(ds.tr_u, ds.tr_i, ds.tr_y, ds.item_series),
-            batch_size=cfg.rm_batch_size, shuffle=True, collate_fn=rm_collate)
-        val_loader = DataLoader(
-            RMEdgeDataset(ds.va_u, ds.va_i, ds.va_y, ds.item_series),
-            batch_size=cfg.rm_batch_size, shuffle=False, collate_fn=rm_collate)
-        rm_trainer = CoPLRMTrainer(self.rm, {
-            'device': cfg.device, 'rm_lr': cfg.rm_lr,
-            'rm_weight_decay': cfg.rm_weight_decay, 'rm_lambda_reg': cfg.rm_lambda_reg,
-            'rm_epochs': cfg.rm_epochs, 'use_pos_weight': cfg.use_pos_weight,
-        }, log_dir=out_dir)
-        rm_best_auc, rm_metrics = rm_trainer.train(train_loader, val_loader, self.E_u, ds.tr_y, verbose=cfg.verbose)
-        print(f"  RM Best Val AUC: {rm_best_auc:.4f}")
+        gcf_path = self._get_load_path("gcf")
+        if gcf_path is None:
+            print("\n[1] Training GCF...")
+            gcf_trainer = CoPLGCFTrainer(self.gcf, {
+                'device': cfg.device, 'gcf_lr': cfg.gcf_lr,
+                'gcf_weight_decay': cfg.gcf_weight_decay, 'gcf_lambda_reg': cfg.gcf_lambda_reg,
+                'gcf_epochs': cfg.gcf_epochs, 'use_pos_weight': cfg.use_pos_weight,
+            }, log_dir=out_dir)
+            gcf_best_auc, _, E_u, E_i, gcf_metrics = gcf_trainer.train(
+                ds.tr_u, ds.tr_i, ds.tr_y, ds.va_u, ds.va_i, ds.va_y, verbose=cfg.verbose)
+            self.E_u = E_u.to(self.device)
+            self.E_i = E_i
+            print(f"  GCF Best Val AUC: {gcf_best_auc:.4f}")
+        else:
+            print(f"\n[1] Loading GCF from {gcf_path}...")
+            self.gcf.load_state_dict(torch.load(gcf_path / "best_gcf.pt", map_location=self.device, weights_only=True))
+            self.gcf.eval()
+            with torch.no_grad():
+                E_u, E_i = self.gcf.encode_graph(test=True)
+            self.E_u = E_u.to(self.device)
+            self.E_i = E_i
+            gcf_best_auc = float("nan")
+            gcf_metrics = {}
+
+        rm_path = self._get_load_path("rm")
+        if rm_path is None:
+            print("\n[2] Training Reward Model...")
+            train_loader = DataLoader(
+                RMEdgeDataset(ds.tr_u, ds.tr_i, ds.tr_y, ds.item_series),
+                batch_size=cfg.rm_batch_size, shuffle=True, collate_fn=rm_collate)
+            val_loader = DataLoader(
+                RMEdgeDataset(ds.va_u, ds.va_i, ds.va_y, ds.item_series),
+                batch_size=cfg.rm_batch_size, shuffle=False, collate_fn=rm_collate)
+            rm_trainer = CoPLRMTrainer(self.rm, {
+                'device': cfg.device, 'rm_lr': cfg.rm_lr,
+                'rm_weight_decay': cfg.rm_weight_decay, 'rm_lambda_reg': cfg.rm_lambda_reg,
+                'rm_epochs': cfg.rm_epochs, 'use_pos_weight': cfg.use_pos_weight,
+            }, log_dir=out_dir)
+            rm_best_auc, rm_metrics = rm_trainer.train(train_loader, val_loader, self.E_u, ds.tr_y, verbose=cfg.verbose)
+            print(f"  RM Best Val AUC: {rm_best_auc:.4f}")
+        else:
+            print(f"\n[2] Loading Reward Model from {rm_path}...")
+            self.rm.load_state_dict(torch.load(rm_path / "best_rm.pt", map_location=self.device, weights_only=True))
+            rm_best_auc = float("nan")
+            rm_metrics = {}
 
         combined = {}
         for k, v in gcf_metrics.items():
@@ -100,7 +160,8 @@ class CoPLExperiment(BaseExperiment):
         for k, v in rm_metrics.items():
             prefix, name = k.split("/", 1)
             combined[f"{prefix}/rm_{name}"] = v
-        plot_training_curves(combined, out_dir / "plots" / "training_curves.png", title="CoPL Training")
+        if combined:
+            plot_training_curves(combined, out_dir / "plots" / "training_curves.png", title="CoPL Training")
 
         return {"gcf_val_auroc": gcf_best_auc, "rm_val_auroc": rm_best_auc}
 
