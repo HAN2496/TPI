@@ -1,11 +1,13 @@
 from .base import ItemSimilarityBuilder
 from .pca import PCASimilarity, KernelPCASimilarity
+from .ae import AESimilarity
 from .vae import VAESimilarity
 from .dtw import DTWSimilarity
 
 SIMILARITY_REGISTRY = {
     "pca": PCASimilarity,
     "kernel_pca": KernelPCASimilarity,
+    "ae": AESimilarity,
     "vae": VAESimilarity,
     "dtw": DTWSimilarity,
 }

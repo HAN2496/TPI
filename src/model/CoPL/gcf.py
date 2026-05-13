@@ -55,6 +55,8 @@ class CoPLGCF(nn.Module):
         self.W_i_cross_pos_user = nn.ModuleList([nn.Linear(d, d) for _ in range(l)])
         self.W_i_cross_neg_user = nn.ModuleList([nn.Linear(d, d) for _ in range(l)])
 
+        self.W_i_user_bias = nn.ModuleList([nn.Linear(d, d) for _ in range(l)])
+
         if loss_type == "cosine":
             self.loss_fn = nn.CosineEmbeddingLoss(margin=self.loss_kwargs["margin"], reduction="none")
         elif loss_type == "softmax":
@@ -76,13 +78,65 @@ class CoPLGCF(nn.Module):
             Z_i_pos = torch.spmm(Apos.transpose(0, 1), E_u_prev)
             Z_i_neg = torch.spmm(Aneg.transpose(0, 1), E_u_prev)
 
-            m_u = (self.W_u_self[layer](E_u_prev)
-                   + self.W_u_pos_1[layer](Z_u_pos)
-                   + self.W_u_pos_2[layer](Z_u_pos * E_u_prev)
-                   + self.W_u_neg_3[layer](Z_u_neg)
-                   + self.W_u_neg_4[layer](Z_u_neg * E_u_prev))
+            if self.m_i_type == "original":
+                m_u = (self.W_u_self[layer](E_u_prev)
+                    + Z_u_pos
+                    + self.W_i_pos_1[layer](Z_u_pos * E_u_prev)
+                    + Z_u_neg
+                    + self.W_i_neg_3[layer](Z_u_neg * E_u_prev))
 
-            if self.m_i_type == "a":
+            else:
+                m_u = (self.W_u_self[layer](E_u_prev)
+                    + self.W_u_pos_1[layer](Z_u_pos)
+                    + self.W_u_pos_2[layer](Z_u_pos * E_u_prev)
+                    + self.W_u_neg_3[layer](Z_u_neg)
+                    + self.W_u_neg_4[layer](Z_u_neg * E_u_prev))
+
+
+            if self.m_i_type == "original":
+                m_i = (self.W_i_self[layer](E_i_prev)
+                       + Z_i_pos
+                       + self.W_i_pos_1[layer](Z_i_pos * E_i_prev)
+                       + Z_i_neg
+                       + self.W_i_neg_3[layer](Z_i_neg * E_i_prev)) # original bug: W_u_self for items
+
+            if self.m_i_type == "original_corrected":
+                m_i = (self.W_i_self[layer](E_i_prev)
+                       + Z_i_pos
+                       + self.W_i_pos_1[layer](Z_i_pos * E_i_prev)
+                       + Z_i_neg
+                       + self.W_i_neg_3[layer](Z_i_neg * E_i_prev)) # original bug: W_u_self for items
+
+            elif self.m_i_type == "original_b":
+                m_i = (self.W_i_self[layer](E_i_prev)
+                       + Z_i_pos
+                       + self.W_i_pos_1[layer](Z_i_pos * E_i_prev)
+                       + Z_i_neg
+                       + self.W_i_neg_3[layer](Z_i_neg * E_i_prev)) # original bug: W_u_self for items
+
+                Aii = sparse_dropout(self.item_item_adj_norm, self.dropout, training=not test)
+                Z_i_ii_item = torch.spmm(Aii, E_i_prev)
+                m_i = m_i + self.item_item_weight * (
+                    self.W_i_ii_1[layer](Z_i_ii_item) + self.W_i_ii_2[layer](Z_i_ii_item * E_i_prev))
+
+            elif self.m_i_type == "original_f":
+                m_i = (self.W_i_self[layer](E_i_prev)
+                       + Z_i_pos
+                       + self.W_i_pos_1[layer](Z_i_pos * E_i_prev)
+                       + Z_i_neg
+                       + self.W_i_neg_3[layer](Z_i_neg * E_i_prev)) # original bug: W_u_self for items
+
+                Aii = sparse_dropout(self.item_item_adj_norm, self.dropout, training=not test)
+                Z_i_ii_item = torch.spmm(Aii, E_i_prev)
+                # # 2. 유사한 궤적을 평가한 '타 유저'의 임베딩 흡수
+                Z_i_ii_user = torch.spmm(Aii, Z_i_pos) 
+                Z_i_ii_user_neg = torch.spmm(Aii, Z_i_neg) 
+                m_i = m_i + self.item_item_weight * (
+                    self.W_i_ii_1[layer](Z_i_ii_item) + self.W_i_ii_2[layer](Z_i_ii_item * E_i_prev) +
+                    self.W_i_cross_pos_user[layer](Z_i_ii_user) + self.W_i_cross_neg_user[layer](Z_i_ii_user_neg))
+
+
+            elif self.m_i_type == "a":
                 m_i = (self.W_i_self[layer](E_i_prev)
                        + self.W_i_pos_1[layer](Z_i_pos)
                        + self.W_i_pos_2[layer](Z_i_pos * E_i_prev)

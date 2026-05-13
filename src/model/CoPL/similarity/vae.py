@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.model_selection import train_test_split
 
-from .base import ItemSimilarityBuilder, standardize_fit, standardize_apply, median_heuristic_gamma
+from .base import ItemSimilarityBuilder, standardize_fit, standardize_apply, median_heuristic_gamma, median_heuristic_kl_gamma
 
 
 class Conv1dVAE(nn.Module):
@@ -172,6 +172,10 @@ class VAESimilarity(ItemSimilarityBuilder):
         self.gamma = None
         if self.metric == "cosine":
             Aii_norm = self.build_cosine_knn_graph(Z, knn_k=cfg.knn_k, mutual=cfg.mutual, temperature=self.temperature)
+        elif self.metric == "kl":
+            gamma_med = median_heuristic_kl_gamma(Z, Z_sigma, seed=cfg.seed)
+            self.gamma = gamma_med * cfg.gamma_mul
+            Aii_norm = self.build_kl_knn_graph(Z, Z_sigma, knn_k=cfg.knn_k, gamma=self.gamma, mutual=cfg.mutual)
         elif self.metric in ("wasserstein", "wasserstein_laplacian"):
             gamma_med = median_heuristic_gamma(np.concatenate([Z, Z_sigma], axis=1), seed=cfg.seed)
             self.gamma = gamma_med * cfg.gamma_mul
@@ -200,7 +204,8 @@ class VAESimilarity(ItemSimilarityBuilder):
         if cfg.verbose > 0:
             print(f"  [VAE] meta: {meta}")
 
-        return {"Aii_norm": Aii_norm, "Z_train": Z, "gamma": self.gamma, "meta": meta}
+        Z_train = np.concatenate([Z, Z_sigma], axis=1) if self.metric == "kl" else Z
+        return {"Aii_norm": Aii_norm, "Z_train": Z_train, "gamma": self.gamma, "meta": meta}
 
     def save(self, path):
         torch.save({
@@ -231,8 +236,12 @@ class VAESimilarity(ItemSimilarityBuilder):
         device = next(self.vae.parameters()).device
         self.vae.eval()
         with torch.no_grad():
-            mu_z, _ = self.vae.encode(X_tensor.to(device))
-        return mu_z.cpu().numpy()
+            mu_z, logvar_z = self.vae.encode(X_tensor.to(device))
+        mu = mu_z.cpu().numpy()
+        if self.metric == "kl":
+            sigma = np.exp(0.5 * logvar_z.cpu().numpy())
+            return np.concatenate([mu, sigma], axis=1)
+        return mu
 
     def visualize(self, save_dir, item_series, item_owner_uid,
                   train_drivers, feature_names, item_labels):
@@ -254,6 +263,21 @@ class VAESimilarity(ItemSimilarityBuilder):
 
     def get_affinity(self, Z_query, Z_target, k):
         from sklearn.neighbors import NearestNeighbors
+        if self.metric == "kl":
+            D = self.vae.latent_dim
+            mu_q, sig_q = Z_query[:, :D], Z_query[:, D:]
+            mu_t, sig_t = Z_target[:, :D], Z_target[:, D:]
+            var_q, var_t = sig_q ** 2, sig_t ** 2
+            # sym_KL pairwise: (n_q, n_t)
+            mu_q_ = mu_q[:, None, :]
+            mu_t_ = mu_t[None, :, :]
+            v_q = var_q[:, None, :]
+            v_t = var_t[None, :, :]
+            kl_mat = 0.25 * np.sum(v_q / v_t + v_t / v_q + (mu_q_ - mu_t_) ** 2 * (1.0 / v_q + 1.0 / v_t) - 2.0, axis=-1)
+            k_ = min(k, Z_target.shape[0])
+            nbr = np.argsort(kl_mat, axis=1)[:, :k_]
+            dist = kl_mat[np.arange(len(kl_mat))[:, None], nbr]
+            return nbr, self._compute_laplacian_affinity(dist, self.gamma)
         if self.metric == "cosine":
             norm_q = np.linalg.norm(Z_query, axis=1, keepdims=True) + 1e-12
             norm_t = np.linalg.norm(Z_target, axis=1, keepdims=True) + 1e-12

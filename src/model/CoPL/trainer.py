@@ -90,11 +90,13 @@ class CoPLGCFTrainer:
 
 
 class CoPLRMTrainer:
-    def __init__(self, model, config, log_dir=None):
+    def __init__(self, model, config, log_dir=None, checkpoint_name="best_rm.pt"):
         self.model = model
         self.config = config
         self.device = config['device']
         self.log_dir = log_dir
+        self.checkpoint_name = checkpoint_name
+        self.uses_user_embedding = getattr(model, "uses_user_embedding", True)
 
         self.optimizer = torch.optim.AdamW(
             model.parameters(),
@@ -104,16 +106,20 @@ class CoPLRMTrainer:
         self.best_auc = -1.0
         self.best_state_dict = None
 
-    def train_epoch(self, loader, E_u_train, pos_weight=None):
+    def train_epoch(self, loader, E_u_train=None, pos_weight=None):
         self.model.train()
         total_loss, n_seen = 0.0, 0
 
         for uids_b, obs_b, y_b in loader:
             uids_b, obs_b, y_b = uids_b.to(self.device), obs_b.to(self.device), y_b.to(self.device)
-            user_emb = E_u_train[uids_b]
-            logits = self.model(user_emb, obs_b)
-            loss = (F.binary_cross_entropy_with_logits(logits, y_b.float(), pos_weight=pos_weight)
-                    + self.config['rm_lambda_reg'] * user_emb.norm(2).pow(2).mean())
+            if self.uses_user_embedding:
+                user_emb = E_u_train[uids_b]
+                logits = self.model(user_emb, obs_b)
+                reg_loss = self.config['rm_lambda_reg'] * user_emb.norm(2).pow(2).mean()
+            else:
+                logits = self.model(obs_b)
+                reg_loss = 0.0
+            loss = F.binary_cross_entropy_with_logits(logits, y_b.float(), pos_weight=pos_weight) + reg_loss
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
@@ -122,13 +128,16 @@ class CoPLRMTrainer:
 
         return total_loss / max(1, n_seen)
 
-    def evaluate(self, loader, E_u_train):
+    def evaluate(self, loader, E_u_train=None):
         self.model.eval()
         all_prob, all_y, total_loss, n_seen = [], [], 0.0, 0
         with torch.no_grad():
             for uids_b, obs_b, y_b in loader:
                 uids_b, obs_b = uids_b.to(self.device), obs_b.to(self.device)
-                logits = self.model(E_u_train[uids_b], obs_b)
+                if self.uses_user_embedding:
+                    logits = self.model(E_u_train[uids_b], obs_b)
+                else:
+                    logits = self.model(obs_b)
                 total_loss += F.binary_cross_entropy_with_logits(logits, y_b.float().to(self.device)).item() * len(uids_b)
                 n_seen += len(uids_b)
                 all_prob.append(torch.sigmoid(logits).cpu().numpy())
@@ -165,7 +174,7 @@ class CoPLRMTrainer:
 
         if self.best_state_dict is not None:
             if self.log_dir is not None:
-                torch.save(self.best_state_dict, self.log_dir / "best_rm.pt")
+                torch.save(self.best_state_dict, self.log_dir / self.checkpoint_name)
             self.model.load_state_dict({k: v.to(self.device) for k, v in self.best_state_dict.items()})
 
         self.model.eval()

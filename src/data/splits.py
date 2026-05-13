@@ -2,6 +2,7 @@ import hashlib
 import json
 import math
 import numpy as np
+import pandas as pd
 import torch
 from pathlib import Path
 from torch.utils.data import DataLoader, TensorDataset, Subset
@@ -9,20 +10,110 @@ from sklearn.model_selection import train_test_split, StratifiedKFold
 
 from .catalog import get_catalog
 from .loader import DatasetManager, Dataset
+from .transforms import apply_smoothing
 
 
-def _cache_key(driver, features, time_range, downsample, episodes, smooth, smooth_cutoff, smooth_order):
+RAW_CACHE_VERSION = 1
+
+
+def _raw_cache_key(driver, episodes, root):
+    records = []
+    for ep in episodes:
+        csv_path = root / ep["dirpath"] / ep["csv"]
+        stat = csv_path.stat()
+        records.append({
+            "id": ep["id"],
+            "csv": str(Path(ep["dirpath"]) / ep["csv"]),
+            "n_timesteps": ep["n_timesteps"],
+            "size": stat.st_size,
+            "mtime_ns": stat.st_mtime_ns,
+        })
     payload = {
+        "version": RAW_CACHE_VERSION,
         "driver": driver,
-        "features": list(features),
-        "time_range": list(time_range),
-        "downsample": downsample,
-        "episodes": sorted((e["id"], e["n_timesteps"]) for e in episodes),
-        "smooth": smooth,
-        "smooth_cutoff": smooth_cutoff,
-        "smooth_order": smooth_order,
+        "episodes": sorted(records, key=lambda r: r["id"]),
     }
     return hashlib.md5(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+
+
+def _load_raw_driver_cache(root, driver, episodes):
+    cache_dir = root / ".seqcache" / "raw" / f"v{RAW_CACHE_VERSION}"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_path = cache_dir / f"{_raw_cache_key(driver, episodes, root)}.npz"
+
+    if cache_path.exists():
+        try:
+            arr = np.load(cache_path, allow_pickle=False)
+            meta = json.loads(arr["meta_json"].item())
+            return [
+                {
+                    "meta": rec,
+                    "states": arr[f"states_{i}"],
+                    "columns": arr[f"columns_{i}"].astype(str).tolist(),
+                }
+                for i, rec in enumerate(meta)
+            ]
+        except Exception:
+            cache_path.unlink()
+
+    meta = []
+    arrays = {}
+    for i, ep in enumerate(episodes):
+        csv_path = root / ep["dirpath"] / ep["csv"]
+        states = pd.read_csv(csv_path)
+        meta.append({
+            "id": ep["id"],
+            "label": ep["label"],
+            "dirpath": ep["dirpath"],
+            "csv": ep["csv"],
+            "n_timesteps": ep["n_timesteps"],
+        })
+        arrays[f"states_{i}"] = states.to_numpy(dtype=np.float32)
+        arrays[f"columns_{i}"] = np.asarray(states.columns, dtype=str)
+
+    arrays["meta_json"] = np.asarray(json.dumps(meta, ensure_ascii=False))
+    np.savez(cache_path, **arrays)
+    return [
+        {
+            "meta": rec,
+            "states": arrays[f"states_{i}"],
+            "columns": arrays[f"columns_{i}"].astype(str).tolist(),
+        }
+        for i, rec in enumerate(meta)
+    ]
+
+
+def _sequence_from_states(states, feature_cols, time_range, fill_value, pad):
+    start_time, end_time = time_range
+    duration = end_time - start_time
+    seg = states[(states["Time"] >= start_time) & (states["Time"] < end_time)]
+    if len(seg) == 0:
+        return None, None
+
+    time_vals = seg["Time"].values.astype(np.float32)
+    cols = feature_cols if feature_cols is not None else [col for col in seg.columns if col != "Time"]
+    seg_features = seg[cols].fillna(fill_value)
+    values = seg_features.values.astype(np.float32)
+
+    if pad:
+        time_diffs = states["Time"].diff().dropna()
+        dt = time_diffs.median() if len(time_diffs) else None
+        if dt is not None and np.isfinite(dt) and dt > 0:
+            expected_len = int(np.round(duration / dt))
+            current_len = len(values)
+
+            if current_len < expected_len:
+                pad_len = expected_len - current_len
+                pad_array = np.full((pad_len, values.shape[1]), fill_value, dtype=np.float32)
+                values = np.vstack([values, pad_array])
+                last_time = time_vals[-1] if len(time_vals) > 0 else start_time
+                time_pad = np.arange(1, pad_len + 1) * dt + last_time
+                time_vals = np.concatenate([time_vals, time_pad])
+            elif current_len > expected_len:
+                values = values[:expected_len]
+                time_vals = time_vals[:expected_len]
+
+    return time_vals, values
 
 
 def load_sequences(driver, features, time_range, downsample, root="datasets",
@@ -32,23 +123,32 @@ def load_sequences(driver, features, time_range, downsample, root="datasets",
     episodes = catalog.query(drivers=[driver])
     assert episodes, f"No episodes for driver '{driver}' in catalog"
 
-    key = _cache_key(driver, features, time_range, downsample, episodes, smooth, smooth_cutoff, smooth_order)
-    cache_dir = root / ".seqcache"
-    cache_path = cache_dir / f"{key}.npz"
+    t, X, y = [], [], []
+    for item in _load_raw_driver_cache(root, driver, episodes):
+        label = item["meta"]["label"]
+        if label is None:
+            continue
 
-    if cache_path.exists():
-        try:
-            arr = np.load(cache_path)
-            return arr["X"], arr["y"]
-        except Exception:
-            cache_path.unlink()
+        states = pd.DataFrame(item["states"], columns=item["columns"])
+        if features is not None:
+            cols = ["Time"] + [col for col in features if col != "Time"]
+            states = states[cols].copy()
 
-    ds = Dataset(driver, base_folder=root, downsample=downsample, episodes=episodes,
-                 smooth=smooth, smooth_cutoff=smooth_cutoff, smooth_order=smooth_order)
-    _, X, y = ds.to_sequences(features, time_range, fill_value=0.0, pad=True)
-    cache_dir.mkdir(exist_ok=True)
-    np.savez(cache_path, X=X, y=y)
-    return X, y
+        if smooth:
+            states = apply_smoothing(states, cutoff=smooth_cutoff, order=smooth_order)
+        if downsample > 1:
+            states = states.iloc[::downsample].reset_index(drop=True)
+
+        time_vals, values = _sequence_from_states(
+            states, features, time_range, fill_value=0.0, pad=True)
+        if values is None:
+            continue
+
+        t.append(time_vals)
+        X.append(values)
+        y.append(1 if label else 0)
+
+    return np.stack(X), np.asarray(y, dtype=np.int64)
 
 
 def _load_dataset_sequences(driver_name, time_range, downsample, config,

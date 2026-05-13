@@ -24,6 +24,23 @@ def standardize_apply(X: np.ndarray, mu: np.ndarray, sd: np.ndarray):
     return (X - mu) / sd
 
 
+def median_heuristic_kl_gamma(Z_mu: np.ndarray, Z_sigma: np.ndarray, max_pairs: int = 200000, seed: int = 0) -> float:
+    rng = np.random.default_rng(seed)
+    N = Z_mu.shape[0]
+    var = Z_sigma ** 2
+    if N <= 1000:
+        i_idx, j_idx = np.triu_indices(N, k=1)
+    else:
+        i_idx = rng.integers(0, N, size=max_pairs)
+        j_idx = rng.integers(0, N, size=max_pairs)
+        mask = i_idx != j_idx
+        i_idx, j_idx = i_idx[mask], j_idx[mask]
+    mu_i, mu_j = Z_mu[i_idx], Z_mu[j_idx]
+    var_i, var_j = var[i_idx], var[j_idx]
+    kl = 0.25 * np.sum(var_i / var_j + var_j / var_i + (mu_i - mu_j) ** 2 * (1.0 / var_i + 1.0 / var_j) - 2.0, axis=1)
+    return float(1.0 / (np.median(kl) + 1e-12))
+
+
 def median_heuristic_gamma(Z: np.ndarray, max_pairs: int = 200000, seed: int = 0) -> float:
     rng = np.random.default_rng(seed)
     N = Z.shape[0]
@@ -121,6 +138,31 @@ class ItemSimilarityBuilder(ABC):
                 if j == i:
                     continue
                 w = float(np.exp(-gamma * d))
+                if w <= 1e-8:
+                    continue
+                rows.append(i); cols.append(int(j)); vals.append(w)
+
+        return ItemSimilarityBuilder._make_symmetric_adj(rows, cols, vals, N, mutual)
+
+    @staticmethod
+    def build_kl_knn_graph(Z_mu: np.ndarray, Z_sigma: np.ndarray, knn_k: int,
+                           gamma: float, mutual: bool = False) -> torch.Tensor:
+        """Symmetric KL divergence between diagonal Gaussians as distance."""
+        N = Z_mu.shape[0]
+        var = Z_sigma ** 2
+        mu = Z_mu[:, None, :]   # (N, 1, D)
+        mu2 = Z_mu[None, :, :]  # (1, N, D)
+        v1 = var[:, None, :]    # (N, 1, D)
+        v2 = var[None, :, :]    # (1, N, D)
+        kl_mat = 0.25 * np.sum(v1 / v2 + v2 / v1 + (mu - mu2) ** 2 * (1.0 / v1 + 1.0 / v2) - 2.0, axis=-1)  # (N, N)
+
+        rows, cols, vals = [], [], []
+        for i in range(N):
+            dists = kl_mat[i].copy()
+            dists[i] = np.inf
+            nbrs = np.argsort(dists)[:min(knn_k, N - 1)]
+            for j in nbrs:
+                w = float(np.exp(-gamma * kl_mat[i, j]))
                 if w <= 1e-8:
                     continue
                 rows.append(i); cols.append(int(j)); vals.append(w)

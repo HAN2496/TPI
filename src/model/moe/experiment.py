@@ -1,15 +1,16 @@
 import numpy as np
 import torch
 from pathlib import Path
+from sklearn.model_selection import train_test_split
+from torch.utils.data import DataLoader, TensorDataset
 
 from ..experiment import BaseExperiment
-from .rm import MetaCNNModel
-from .trainer import MAMLTrainer
+from .rm import MoECNNModel
+from .trainer import MoETrainer
 from ...data.splits import load_sequences
 from ...evaluation import evaluate_predictions, save_metrics_txt, plot_sequential_auroc, plot_training_curves
 
-
-class MAMLExperiment(BaseExperiment):
+class MoEExperiment(BaseExperiment):
 
     def build(self):
         cfg = self.cfg
@@ -33,20 +34,40 @@ class MAMLExperiment(BaseExperiment):
             self.norm_mean = self.item_series.mean(axis=(0, 1), keepdims=True)
             self.norm_std  = self.item_series.std(axis=(0, 1), keepdims=True) + 1e-6
             self.item_series = (self.item_series - self.norm_mean) / self.norm_std
+
+        val_x_list, val_y_list, val_uid_list = [], [], []
+        self.per_user_items_train = {}
+        for uid, (item_ids, labels) in self.per_user_items.items():
+            tr_idx, va_idx = train_test_split(np.arange(len(item_ids)), test_size=cfg.val_size, random_state=cfg.seed)
+            self.per_user_items_train[uid] = (item_ids[tr_idx], labels[tr_idx])
+            val_x_list.append(self.item_series[item_ids[va_idx]])
+            val_y_list.append(labels[va_idx])
+            val_uid_list.append(np.full(len(va_idx), uid, dtype=np.int64))
+        self.val_x = np.concatenate(val_x_list)
+        self.val_y = np.concatenate(val_y_list)
+        self.val_uids = np.concatenate(val_uid_list)
+
         obs_dim = self.item_series.shape[2]
-        self.model = MetaCNNModel(obs_dim=obs_dim, hidden_dim=cfg.hidden_dim)
-        self.trainer = MAMLTrainer(self.model, {
-            'device': cfg.device, 'outer_lr': cfg.outer_lr, 'inner_lr': cfg.inner_lr,
-            'inner_steps': cfg.inner_steps, 'n_support': cfg.n_support, 'n_query': cfg.n_query,
-            'n_tasks_per_epoch': cfg.n_tasks_per_epoch, 'meta_epochs': cfg.meta_epochs,
+        self.model = MoECNNModel(
+            obs_dim=obs_dim, 
+            n_train_users=len(cfg.train_driver_names), 
+            user_dim=cfg.user_dim, 
+            hidden_dim=cfg.hidden_dim, 
+            num_experts=cfg.num_experts
+        )
+        self.trainer = MoETrainer(self.model, {
+            'device': cfg.device, 'lr': cfg.lr, 'weight_decay': cfg.weight_decay,
+            'epochs': cfg.epochs, 'batch_size': cfg.batch_size,
+            'adapt_lr': cfg.adapt_lr, 'adapt_steps': cfg.adapt_steps
         })
 
     def train(self, out_dir: Path) -> dict:
         self.trainer.log_dir = out_dir
-        self._log("\n[1] Starting MAML Training...")
-        metrics = self.trainer.train(self.item_series, self.per_user_items,
-                                     len(self.cfg.train_driver_names), verbose=self.cfg.verbose)
-        plot_training_curves(dict(metrics), out_dir / "plots" / "training_curves.png", title="MAML Training")
+        self._log("\n[1] Starting MoE Training...")
+        metrics = self.trainer.train(self.item_series, self.per_user_items_train,
+                                     val_x=self.val_x, val_y=self.val_y, val_uids=self.val_uids,
+                                     verbose=self.cfg.verbose)
+        plot_training_curves(dict(metrics), out_dir / "plots" / "training_curves.png", title="MoE Training")
         return {}
 
     def evaluate(self, out_dir: Path) -> dict:
@@ -69,10 +90,10 @@ class MAMLExperiment(BaseExperiment):
                 snap_dir = out_dir / "plots" / "snapshots" / f"context_{pct}pct"
                 snap_dir.mkdir(parents=True, exist_ok=True)
                 evaluate_predictions(holdout_y, probs, snap_dir, "metrics",
-                                     title=f"MAML - {cfg.test_driver_name} (Context {pct}%)")
+                                     title=f"MoE - {cfg.test_driver_name} (Context {pct}%)")
 
             m = evaluate_predictions(holdout_y, final_probs, out_dir / "plots", cfg.test_driver_name,
-                                      title=f"MAML - {cfg.test_driver_name} (test)")
+                                      title=f"MoE - {cfg.test_driver_name} (test)")
             all_metrics[f"test/{cfg.test_driver_name}"] = m
             self._log(f"  Test AUROC={m['auroc']:.4f}  AUPRC={m['auprc']:.4f}  Brier={m['brier']:.4f}")
 
@@ -81,13 +102,12 @@ class MAMLExperiment(BaseExperiment):
         self.model.eval()
         for uid, uname in enumerate(cfg.train_driver_names):
             item_ids, labels = self.per_user_items[uid]
-            X_u = self.item_series[item_ids]
+            X_u = torch.tensor(self.item_series[item_ids], dtype=torch.float32).to(device)
+            uids_t = torch.full((len(item_ids),), uid, dtype=torch.long).to(device)
             with torch.no_grad():
-                u_probs = torch.sigmoid(
-                    self.model(torch.tensor(X_u, dtype=torch.float32).to(device))
-                ).cpu().numpy()
+                u_probs = torch.sigmoid(self.model(X_u, uids=uids_t)).cpu().numpy()
             m = evaluate_predictions(labels, u_probs, out_dir / "plots" / "train", uname,
-                                      title=f"MAML - {uname} (train)")
+                                      title=f"MoE - {uname} (train)")
             all_metrics[f"train/{uname}"] = m
             self._log(f"  {uname}: AUROC={m['auroc']:.4f}  AUPRC={m['auprc']:.4f}  Brier={m['brier']:.4f}")
 
@@ -95,11 +115,11 @@ class MAMLExperiment(BaseExperiment):
         return all_metrics
 
     def save(self, out_dir: Path) -> None:
-        pass  # MAMLTrainer가 best_maml.pt 저장
+        pass  # Trainer 안에서 저장함
 
     def load(self, out_dir: Path) -> None:
         self.model.load_state_dict(
-            torch.load(out_dir / "best_maml.pt", map_location=self.cfg.device, weights_only=True))
+            torch.load(out_dir / "best_moe.pt", map_location=self.cfg.device, weights_only=True))
 
     def make_summary(self, train_metrics: dict, eval_metrics: dict) -> dict:
         s = super().make_summary(train_metrics, eval_metrics)

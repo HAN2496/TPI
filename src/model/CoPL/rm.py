@@ -5,6 +5,8 @@ import torch.nn.functional as F
 
 
 class RewardModel(nn.Module):
+    uses_user_embedding = True
+
     def __init__(self, obs_dim, user_dim, hidden=128, mlp_hidden=128):
         super().__init__()
         self.obs_proj = nn.Linear(obs_dim, hidden)
@@ -21,8 +23,31 @@ class RewardModel(nn.Module):
         h = nn.LeakyReLU()(h_obs + h_u).mean(dim=1)
         return self.head(self.mlp(h)).squeeze(-1)
 
+    def forward_no_user(self, obs):
+        h = nn.LeakyReLU()(self.obs_proj(obs)).mean(dim=1)
+        return self.head(self.mlp(h)).squeeze(-1)
+
+
+class ObsOnlyRewardModel(nn.Module):
+    uses_user_embedding = False
+
+    def __init__(self, obs_dim, hidden=128, mlp_hidden=128):
+        super().__init__()
+        self.obs_proj = nn.Linear(obs_dim, hidden)
+        self.mlp = nn.Sequential(
+            nn.Linear(hidden, mlp_hidden), nn.ReLU(),
+            nn.Linear(mlp_hidden, hidden), nn.ReLU(),
+        )
+        self.head = nn.Linear(hidden, 1)
+
+    def forward(self, obs):
+        h = nn.LeakyReLU()(self.obs_proj(obs)).mean(dim=1)
+        return self.head(self.mlp(h)).squeeze(-1)
+
 
 class CNNRewardModel(nn.Module):
+    uses_user_embedding = True
+
     def __init__(self, obs_dim, user_dim, hidden=128, mlp_hidden=128, kernel_size=3, layers=2):
         super().__init__()
         self.obs_proj = nn.Linear(obs_dim, hidden)
@@ -42,6 +67,39 @@ class CNNRewardModel(nn.Module):
     def forward(self, user_emb, obs):
         B, T, D = obs.shape
         h = F.leaky_relu(self.obs_proj(obs) + self.user_proj(user_emb).unsqueeze(1))
+        h = self.conv(h.permute(0, 2, 1))
+        h = F.max_pool1d(h, kernel_size=T).squeeze(2)
+        return self.head(h).squeeze(-1)
+
+    def forward_no_user(self, obs):
+        B, T, D = obs.shape
+        h = F.leaky_relu(self.obs_proj(obs))
+        h = self.conv(h.permute(0, 2, 1))
+        h = F.max_pool1d(h, kernel_size=T).squeeze(2)
+        return self.head(h).squeeze(-1)
+
+
+class ObsOnlyCNNRewardModel(nn.Module):
+    uses_user_embedding = False
+
+    def __init__(self, obs_dim, hidden=128, mlp_hidden=128, kernel_size=3, layers=2):
+        super().__init__()
+        self.obs_proj = nn.Linear(obs_dim, hidden)
+
+        conv_layers = []
+        for _ in range(layers):
+            conv_layers.append(nn.Conv1d(hidden, hidden, kernel_size=kernel_size, padding=kernel_size // 2))
+            conv_layers.append(nn.LeakyReLU())
+        self.conv = nn.Sequential(*conv_layers)
+
+        self.head = nn.Sequential(
+            nn.Linear(hidden, mlp_hidden), nn.LeakyReLU(),
+            nn.Linear(mlp_hidden, 1)
+        )
+
+    def forward(self, obs):
+        B, T, D = obs.shape
+        h = F.leaky_relu(self.obs_proj(obs))
         h = self.conv(h.permute(0, 2, 1))
         h = F.max_pool1d(h, kernel_size=T).squeeze(2)
         return self.head(h).squeeze(-1)
@@ -97,6 +155,8 @@ class MoLELinear(nn.Module):
 
 
 class MoLECNNRewardModel(nn.Module):
+    uses_user_embedding = True
+
     def __init__(self, obs_dim, user_dim, hidden=128, mlp_hidden=128,
                  kernel_size=3, layers=2, num_experts=4, rank=6, tau=2.0):
         super().__init__()
@@ -127,3 +187,83 @@ class MoLECNNRewardModel(nn.Module):
         x = F.leaky_relu(self.obs_proj(obs, routing_weights))
         x = F.max_pool1d(self.conv(x.permute(0, 2, 1)), kernel_size=T).squeeze(2)
         return self.head_2(self.head_act(self.head_1(x, routing_weights)), routing_weights).squeeze(-1)
+
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model, max_len=5000):
+        super().__init__()
+        pe = torch.zeros(max_len, d_model)
+        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-np.log(10000.0) / d_model))
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        self.register_buffer('pe', pe.unsqueeze(0))
+
+    def forward(self, x):
+        return x + self.pe[:, :x.size(1)]
+
+
+class PreferenceTransformerRewardModel(nn.Module):
+    uses_user_embedding = True
+
+    def __init__(self, obs_dim, user_dim, hidden=128, num_heads=4, num_layers=2, max_len=1000):
+        super().__init__()
+        self.obs_proj = nn.Linear(obs_dim, hidden)
+        self.user_proj = nn.Linear(user_dim, hidden)
+        self.pos_encoder = PositionalEncoding(hidden, max_len)
+
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=hidden, nhead=num_heads, dim_feedforward=hidden * 2,
+            dropout=0.2, batch_first=True
+        )
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+
+        # Preference Transformer 특유의 구조: 궤적 내 각 step의 보상(r_t)과 가중치(w_t)를 분리
+        self.reward_head = nn.Linear(hidden, 1)
+        self.attn_head = nn.Linear(hidden, 1)
+
+    def forward(self, user_emb, obs):
+        # h: (B, T, hidden)
+        h = F.leaky_relu(self.obs_proj(obs) + self.user_proj(user_emb).unsqueeze(1))
+        h = self.pos_encoder(h)
+        
+        # Transformer를 통해 과거 state들의 문맥(Context)이 반영된 sequence 추출
+        h = self.transformer(h) 
+        
+        r_t = self.reward_head(h).squeeze(-1) # (B, T)
+        w_t = F.softmax(self.attn_head(h).squeeze(-1), dim=1) # (B, T)
+        
+        # 가중치가 반영된 궤적 전체의 스칼라 보상 (Weighted sum)
+        return torch.sum(w_t * r_t, dim=1)
+
+    def forward_no_user(self, obs):
+        h = F.leaky_relu(self.obs_proj(obs))
+        h = self.pos_encoder(h)
+        h = self.transformer(h)
+        r_t = self.reward_head(h).squeeze(-1)
+        w_t = F.softmax(self.attn_head(h).squeeze(-1), dim=1)
+        return torch.sum(w_t * r_t, dim=1)
+
+
+class ObsOnlyPreferenceTransformerRewardModel(nn.Module):
+    uses_user_embedding = False
+
+    def __init__(self, obs_dim, hidden=128, num_heads=4, num_layers=2, max_len=1000):
+        super().__init__()
+        self.obs_proj = nn.Linear(obs_dim, hidden)
+        self.pos_encoder = PositionalEncoding(hidden, max_len)
+
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=hidden, nhead=num_heads, dim_feedforward=hidden * 2,
+            dropout=0.2, batch_first=True
+        )
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+        self.reward_head = nn.Linear(hidden, 1)
+        self.attn_head = nn.Linear(hidden, 1)
+
+    def forward(self, obs):
+        h = F.leaky_relu(self.obs_proj(obs))
+        h = self.pos_encoder(h)
+        h = self.transformer(h)
+        r_t = self.reward_head(h).squeeze(-1)
+        w_t = F.softmax(self.attn_head(h).squeeze(-1), dim=1)
+        return torch.sum(w_t * r_t, dim=1)

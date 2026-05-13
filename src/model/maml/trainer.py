@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
+from collections import defaultdict
 from sklearn.metrics import roc_auc_score
 import higher
 
@@ -34,6 +35,9 @@ class MAMLTrainer:
     def train(self, item_series, per_user_items, n_users, verbose=1):
         cfg = self.config
         n_tasks_per_epoch = cfg.get('n_tasks_per_epoch', 20)
+        metrics = defaultdict(list)
+        best_loss = float('inf')
+        best_state_dict = None
 
         for epoch in range(cfg['meta_epochs']):
             self.model.train()
@@ -66,49 +70,64 @@ class MAMLTrainer:
                 self.meta_optimizer.step()
                 self.meta_optimizer.zero_grad()
 
+            avg_loss = meta_loss / max(1, task_count)
+            metrics['train/meta_loss'].append(avg_loss)
+
+            if avg_loss < best_loss:
+                best_loss = avg_loss
+                best_state_dict = {k: v.cpu() for k, v in self.model.state_dict().items()}
+
             if verbose > 0 and epoch % 10 == 0:
-                print(f"Epoch {epoch:03d} | Avg Meta Loss: {meta_loss / max(1, task_count):.4f}")
+                print(f"Epoch {epoch:03d} | Avg Meta Loss: {avg_loss:.4f}  best={best_loss:.4f}")
 
-        if self.log_dir is not None:
-            torch.save(self.model.state_dict(), self.log_dir / "best_maml.pt")
+        if best_state_dict is not None:
+            if self.log_dir is not None:
+                torch.save(best_state_dict, self.log_dir / "best_maml.pt")
+            self.model.load_state_dict({k: v.to(self.device) for k, v in best_state_dict.items()})
 
-    def adapt_and_evaluate(self, X_test, y_test, max_adapt_steps=20, verbose=1):
+        return metrics
+
+    def adapt_sequential(self, X_test, y_test):
         cfg = self.config
-        indices = get_balanced_task_indices(y_test, cfg['n_support'], cfg['n_query'])
-        if indices is None:
-            return None, None, None, []
+        split_idx = len(X_test) // 2
+        if split_idx < 1 or len(X_test) - split_idx < 1:
+            return None, None, None, None, {}
 
-        test_sup_l, _ = indices
-        test_que_l = np.delete(np.arange(len(y_test)), test_sup_l)
+        holdout_X = X_test[split_idx:]
+        holdout_y = y_test[split_idx:]
 
-        sup_x = torch.tensor(X_test[test_sup_l], dtype=torch.float32).to(self.device)
-        sup_y = torch.tensor(y_test[test_sup_l], dtype=torch.float32).to(self.device)
-        que_x = torch.tensor(X_test[test_que_l], dtype=torch.float32).to(self.device)
-        que_y = y_test[test_que_l]
+        if len(np.unique(holdout_y)) < 2:
+            return None, None, None, None, {}
 
-        self.model.eval()
-        inner_opt = optim.SGD(self.model.parameters(), lr=cfg['inner_lr'])
+        holdout_x = torch.tensor(holdout_X, dtype=torch.float32).to(self.device)
 
-        best_auc = 0.0
-        best_step = 0
-        adaptation_logs = []
+        target_pcts = [0.1, 0.2, 0.3, 0.4, 0.5]
+        snapshot_steps = {max(1, int(len(X_test) * p)): int(p * 100) for p in target_pcts}
+        snapshot_steps = {k: v for k, v in snapshot_steps.items() if k <= split_idx}
+
+        ctx_sizes, test_aurocs = [], []
         final_probs = None
+        snapshots = {}
 
-        with higher.innerloop_ctx(self.model, inner_opt, track_higher_grads=False) as (fmodel, diffopt):
-            for step in range(1, max_adapt_steps + 1):
-                sup_loss = F.binary_cross_entropy_with_logits(fmodel(sup_x), sup_y)
-                diffopt.step(sup_loss)
-                adaptation_logs.append(sup_loss.item())
+        for t in range(1, split_idx + 1):
+            sup_x = torch.tensor(X_test[:t], dtype=torch.float32).to(self.device)
+            sup_y = torch.tensor(y_test[:t], dtype=torch.float32).to(self.device)
 
+            self.model.eval()
+            inner_opt = optim.SGD(self.model.parameters(), lr=cfg['inner_lr'])
+
+            with higher.innerloop_ctx(self.model, inner_opt, track_higher_grads=False) as (fmodel, diffopt):
+                for _ in range(cfg['inner_steps']):
+                    diffopt.step(F.binary_cross_entropy_with_logits(fmodel(sup_x), sup_y))
                 with torch.no_grad():
-                    probs = torch.sigmoid(fmodel(que_x)).cpu().numpy()
-                    auc = roc_auc_score(que_y, probs)
-                    if auc > best_auc:
-                        best_auc = auc
-                        best_step = step
-                        final_probs = probs
+                    probs = torch.sigmoid(fmodel(holdout_x)).cpu().numpy()
 
-        if verbose > 0:
-            print(f"==> Best AUROC found at Step {best_step}: {best_auc:.4f}")
+            auroc = roc_auc_score(holdout_y, probs)
+            ctx_sizes.append(t)
+            test_aurocs.append(auroc)
+            final_probs = probs
 
-        return best_auc, final_probs, que_y, adaptation_logs
+            if t in snapshot_steps:
+                snapshots[snapshot_steps[t]] = probs
+
+        return ctx_sizes, test_aurocs, final_probs, holdout_y, snapshots

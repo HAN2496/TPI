@@ -1,9 +1,7 @@
 from dataclasses import dataclass, field
-
 from src.utils.seed import seed_all
 from src.utils.paths import artifact_dir
-from src.model.maml.experiment import MAMLExperiment
-
+from src.model.moe.experiment import MoEExperiment # 경로에 맞게 수정
 
 @dataclass
 class Config:
@@ -23,28 +21,31 @@ class Config:
 
     timestamp: str = "test"
 
+    # MoE & Training Hyperparams
+    user_dim: int = 32
     hidden_dim: int = 64
-    inner_lr: float = 0.005
-    outer_lr: float = 0.001
-    inner_steps: int = 3
-    n_support: int = 20
-    n_query: int = 20
-    n_tasks_per_epoch: int = 20
-    meta_epochs: int = 1000
+    num_experts: int = 4
+    batch_size: int = 128
+    lr: float = 0.001
+    weight_decay: float = 1e-4
+    epochs: int = 200
+    val_size: float = 0.1
+
+    # Test-time Adaptation Hyperparams
+    adapt_lr: float = 0.05
+    adapt_steps: int = 20
 
     device: str = "cuda"
     seed: int = 42
     verbose: int = 1
 
-
 def main():
     cfg = Config()
     seed_all(cfg.seed)
-    out_dir, eval_only = artifact_dir("maml", timestamp=cfg.timestamp)
-    results = MAMLExperiment(cfg).run(out_dir, eval_only=eval_only)
+    out_dir, eval_only = artifact_dir("moe", timestamp=cfg.timestamp)
+    results = MoEExperiment(cfg).run(out_dir, eval_only=eval_only)
     auroc = results.get(f"test/{cfg.test_driver_name}", {}).get("auroc", float("nan"))
     print(f"[Done] AUROC={auroc:.4f}  →  {out_dir}")
-
 
 if __name__ == "__main__":
     main()
