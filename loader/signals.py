@@ -1,7 +1,17 @@
 import numpy as np
+import pandas as pd
+import scipy.io as sio
 from scipy.signal import butter, filtfilt
 
 from .channels import CHANNELS, GROUPS
+
+
+def read_frame(path):
+    if path.suffix == ".mat":
+        m = sio.loadmat(path)
+        cols = [k for k in m if not k.startswith("__")]
+        return pd.DataFrame(np.column_stack([m[k].ravel() for k in cols]), columns=cols)
+    return pd.read_csv(path)
 
 
 class Signal:

@@ -1,9 +1,8 @@
 import os
 import json
-import pandas as pd
 from pathlib import Path
 
-from .signals import Signals
+from .signals import Signals, read_frame
 from .cache import Cache
 
 LABELS = {"True": True, "False": False, "None": None}
@@ -23,7 +22,7 @@ def _scan(root):
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames.sort()
         filenames.sort()
-        state = _by(filenames, "_state_", ".csv")
+        state = _by(filenames, "_state_", ".csv") | _by(filenames, "_state_", ".mat")  # .mat 우선
         info = _by(filenames, "_info_", ".txt")
         scene = _by(filenames, "_scene_", ".mp4")
         gps = _by(filenames, "_gps_", ".kml")
@@ -58,7 +57,7 @@ class Episode:
     @property
     def signals(self):
         if self._signals is None:
-            df = self._cache.frame(self) if self._cache else pd.read_csv(self.state)
+            df = self._cache.frame(self) if self._cache else read_frame(self.state)
             self._signals = Signals(df)
         return self._signals
 

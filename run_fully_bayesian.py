@@ -32,9 +32,12 @@ class Config:
     seed: int = 42
     verbose: int = 1
 
-    # 6D 채널을 재구성 신호로 치환한 variant를 추가로 학습·평가 (true와 쌍으로 비교).
-    recon: str = "unet"                    # None | "physics" | "kalman" | "fir" | "unet"
-    recon_run: str = "20260727_200113"   # outputs/reconstruction/<timestamp> 아티팩트
+    # 6D 채널을 재구성 신호로 치환한 variant들을 추가로 학습·평가 (true와 쌍으로 비교).
+    # recon_timestamp: None -> 재구성 학습까지 이 run에서 수행, recon에 지정된 모델만 피팅
+    #                          (산출물은 <run>/reconstruction/에 저장)
+    #                  "test" 포함 timestamp -> outputs/reconstruction/<timestamp>/ 아티팩트 로드
+    recon: tuple = ("unet",)             # ()=없음 | "physics"/"kalman"/"fir"/"unet" 조합
+    recon_timestamp: str = None
 
     # feature pipeline
     feature_method: str = "manual"     # "manual" | "manual_pca" | "ae"
@@ -318,9 +321,8 @@ def evaluate(cfg, run, phi, pop, train_data, test_data, pca):
                        for d in drivers}, f, ensure_ascii=False)
 
 
-def apply_recon(ds, cfg):
-    art = np.load(Path("outputs/reconstruction") / cfg.recon_run / "reconstructed_signals.npz")
-    signals = art[cfg.recon]                          # (E, 3, T) native 단위
+def apply_recon(ds, art, method):
+    signals = art[method]                             # (E, 3, T) native 단위
     row = {i: k for k, i in enumerate(art["ids"])}
     for ep in ds.episodes:
         r = signals[row[f"{ep.driver} {ep.id}"]]
@@ -363,10 +365,23 @@ def main(cfg=None):
     print(f"[INFO] fully_bayesian  timestamp={cfg.timestamp} feature_method={cfg.feature_method} recon={cfg.recon}")
     ds = Dataset("datasets")
 
-    variants = ["true"] + ([cfg.recon] if cfg.recon else [])
+    variants = ["true"] + list(cfg.recon)
+    if cfg.recon:
+        if cfg.recon_timestamp is None:               # 재구성 학습을 이 run 안에서 수행 (recon 모델만 피팅)
+            import run_reconstruction
+            seed_all(cfg.seed)
+            art_dir = run.dir / "reconstruction"
+            sub = SimpleNamespace(dir=art_dir, plots=art_dir / "plots", metrics={}, eval_only=False)
+            run_reconstruction.main(run_reconstruction.Config(test=cfg.test, seed=cfg.seed,
+                                                              methods=cfg.recon, show=cfg.recon), sub)
+            run.metrics.update({f"recon/{k}": v for k, v in sub.metrics.items()})
+        else:
+            art_dir = Path("outputs/reconstruction") / cfg.recon_timestamp
+        art = np.load(art_dir / "reconstructed_signals.npz")
+
     for v in variants:                                # true 먼저 (치환이 in-place라 순서 고정)
         if v != "true":
-            apply_recon(ds, cfg)
+            apply_recon(ds, art, v)
         print(f"===== variant: {v} =====")
         seed_all(cfg.seed)                            # variant 간 동일 RNG 상태에서 시작 (공정 비교)
         sub = SimpleNamespace(dir=run.dir / v, plots=run.dir / v / "plots",
@@ -381,8 +396,9 @@ def main(cfg=None):
     if cfg.recon:
         for name in cfg.test:
             a = run.metrics[f"true/test/{name}"]["auroc"]
-            b = run.metrics[f"{cfg.recon}/test/{name}"]["auroc"]
-            print(f"[Recon] {name}: auroc true={a:.4f} {cfg.recon}={b:.4f}  delta={b - a:+.4f}")
+            row = "  ".join(f"{m}={run.metrics[f'{m}/test/{name}']['auroc']:.4f} ({run.metrics[f'{m}/test/{name}']['auroc'] - a:+.4f})"
+                            for m in cfg.recon)
+            print(f"[Recon] {name}: auroc true={a:.4f}  {row}")
     run.finish()
 
 

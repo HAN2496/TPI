@@ -52,9 +52,11 @@ class Kalman:
     # p[:10] 물리 파라미터, p[10:] log 노이즈 분산.
     # kappa: 종방향 힘의 수직 성분(anti-lift), czt: 앞뒤 서스펜션 비대칭의 pitch-heave 커플링.
     # fit 옵션(기본 off): warmup=N이면 초기 N스텝 시변 게인, eta_t=True면 유색 pitch 여기 활성.
-    def __init__(self, p, warmup=0):
+    # control=False면 입력 u를 완전 차단 (B=D=0, 측정만으로 추정. 측정식의 v_dot은 유지).
+    def __init__(self, p, warmup=0, control=True):
         self.p = np.asarray(p)
         self.warmup = warmup
+        self.control = control
         wz, zz, wt, zt, lever, g1, g2, kappa, czt, g3 = self.p[:10]
         qz, qt, qe, qet, qb, qg, rz, rx = np.exp(self.p[10:])
         dt = 1 / FS
@@ -75,6 +77,9 @@ class Kalman:
                             1, lever, 1, 0],
                            [0, 0, 9.81, 0, 0, 0, 0, 9.81]])
         self.D = np.array([[kappa + lever * g1, lever * g2, lever * g3], [0.0, 0.0, 0.0]])
+        if not control:
+            self.B[:] = 0.0
+            self.D[:] = 0.0
         Q = np.diag([0, qz, 0, qt, qe, qet, qb, qg]) * dt
         R = np.diag([rz, rx])
         P = np.eye(8) * (100.0 if warmup else 1.0)
@@ -102,12 +107,12 @@ class Kalman:
         return np.stack([out[:, 0], xr[:, :, 0], -out[:, 1]], 1)
 
     @classmethod
-    def fit(cls, xr, yr, warmup=0, eta_t=False):
+    def fit(cls, xr, yr, warmup=0, eta_t=False, control=True):
         sub = np.linspace(0, len(xr) - 1, 400).astype(int)
         xs, yb, yp = xr[sub], yr[sub, :, 0], yr[sub, :, 2]
 
         def loss(p):
-            k = cls(p, warmup).predict(xs)
+            k = cls(p, warmup, control).predict(xs)
             cost = 3 - batch_corr(k[:, 0], yb).mean() - 2 * batch_corr(k[:, 2], yp).mean()
             return cost if np.isfinite(cost) else 10.0
 
@@ -116,7 +121,7 @@ class Kalman:
         res = minimize(loss, p0, method="Powell", options={"maxfev": 600})
         print(f"  fit loss {res.fun:.3f}  wz {res.x[0]:.1f}  wt {res.x[2]:.1f}  lever {res.x[4]:.2f}"
               f"  czt {res.x[8]:.2f}  g3 {res.x[9]:.2f}")
-        return cls(res.x, warmup)
+        return cls(res.x, warmup, control)
 
 
 def load():
@@ -167,14 +172,47 @@ class UNet(nn.Module):
         return self.out(d1)
 
 
+class WaveUNet(nn.Module):
+    # Wave-U-Net M1: conv-decimate encoder, linear-upsample-concat decoder, raw-input output skip.
+    def __init__(self, ch, w=24, depth=12):
+        super().__init__()
+        cs = [w * (i + 1) for i in range(depth)]
+        conv = lambda ci, co, k: nn.Sequential(nn.Conv1d(ci, co, k, padding=k // 2), nn.LeakyReLU(0.2))
+        self.down = nn.ModuleList([conv(ch if i == 0 else cs[i - 1], c, 15) for i, c in enumerate(cs)])
+        self.mid = conv(cs[-1], w * (depth + 1), 15)
+        cur = w * (depth + 1)
+        self.up = nn.ModuleList()
+        for c in reversed(cs):
+            self.up.append(conv(cur + c, c, 5))
+            cur = c
+        self.out = nn.Conv1d(w + ch, 3, 1)
+
+    def forward(self, x):
+        z, skip = x, []
+        for down in self.down:
+            z = down(z)
+            skip.append(z)
+            z = z[:, :, ::2]
+        z = self.mid(z)
+        for up, s in zip(self.up, reversed(skip)):
+            z = F.interpolate(z, size=s.shape[-1], mode="linear", align_corners=False)
+            z = up(torch.cat([s, z], 1))
+        return self.out(torch.cat([x, z], 1))
+
+
+def netout(model, x, p):
+    return model(x) if p is None else p + model(torch.cat([x, p], 1))
+
+
 def fit(model, x, y, p, epochs, bs=64, lr=1e-3):
     model.to(DEV)
     opt = torch.optim.Adam(model.parameters(), lr)
     for ep in range(epochs):
         tot = 0.0
         for b in torch.randperm(len(x)).split(bs):
-            xb, yb, pb = x[b].to(DEV), y[b].to(DEV), p[b].to(DEV)
-            loss = F.mse_loss(pb + model(torch.cat([xb, pb], 1)), yb)
+            xb, yb = x[b].to(DEV), y[b].to(DEV)
+            pb = None if p is None else p[b].to(DEV)
+            loss = F.mse_loss(netout(model, xb, pb), yb)
             opt.zero_grad()
             loss.backward()
             opt.step()
@@ -187,7 +225,7 @@ def fit(model, x, y, p, epochs, bs=64, lr=1e-3):
 @torch.no_grad()
 def predict(model, x, p, bs=64):
     model.eval()
-    return torch.cat([p[b].to(DEV) + model(torch.cat([x[b].to(DEV), p[b].to(DEV)], 1))
+    return torch.cat([netout(model, x[b].to(DEV), None if p is None else p[b].to(DEV))
                       for b in torch.arange(len(x)).split(bs)]).cpu().numpy()
 
 
@@ -203,17 +241,22 @@ if __name__ == "__main__":
     xte, yte, pte = x[te], y[te], p[te]
 
     preds = {"physics": pte.numpy()}
-    print("kalman")
     tn = te.numpy()
-    km = Kalman.fit(xr[~tn], yr[~tn])
-    kal = km.predict(xr)
-    mk, sk = kal[~tn].mean((0, 2), keepdims=True), kal[~tn].std((0, 2), keepdims=True)
-    preds["kalman"] = ((kal - mk) / sk)[tn]
-    ch = len(X_CH) + 3
-    models = {"fir": (FIR(ch), 20), "unet": (UNet(ch), 40)}
-    for name, (model, epochs) in models.items():
+    kalman_params = {}
+    for name, control in (("kalman", True), ("kalman_nc", False)):
         print(name)
-        preds[name] = predict(fit(model, xtr, ytr, ptr, epochs), xte, pte)
+        km = Kalman.fit(xr[~tn], yr[~tn], control=control)
+        kalman_params[name] = km.p
+        kal = km.predict(xr)
+        mk, sk = kal[~tn].mean((0, 2), keepdims=True), kal[~tn].std((0, 2), keepdims=True)
+        preds[name] = ((kal - mk) / sk)[tn]
+    ch = len(X_CH) + 3
+    models = {"fir": (FIR(ch), 20, True), "unet": (UNet(ch), 40, True),
+              "waveunet": (WaveUNet(len(X_CH)), 40, False)}
+    for name, (model, epochs, residual) in models.items():
+        print(name)
+        preds[name] = predict(fit(model, xtr, ytr, ptr if residual else None, epochs),
+                              xte, pte if residual else None)
 
     print(f"\n{'':8s}" + "".join(f"{c:>28s}" for c in Y_CH))
     for name, pr in preds.items():
@@ -221,8 +264,9 @@ if __name__ == "__main__":
         print(f"{name:8s}" + "".join(f"     {m:.3f} [{l:.3f}, {h:.3f}]" for m, l, h in zip(med, lo, hi)))
 
     OUT.mkdir(parents=True, exist_ok=True)
-    np.savez(OUT / "reconstruction_predictions.npz", y=yte.numpy(), ids=ids[te.numpy()], kalman_params=km.p, **preds)
-    torch.save({name: m.state_dict() for name, (m, _) in models.items()}, OUT / "models.pt")
+    np.savez(OUT / "reconstruction_predictions.npz", y=yte.numpy(), ids=ids[te.numpy()],
+             kalman_params=kalman_params["kalman"], kalman_nc_params=kalman_params["kalman_nc"], **preds)
+    torch.save({name: m.state_dict() for name, (m, _, _) in models.items()}, OUT / "models.pt")
     true_bounce = yte.numpy()[:, 0]
     print(f"\nbounce stats corr (test episodes)\n{'':8s}" + "".join(f"{s:>16s}" for s in BOUNCE_STATS))
     for name, pr in preds.items():

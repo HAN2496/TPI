@@ -4,12 +4,14 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
+from .signals import read_frame
+
 
 class Cache:
-    """드라이버 단위 raw CSV 디스크 캐시 (datasets/.cache/<driver>_<hash>.npz).
+    """드라이버 단위 raw state 디스크 캐시 (datasets/.cache/<driver>_<hash>.npz).
 
-    키 = (episode id, CSV size, mtime) 해시 — CSV가 바뀌면 자동 무효화.
-    한 드라이버의 에피소드를 처음 만질 때 통째로 로드/생성한다 (npz가 CSV 파싱보다 ~20배 빠름).
+    키 = (episode id, state 파일 size, mtime) 해시 — 원본이 바뀌면 자동 무효화.
+    한 드라이버의 에피소드를 처음 만질 때 통째로 로드/생성한다 (npz가 원본 파싱보다 ~20배 빠름).
     """
 
     def __init__(self, root):
@@ -38,7 +40,7 @@ class Cache:
             return
         arrays = {}
         for e in eps:
-            df = pd.read_csv(e.state)
+            df = read_frame(e.state)
             self.frames[e.id] = df
             arrays[f"d_{e.id}"] = df.to_numpy(np.float32)
             arrays[f"c_{e.id}"] = np.asarray(df.columns, dtype=str)

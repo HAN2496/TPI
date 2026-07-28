@@ -18,11 +18,11 @@ def load_state_mat(mat_path):
             elif value.ndim == 2 and (value.shape[0] == 1 or value.shape[1] == 1):
                 data_dict[key] = value.flatten()
             else:
-                raise ValueError(f"⚠ 경고: '{os.path.basename(mat_path)}'의 '{key}' 항목이 1차원 또는 벡터 형태가 아닙니다.")
+                raise ValueError(f"warning: '{key}' in '{os.path.basename(mat_path)}' is not 1-D or a vector.")
 
     lengths = [len(v) for v in data_dict.values()]
     if len(set(lengths)) != 1:
-        print(f"⚠ 경고: '{os.path.basename(mat_path)}'에서 컬럼 길이가 서로 다른 항목이 있습니다.")
+        print(f"warning: '{os.path.basename(mat_path)}' has columns of differing length.")
 
     df = pd.DataFrame(data_dict)
     return df
@@ -36,7 +36,7 @@ def convert_mat_to_csv(mat_path, csv_path):
 
 def convert_all_mat_in_root(root_dir, overwrite=False):
     root_dir = os.path.abspath(root_dir)
-    print(f"🔍 루트 폴더 순회 시작: {root_dir}")
+    print(f"scanning root: {root_dir}")
 
     for dirpath, dirnames, filenames in os.walk(root_dir):
         for filename in filenames:
@@ -47,16 +47,16 @@ def convert_all_mat_in_root(root_dir, overwrite=False):
                 csv_path = os.path.join(dirpath, csv_filename)
 
                 if os.path.exists(csv_path) and not overwrite:
-                    print(f"⏩ 스킵 (이미 존재): {csv_path}")
+                    print(f"skip (already exists): {csv_path}")
                     continue
 
                 try:
                     convert_mat_to_csv(mat_path, csv_path)
                 except Exception as e:
-                    print(f"❌ 변환 실패: {mat_path}")
-                    print(f"   이유: {e}")
+                    print(f"convert failed: {mat_path}")
+                    print(f"   reason: {e}")
 
-    print("✅ 전체 변환 완료.")
+    print("conversion complete.")
 
 def design_lpf(fs, cutoff=10.0, order=2):
     nyq = 0.5 * fs
@@ -67,7 +67,7 @@ def design_lpf(fs, cutoff=10.0, order=2):
 
 def apply_lpf_to_df(df, cutoff=10.0, order=2):
     if "Time" not in df.columns:
-        raise ValueError("DataFrame에 'Time' 컬럼이 없습니다.")
+        raise ValueError("DataFrame has no 'Time' column.")
 
     t = df["Time"].values
     dt = np.median(np.diff(t))
@@ -93,7 +93,7 @@ def smooth_all_csv_in_root(root_dir, overwrite=False, cutoff=10.0, order=2):
     LPF 스무딩을 적용한 *_smooth.csv 파일을 생성한다.
     """
     root_dir = os.path.abspath(root_dir)
-    print(f"🔍 CSV 스무딩 순회 시작: {root_dir}")
+    print(f"scanning CSVs to smooth: {root_dir}")
 
     for dirpath, dirnames, filenames in os.walk(root_dir):
         for filename in filenames:
@@ -103,7 +103,7 @@ def smooth_all_csv_in_root(root_dir, overwrite=False, cutoff=10.0, order=2):
                 smooth_path = csv_path.replace(".csv", "_smooth.csv")
                 
                 if os.path.exists(smooth_path) and not overwrite:
-                    print(f"⏩ 스킵 (이미 존재): {smooth_path}")
+                    print(f"skip (already exists): {smooth_path}")
                     continue
 
                 try:
@@ -113,13 +113,13 @@ def smooth_all_csv_in_root(root_dir, overwrite=False, cutoff=10.0, order=2):
                     df_smooth = apply_lpf_to_df(df, cutoff=cutoff, order=order)
 
                     df_smooth.to_csv(smooth_path, index=False)
-                    print(f"✅ 스무딩 완료: {smooth_path}")
+                    print(f"smoothed: {smooth_path}")
 
                 except Exception as e:
-                    print(f"❌ 스무딩 실패: {csv_path}")
-                    print(f"   이유: {e}")
+                    print(f"smoothing failed: {csv_path}")
+                    print(f"   reason: {e}")
 
-    print("🏁 CSV 스무딩 전체 완료.")
+    print("CSV smoothing complete.")
 
 if __name__ == "__main__":
     convert_all_mat_in_root("datasets", overwrite=False)

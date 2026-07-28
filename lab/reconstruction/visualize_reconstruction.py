@@ -10,9 +10,10 @@ OUT = ROOT / "outputs" / "lab" / "reconstruction"
 
 from models.fully_bayesian.features import FNS
 
-C = {"physics": "#eb6834", "kalman": "#eda100", "fir": "#1baf7a", "unet": "#2a78d6"}
-# SHOW = ["physics", "kalman", "fir", "unet"]
-SHOW = ["kalman", "unet"]
+C = {"physics": "#eb6834", "kalman": "#eda100", "kalman_nc": "#e87ba4", "fir": "#1baf7a",
+     "unet": "#2a78d6", "waveunet": "#7b4ab5"}
+# SHOW = ["physics", "kalman", "fir", "unet", "waveunet"]
+SHOW = ["unet", "waveunet"]
 INK, MUTED = "#0b0b0b", "#52514e"
 Y_CH = ["Bounce_rate_6D", "Roll_rate_6D", "Pitch_rate_6D"]
 BOUNCE_STATS = ["impulse_abs", "abs_peak_deriv", "p2p_deriv", "wrms_z_deriv"]
