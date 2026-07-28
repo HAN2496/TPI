@@ -1,9 +1,14 @@
 artifacts/
+outputs/
 datasets/
+temp/
 temp.py
+test.md
 
 .claude/
 CLAUDE.md
+.codex_tmp/
+.agents/
 
 .python-version
 .venv/
@@ -21,3 +26,14 @@ uv.lock
 *.spec
 
 uv.lock
+
+# LaTeX: 소스(tex/pdf/cls/bib)만 추적하고 빌드 산출물은 전부 무시
+docs/fully_bayesian/features/*
+!docs/fully_bayesian/features/*.tex
+!docs/fully_bayesian/features/*.pdf
+
+docs/fully_bayesian/my_papers/*
+!docs/fully_bayesian/my_papers/*.tex
+!docs/fully_bayesian/my_papers/*.pdf
+!docs/fully_bayesian/my_papers/*.cls
+!docs/fully_bayesian/my_papers/*.bib
