@@ -1,0 +1,503 @@
+\documentclass[letterpaper,journal]{IEEEtran}
+
+\usepackage{amsmath,amssymb,amsfonts,bm}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{cite}
+\usepackage{graphicx}
+\usepackage{makecell}
+\usepackage{multirow}
+\usepackage{placeins}
+\usepackage{url}
+\usepackage{kotex}
+
+\hyphenation{op-tical net-works semi-conduc-tor IEEE-Xplore}
+
+\newcommand{\RMS}{\operatorname{RMS}}
+\newcommand{\WRMS}{\operatorname{WRMS}}
+\newcommand{\RWRMS}{\operatorname{RWRMS}}
+\newcommand{\MTVV}{\operatorname{MTVV}}
+\newcommand{\VDV}{\operatorname{VDV}}
+\newcommand{\CF}{\operatorname{CF}}
+\newcommand{\PtP}{\operatorname{P2P}}
+\newcommand{\AbsPeak}{\operatorname{AbsPeak}}
+
+\begin{document}
+
+\title{Physics-Informed Candidate Features for Short-Window Ride Events}
+\author{}
+\maketitle
+
+\section{Purpose and scope}
+
+This document defines a \emph{candidate feature space}; it does not prescribe one universally
+optimal KPI per sensor channel. The ride-analysis review in \cite{guastadisegni2024} explicitly
+states that KPI suitability depends on the road profile, manoeuvre, measured quantity, and
+subjective attribute. In particular, isolated obstacles are commonly described by peak and
+peak-to-peak quantities, long road profiles by RMS-based quantities, and strongly transient
+vibration by running-RMS or fourth-power quantities.
+
+ISO~2631-1 and BS~6841 define ways to quantify human exposure to whole-body vibration
+\cite{iso2631,bs6841}. They provide physically meaningful frequency weightings, but they do
+not establish which feature best predicts the binary feedback in this data set. The ISO-based
+quantities below are therefore used as physics-informed candidates. Their predictive relevance
+must be determined using held-out-driver posterior-predictive evaluation.
+
+\section{Measured and derived quantities}
+
+Let $x(t)$ denote a signal over a window of duration $T$ and sampling rate $f_s$. The basic
+descriptors used by the feature pipeline are
+\begin{align*}
+\RMS(x) &= \sqrt{\frac{1}{T}\int_0^T x^2(t)\,\mathrm{d}t},\\
+\AbsPeak(x) &= \max_t |x(t)|,\\
+\PtP(x) &= \max_t x(t)-\min_t x(t),\\
+\CF_{\mathrm{raw}}(x) &= \frac{\AbsPeak(x)}{\RMS(x)}.
+\end{align*}
+The code names are \texttt{rms}, \texttt{abs\_peak}, \texttt{p2p}, and \texttt{crest},
+respectively. These are generic signal descriptors. In particular,
+$\CF_{\mathrm{raw}}$ is not the standards-based weighted crest factor defined below.
+
+For a measured rate signal, differentiation produces the quantity used by the review's
+acceleration-based KPIs:
+\[
+\dot{x}(t)=\frac{\mathrm{d}x(t)}{\mathrm{d}t}.
+\]
+Thus, differentiating pitch, roll, or yaw rate gives angular acceleration, while differentiating
+heave velocity gives vertical acceleration. The corresponding code names are
+\texttt{rms\_deriv}, \texttt{p2p\_deriv}, \texttt{abs\_peak\_deriv}, and
+\texttt{vdv\_deriv}. Differentiation amplifies sensor noise, so smoothing, sampling rate, and
+finite-difference accuracy must be treated as part of the feature definition.
+
+\section{ISO frequency-weighted quantities}
+
+For a translational or rotational acceleration $a(t)$, define
+\[
+a_w(t)=\mathcal{F}^{-1}\!\left\{W(f)\,\mathcal{F}\{a\}(f)\right\}.
+\]
+With $s=j2\pi f$ and $\omega_i=2\pi f_i$, the ISO weighting is constructed from
+\begin{align*}
+H_h(s) &= \frac{s^2}{s^2+\sqrt{2}\,\omega_1s+\omega_1^2},\\
+H_\ell(s) &= \frac{\omega_2^2}{s^2+\sqrt{2}\,\omega_2s+\omega_2^2},\\
+H_t(s) &= \frac{1+s/\omega_3}
+{1+s/(Q_4\omega_4)+(s/\omega_4)^2},\\
+H_s(s) &= \left(\frac{\omega_5}{\omega_6}\right)^2
+\frac{1+s/(Q_5\omega_5)+(s/\omega_5)^2}
+{1+s/(Q_6\omega_6)+(s/\omega_6)^2}.
+\end{align*}
+The scale-step normalization in $H_s$ is $({\omega_5}/{\omega_6})^2$. Reversing this
+ratio preserves the frequency-response shape but multiplies $W_k$ by approximately four,
+so it is not the ISO-normalized physical quantity.
+
+The relevant parameter sets are summarized in Table~\ref{tab:weights}.
+\begin{table}[t]
+\centering
+\caption{ISO~2631-1 weighting parameters used by the current channels.}
+\label{tab:weights}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{@{}lccccl@{}}
+\toprule
+Weight & $f_1$ & $f_2$ & $f_3=f_4$ & $Q_4$ & Scale step \\
+\midrule
+$W_k$ & 0.4 & 100 & 12.5 & 0.63 & $f_5=2.37$, $f_6=3.35$, $Q_5=Q_6=0.91$ \\
+$W_d$ & 0.4 & 100 & 2.0  & 0.63 & none \\
+$W_e$ & 0.4 & 100 & 1.0  & 0.63 & none \\
+\bottomrule
+\end{tabular}}
+\end{table}
+The resulting magnitudes are
+\begin{align*}
+W_k &= |H_hH_\ell H_tH_s|,\\
+W_d &= |H_hH_\ell H_t|,\\
+W_e &= |H_hH_\ell H_t|.
+\end{align*}
+where the transition parameters differ as shown in Table~\ref{tab:weights}. Their intended
+directions are
+\begin{itemize}
+\item $W_k$: vertical translational acceleration ($z$ direction),
+\item $W_d$: longitudinal and lateral translational acceleration ($x,y$ directions),
+\item $W_e$: rotational acceleration about the roll, pitch, and yaw axes.
+\end{itemize}
+
+The standards-based weighted RMS and transient quantities are
+\begin{align*}
+\WRMS(a;W) &= \sqrt{\frac{1}{T}\int_0^T a_w^2(t)\,\mathrm{d}t},\\
+\CF_w(a;W) &= \frac{\max_t|a_w(t)|}{\WRMS(a;W)},\\
+\RWRMS(t_0) &= \sqrt{\frac{1}{\tau_0}
+\int_{t_0-\tau_0}^{t_0} a_w^2(t)\,\mathrm{d}t},\\
+\MTVV(a;W) &= \max_{t_0}\RWRMS(t_0),\\
+\VDV(a;W) &= \left(\int_0^T |a_w(t)|^4\,\mathrm{d}t\right)^{1/4}.
+\end{align*}
+The review uses $\CF_w=6$ as a BS~6841-based stationary/transient guideline, whereas
+ISO~2631-1 normally regards the basic weighted-RMS method as sufficient up to a crest
+factor of 9. Neither threshold should be applied to the current unweighted
+\texttt{crest} feature.
+
+\subsection{Current implementation status}
+
+\begin{table}[t]
+\centering
+\caption{Interpretation of existing feature-pipeline names.}
+\label{tab:implementation}
+\begin{tabular}{@{}ll@{}}
+\toprule
+Code name & Interpretation \\
+\midrule
+\texttt{wrms\_z}, \texttt{wrms\_xy} & frequency-weighted translational RMS \\
+\texttt{wrms\_rot}, \texttt{wrms\_z\_d} & differentiate rate, then weighted RMS \\
+\texttt{crest} & unweighted generic peak-to-RMS ratio \\
+\texttt{vdv}, \texttt{vdv\_deriv} & unweighted fourth-power feature \\
+\texttt{mtvv} & unweighted running-RMS maximum \\
+\bottomrule
+\end{tabular}
+\end{table}
+The last three rows are useful exploratory statistics, but they must not be reported as ISO
+$\CF$, $\VDV$, or $\MTVV$ unless weighting is applied before their calculation.
+
+\section{Signal-to-candidate mapping}
+
+Table~\ref{tab:mapping} maps each available signal to physically meaningful candidates.
+The ordering distinguishes event-oriented base candidates from standards-inspired or
+exploratory additions; it is not a claim of predictive importance.
+
+\begin{table*}[t]
+\centering
+\caption{Candidate metrics for the available channels. No row defines a universal primary KPI.}
+\label{tab:mapping}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}lllll@{}}
+\toprule
+Signal & Physical quantity & Event-oriented candidates & Additional candidates & Applicability / caveat \\
+\midrule
+\texttt{IMU\_LongAccelVal}
+& longitudinal body acceleration $a_x$
+& \texttt{abs\_peak}, \texttt{p2p}, \texttt{rms}
+& \texttt{wrms\_xy}, \texttt{p95\_abs}, \texttt{vdv}, \texttt{crest}
+& impact and traction/braking response; $W_d$ is directionally valid \\
+
+\texttt{IMU\_VerAccelVal}
+& vertical body acceleration $a_z$
+& \texttt{abs\_peak}, \texttt{p2p}, \texttt{rms}
+& \texttt{wrms\_z}, \texttt{p95\_abs}, \texttt{vdv}, \texttt{crest}, \texttt{mtvv}
+& central ride signal; \texttt{z\_nod} is not valid on acceleration \\
+
+\texttt{Pitch\_rate\_6D}
+& pitch rate $\dot{\theta}$; derive $\ddot{\theta}$
+& \texttt{abs\_peak\_deriv}, \texttt{p2p\_deriv}, \texttt{rms\_deriv}
+& \texttt{wrms\_rot}, \texttt{vdv\_deriv}, raw-rate \texttt{rms}
+& RMS/P2P angular acceleration is supported for pitch control and braking \\
+
+\texttt{Roll\_rate\_6D}
+& roll rate $\dot{\phi}$; derive $\ddot{\phi}$
+& \texttt{abs\_peak\_deriv}, \texttt{p2p\_deriv}, \texttt{rms\_deriv}
+& \texttt{wrms\_rot}, \texttt{vdv\_deriv}, raw-rate \texttt{rms}
+& relevant to asymmetric roads, road copying, and cornering \\
+
+\texttt{IMU\_YawRtVal}
+& yaw rate $\dot{\psi}$; derive $\ddot{\psi}$
+& \texttt{p2p\_deriv}, \texttt{rms\_deriv}
+& \texttt{wrms\_rot}, raw-rate \texttt{rms}, \texttt{crest}
+& mathematically valid rotation; mainly a handling/context candidate \\
+
+\texttt{Bounce\_rate\_6D}
+& heave velocity $\dot{z}$; derive $\ddot{z}$
+& \texttt{abs\_peak\_deriv}, \texttt{p2p\_deriv}, \texttt{rms\_deriv}
+& \texttt{wrms\_z\_d}, \texttt{vdv\_deriv}, raw-rate \texttt{rms}
+& derived vertical acceleration is valid; displacement-decay KPIs are not \\
+
+\texttt{IMU\_LatAccelVal}
+& lateral body acceleration $a_y$
+& \texttt{abs\_peak}, \texttt{p2p}, \texttt{rms}
+& \texttt{wrms\_xy}, \texttt{p95\_abs}, \texttt{vdv}, \texttt{crest}
+& most relevant to cornering or asymmetric events; $W_d$ is directionally valid \\
+
+\texttt{IMU\_RollRtVal}
+& IMU roll rate $\dot{\phi}$; derive $\ddot{\phi}$
+& same as \texttt{Roll\_rate\_6D}
+& use as an alternative sensor/source
+& likely redundant with \texttt{Roll\_rate\_6D}; compare rather than assume both \\
+\bottomrule
+\end{tabular}}
+\end{table*}
+
+\section{Selection by event regime}
+
+\begin{table*}[t]
+\centering
+\caption{The event regime determines which statistics are defensible candidates.}
+\label{tab:regime}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}lll@{}}
+\toprule
+Regime / target attribute & First candidates & Conditional additions \\
+\midrule
+Isolated bump, cleat, or short impact
+& absolute peak, P2P, RMS of linear/angular acceleration
+& weighted RMS; weighted RWRMS/MTVV/VDV for strong transients \\
+Long, flat, rough, or approximately stationary road
+& RMS and frequency-weighted RMS
+& band-limited energy, vibration total value \\
+Acceleration or braking pitch
+& RMS/P2P pitch angular acceleration, longitudinal acceleration
+& pitch settling/response time when a steady state is identifiable \\
+Cornering or asymmetric road input
+& RMS/P2P roll angular acceleration, lateral acceleration
+& yaw and steering/context quantities \\
+Oscillation decay after a step
+& displacement settling time, overshoot, third displacement peak
+& only when displacement and a defensible steady state are available \\
+Road holding
+& suspension deflection, suspension working space, dynamic wheel load
+& unavailable from the current selected IMU channels alone \\
+\bottomrule
+\end{tabular}}
+\end{table*}
+
+For the current short windows around a reported event, the isolated-event row is the most
+appropriate starting point. WRMS remains a useful perceptually weighted candidate, but it
+should compete with peak, P2P, and RMS features rather than replace them. A four-second
+window also provides limited low-frequency resolution; the resulting WRMS is better described
+as an ISO-inspired relative feature than as a standards-compliant exposure measurement.
+
+\FloatBarrier
+\section{Evidence-based priorities for the current bump task}
+
+Table~\ref{tab:bump-priority} translates the review's event- and attribute-specific evidence
+into priorities for the available signals. ``First'' means that the review directly supports the
+same physical response for an isolated impact or a closely related body-control attribute.
+``Conditional'' means that the statistic is supported only for a particular event type, requires
+an additional diagnostic, or is a physically reasonable extrapolation without a direct pairing in
+Table~4 of \cite{guastadisegni2024}.
+
+\begin{table*}[t]
+\centering
+\caption{Evidence-based candidate priority for the current short-window bump task.}
+\label{tab:bump-priority}
+\begingroup
+\setlength{\tabcolsep}{3pt}
+\small
+\begin{tabular}{@{}
+>{\raggedright\arraybackslash}p{0.18\textwidth}
+>{\raggedright\arraybackslash}p{0.205\textwidth}
+>{\raggedright\arraybackslash}p{0.245\textwidth}
+>{\raggedright\arraybackslash}p{0.315\textwidth}@{}}
+\toprule
+Signal & First candidates & Conditional candidates & Evidence and rationale \\
+\midrule
+\texttt{IMU\_LongAccelVal}
+& \texttt{p2p}
+& \texttt{abs\_peak}, \texttt{rms}, \texttt{wrms\_xy}
+& Figure~11 reports a direct relationship between longitudinal seat-rail P2P and bump impact harshness. The current CG-level IMU is a proxy for that measurement location. \\
+
+\texttt{IMU\_VerAccelVal}
+& \texttt{p2p}, \texttt{abs\_peak}, \texttt{rms}
+& \texttt{wrms\_z}, \texttt{p95\_abs}, properly weighted \texttt{MTVV}/\texttt{VDV}
+& Section~2.2 identifies vertical peak and P2P for isolated obstacles. Table~4 pairs bump impact with seat vertical P2P and pairs vertical/bounce control with vertical RMS acceleration. \\
+
+\texttt{Pitch\_rate\_6D}
+& \texttt{rms\_deriv}, \texttt{p2p\_deriv}
+& \texttt{abs\_peak\_deriv}, \texttt{wrms\_rot}, settling/response time
+& Table~4 pairs RMS pitch angular acceleration with pitch control and P2P/RMS pitch angular acceleration with pitch under acceleration or braking. Differentiation maps the measured rate to this quantity. \\
+
+\texttt{Roll\_rate\_6D},
+\texttt{IMU\_RollRtVal}
+& \texttt{rms\_deriv}
+& \texttt{p2p\_deriv} for asymmetric impacts; \texttt{abs\_peak\_deriv}, \texttt{wrms\_rot}
+& Table~4 pairs RMS roll angular acceleration with road copying. Section~2.2 also permits P2P on angular body acceleration for isolated events. The two roll channels should be compared as alternative sources. \\
+
+\texttt{Bounce\_rate\_6D}
+& \texttt{rms\_deriv}, \texttt{p2p\_deriv}, \texttt{abs\_peak\_deriv}
+& \texttt{wrms\_z\_d}, properly weighted transient metrics, raw-rate \texttt{rms}
+& Differentiation produces heave acceleration. Table~4 directly pairs RMS sprung-mass vertical acceleration with vertical ride/bounce control, while Section~2.2 supports peak/P2P vertical acceleration for isolated obstacles. \\
+
+\texttt{IMU\_LatAccelVal}
+& none for a generic symmetric bump
+& \texttt{p2p}, \texttt{rms}, \texttt{abs\_peak} for asymmetric impacts; \texttt{wrms\_xy} for cornering/repeated vibration
+& The review associates lateral acceleration with choppiness and cornering, but Table~4 gives no direct generic-bump pairing. Its relevance depends on the event geometry. \\
+
+\texttt{IMU\_YawRtVal}
+& none for a generic bump
+& raw-rate \texttt{rms}, \texttt{rms\_deriv}, \texttt{p2p\_deriv}, \texttt{wrms\_rot} for directional/asymmetric events
+& Table~4 contains no direct yaw-to-bump or yaw-to-ride-attribute pairing. $W_e$ is mathematically valid for yaw angular acceleration, but predictive relevance is a handling/context hypothesis. \\
+\bottomrule
+\end{tabular}
+\endgroup
+\end{table*}
+
+\FloatBarrier
+\subsection{Evidence hierarchy and scope}
+
+The review warns that the discussed KPIs are ``not universally applicable to every type of
+manoeuvre and road profile'' \cite{guastadisegni2024}. Accordingly, evidence is treated in the
+following order:
+\begin{enumerate}
+\item a metric paired with the same manoeuvre and subjective attribute in Table~4;
+\item a metric explicitly recommended for the same physical response in Section~2.2;
+\item a metric shown in the review's correlation examples, especially Figure~11;
+\item a directionally or dimensionally valid extrapolation that still requires empirical testing.
+\end{enumerate}
+The review concerns attribute-specific ride assessment, whereas the current target is binary
+feedback on short bump events. It therefore supplies a defensible prior over candidates, not a
+guarantee that any one metric predicts the current label.
+
+\subsection{Vertical impact and heave response}
+
+Section~2.2 calls vertical absolute peak and P2P the ``most frequently selected indicators
+\ldots{} during isolated events'' \cite{guastadisegni2024}. Table~4 makes the distinction more
+specific: P2P seat vertical acceleration is paired with small and large impact on a bump,
+whereas RMS seat vertical acceleration is paired with the corresponding impact on a cleat.
+The same table pairs RMS sprung-mass vertical acceleration with vertical ride control or bounce
+on bumpy roads with high wavelengths.
+
+Consequently, \texttt{p2p} and \texttt{abs\_peak} have the strongest isolated-impact basis for
+\texttt{IMU\_VerAccelVal}, while \texttt{rms} captures sustained body response and remains a
+first candidate rather than a fallback. For \texttt{Bounce\_rate\_6D}, differentiation produces
+the heave acceleration used by the paper. This makes \texttt{rms\_deriv} directly relevant to
+bounce control, with \texttt{p2p\_deriv} and \texttt{abs\_peak\_deriv} capturing the transient
+impact. The current centre-of-gravity measurements remain proxies for the seat and sprung-mass
+locations used in the cited correlations.
+
+\subsection{Pitch and roll body control}
+
+Table~4 directly pairs RMS pitch angular acceleration with pitch control on flat and uneven
+roads. It also lists settling time, P2P pitch angular acceleration, and RMS pitch angular
+acceleration for pitch under acceleration or braking. The isolated-event discussion in
+Section~2.2 states that P2P can also be evaluated on pitch and roll angular body acceleration.
+
+For the rate channels, the matching quantities are obtained only after differentiation. Hence
+\texttt{rms\_deriv} and \texttt{p2p\_deriv} are the first pitch candidates. For roll, Table~4's
+direct evidence is RMS roll angular acceleration for road copying, making
+\texttt{rms\_deriv} the first general candidate. \texttt{p2p\_deriv} becomes especially relevant
+for a one-wheel or otherwise asymmetric bump. Absolute angular-acceleration peak and
+$W_e$-weighted RMS are defensible additions, but the review does not establish them as the
+primary correlation for these attributes.
+
+\subsection{Longitudinal impact response}
+
+Table~4 focuses its small- and large-impact rows on vertical seat acceleration. The direct
+longitudinal evidence appears instead in Figure~11: front- and rear-seat-rail longitudinal P2P
+are shown in correlation with impact harshness for a speed bump. This supports
+\texttt{p2p} as the first longitudinal candidate. Absolute peak, RMS, and $W_d$-weighted RMS
+remain plausible additions, but their bump-specific subjective correlation is less direct in this
+review. Sensor-location differences again prevent interpreting the CG IMU feature as an exact
+replica of the seat-rail KPI.
+
+\subsection{Lateral and yaw responses}
+
+The review relates lateral body acceleration to choppiness and discusses cornering manoeuvres,
+while roll is used for road-copying and lane-change behaviour. It does not provide a Table~4
+pairing between lateral acceleration or yaw and generic bump impact. These signals should
+therefore have no unconditional first statistic for a nominally symmetric bump. They become
+meaningful candidates when the data contain asymmetric road input, single-wheel impact,
+cornering, or a directional correction after the obstacle. The condition is on the event, not
+merely on the mathematical availability of a statistic.
+
+\subsection{Why weighted and dose metrics are conditional}
+
+The review lists WRMS as a ride-comfort KPI used for bumps as well as longer road profiles,
+so it remains a legitimate candidate. However, its most direct bump-to-subjective-attribute
+examples use P2P or RMS rather than WRMS. On a four-second event window, WRMS is also a
+short-window frequency-shaped summary rather than a representative whole-body exposure
+measurement.
+
+RWRMS, MTVV, and VDV are motivated when ordinary RMS can underestimate occasional shocks
+or strongly transient vibration. Their priority should therefore depend on a correctly computed
+weighted crest factor or on a predefined transient-analysis design. The current raw
+\texttt{crest}, \texttt{mtvv}, and \texttt{vdv} implementations can be explored as generic
+shape and dose features, but they do not inherit the standards-based justification without
+frequency weighting.
+
+\subsection{Resulting interpretation}
+
+For the present task, the paper supports a more precise statement than ``use peak statistics
+for every signal'': P2P and absolute peak are first candidates for impact severity on the
+vertical and longitudinal response, while RMS acceleration is a first candidate for heave,
+pitch, and roll body control. P2P angular acceleration is first or near-first when the bump
+induces a distinct pitch/roll transient. Lateral, yaw, frequency-weighted, and dose-based
+features are conditional candidates whose value depends on event geometry, spectral content,
+and the target driver's response.
+
+\section{Unavailable or conditionally valid metrics}
+
+\subsection{Third positive peak}
+The review defines $z_{s,\mathrm{nod}}$ as the third positive peak of the \emph{sprung-mass
+vertical displacement} $z_s(t)$ after an obstacle. Applying this operator directly to vertical
+acceleration does not measure the same oscillation-decay property. It should be excluded unless
+displacement is measured or reconstructed with a validated, drift-controlled estimator.
+
+\subsection{Road-holding metrics}
+The root integral of suspension-deflection PSD $\sigma_{SD}$, RMS suspension deflection,
+suspension working space, and normalized dynamic wheel-load RMS require suspension travel
+or vertical tyre-load signals. They must not be computed from body acceleration merely because
+the same mathematical operation is available. Candidate raw channels for these quantities must
+first be assigned verified physical meanings and units.
+
+\section{Measurement and preprocessing limitations}
+
+\begin{itemize}
+\item ISO whole-body comfort evaluation is defined at body-contact locations such as the
+seat surface, seat back, and feet. A 6DoF IMU near the vehicle centre of gravity is a useful
+vehicle-response sensor, but its weighted features are proxies for occupant exposure.
+\item Rotational acceleration must be expressed in $\mathrm{rad}/\mathrm{s}^2$ for physical
+ISO reporting. A constant degree-to-radian conversion is immaterial after z-scoring, but it
+is material for reported KPI values.
+\item Per-axis WRMS values are not automatically comparable across directions. ISO total
+vibration combines orthogonal components using direction-dependent multiplying factors.
+Separate feature standardization intentionally removes this physical magnitude comparison.
+\item The current 10-Hz smoothing cutoff suppresses much of the review's 10--25-Hz
+secondary-ride/shake band. Cutoff and downsampling choices must be included in sensitivity
+analysis if secondary ride is part of the target.
+\item Short-window FFT weighting is affected by spectral resolution, window boundaries,
+and leakage. The preprocessing and window duration are therefore part of the feature and
+must remain identical across training and evaluation folds.
+\end{itemize}
+
+\section{Model-based feature selection principle}
+
+Let $g=(\text{channel},\text{statistic})$ be the atomic candidate and let $S$ be a candidate
+subset. Selection should be based on the hierarchical model's predictive objective, not on
+the literature ordering or raw coefficient magnitude. For each held-out training driver $u$,
+fit the population posterior on the remaining drivers and evaluate
+\[
+Q_t(S)=\frac{1}{U}\sum_u\frac{1}{|H_u|}
+\sum_{i\in H_u}\log p(y_{ui}\mid\mathcal{D}_{-u},C_{u,t},S),
+\]
+where $t=0$ measures cold-start transfer and $t>0$ measures personalization after a fixed
+context budget. The predictive importance of group $g$ is the paired difference
+\[
+\Delta_g=Q(S)-Q(S\setminus g).
+\]
+Channel-level importance removes all statistics belonging to a channel; statistic-level
+importance removes one pair. Final selection should choose the smallest subset within one
+standard error of the best macro-averaged held-out-driver score. The designated test driver
+must remain untouched until this procedure is complete.
+
+\section{Conclusion}
+
+The review and standards determine which candidates are physically defensible, but they do
+not determine the predictive winner for personalized binary feedback. For short bump-like
+events, peak, P2P, and RMS acceleration features are first-class candidates; weighted RMS and
+transient dose features provide complementary frequency and peak sensitivity. Feature
+importance must ultimately be reported separately for population-common effects,
+between-driver heterogeneity, and held-out-driver predictive gain.
+
+\begin{thebibliography}{3}
+
+\bibitem{guastadisegni2024}
+G.~Guastadisegni, S.~De~Pinto, D.~Cancelli, \emph{et al.},
+``Ride analysis tools for passenger cars: objective and subjective evaluation techniques
+and correlation processes -- a review,'' \emph{Vehicle System Dynamics}, vol.~62, no.~7,
+pp.~1876--1902, 2024, doi: 10.1080/00423114.2023.2259024.
+
+\bibitem{iso2631}
+International Organization for Standardization,
+\emph{Mechanical vibration and shock -- Evaluation of human exposure to whole-body
+vibration -- Part 1: General requirements}, ISO~2631-1:1997, 1997.
+
+\bibitem{bs6841}
+British Standards Institution,
+\emph{Measurement and evaluation of human exposure to whole-body mechanical vibration
+and repeated shock}, BS~6841:1987, 1987.
+
+\end{thebibliography}
+
+\end{document}
