@@ -1,9 +1,6 @@
 artifacts/
 outputs/
 datasets/
-temp/
-temp.py
-test.md
 
 .claude/
 CLAUDE.md
@@ -27,7 +24,14 @@ uv.lock
 
 uv.lock
 
-# LaTeX: 소스(tex/pdf/cls/bib)만 추적하고 빌드 산출물은 전부 무시
+temp.py
+temp.md
+test.md
+tmp.md
+temp/
+tmp/
+
+
 docs/fully_bayesian/features/*
 !docs/fully_bayesian/features/*.tex
 !docs/fully_bayesian/features/*.pdf

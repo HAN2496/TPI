@@ -1,0 +1,2147 @@
+\documentclass[letterpaper,10pt,journal,twocolumn]{ieeeconf}
+
+\usepackage{amsmath,amssymb,amsfonts,bm}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{cite}
+\usepackage{url}
+\usepackage{kotex}
+
+\hyphenation{Kal-man Baye-sian state-space half-car quarter-car}
+
+% 이 문서에서 실제로 사용하는 확률분포 및 연산자만 정의한다.
+\newcommand{\Normal}{\mathcal{N}}
+\newcommand{\Data}{\mathcal{D}}
+\newcommand{\GP}{\mathcal{GP}}
+\newcommand{\Bernoulli}{\operatorname{Bernoulli}}
+\newcommand{\HalfNormal}{\operatorname{HalfNormal}}
+\newcommand{\LogNormal}{\operatorname{LogNormal}}
+\newcommand{\sigmoid}{\operatorname{sigmoid}}
+\newcommand{\sat}{\operatorname{sat}}
+\newcommand{\vecop}{\operatorname{vec}}
+\newcommand{\iid}{\overset{\mathrm{iid}}{\sim}}
+
+\allowdisplaybreaks[1]
+\setlength{\emergencystretch}{1em}
+
+\title{KF 기반 센서 재구성과 Bayesian Feature Modeling 설계}
+\author{Jaewoong Han}
+
+\begin{document}
+\maketitle
+
+\section{모델 체계와 기호}
+
+이 문서에서 비교할 네 가지 KF 계열 모델은 다음과 같이 정리한다.
+
+\begin{table*}[t]
+\caption{비교할 네 가지 KF 계열 모델}
+\label{tab:model-overview}
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabular}{c
+                >{\raggedright\arraybackslash}p{0.19\textwidth}
+                >{\raggedright\arraybackslash}p{0.25\textwidth}
+                >{\raggedright\arraybackslash}p{0.20\textwidth}
+                >{\raggedright\arraybackslash}p{0.23\textwidth}}
+\toprule
+번호 & 차량 모델 & Road/bump 처리 & 추정기 & 연구상 역할 \\
+\midrule
+1 & 축약 bounce--pitch body model
+  & 명시적 road 추정 없음
+  & Linear KF
+  & 현재 코드에 가장 가까운 baseline \\
+2 & 2-DOF quarter-car
+  & Road height/rate를 상태에 증강
+  & Augmented linear KF
+  & 가장 단순한 road-estimation baseline \\
+3 & 4-DOF linear half-car
+  & 단일 spatial road profile과 front--rear delay
+  & Augmented 또는 joint input--state KF + RTS smoother
+  & 선형 주 후보 \\
+4 & \texttt{vehicle\_model.py} nonlinear half-car
+  & Bump profile/parameter를 latent state로 추정
+  & EKF + smoother
+  & 비선형 확장 후보 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+기호는 다음처럼 구분한다.
+
+\begin{itemize}
+
+\item
+  \(x_k\): 시각 \(k\)의 차량 동역학 상태
+\item
+  \(c_k\): 측정 가능한 제어·외생 입력, 예: wheel torque
+\item
+  \(r_k\): front/rear road height 또는 bump input
+\item
+  \(o_k\): IMU, wheel speed 등 실제 관측 센서
+\item
+  \(p\): 질량, 관성, 강성, 감쇠 등 차량 물리 파라미터
+\item
+  \(\tau_{ui}\): 사용자 \(u\), 구간 \(i\)에서 downstream hierarchical Bayesian model에 들어가는 feature
+\item
+  \(y_{ui}\): 기존 hierarchical Bayesian model의 outcome
+\end{itemize}
+
+중요하게도 \textbf{KF가 추정하는 state}, \textbf{road라는 unknown input}, \textbf{offline에서 맞추는 차량 파라미터}는 서로 다른 대상이다.
+
+\section{큰 틀에서 KF의 기본 수식 설계}
+
+\subsection{연속시간 차량 모델}
+
+선형 차량 모델의 가장 일반적인 형태는 다음과 같다.
+
+\[
+\dot x(t)
+=
+A_c(p)x(t)
++B_c(p)c(t)
++E_c(p)r(t)
++w(t)
+\]
+
+\[
+o(t)
+=
+C_c(p)x(t)
++D_c(p)c(t)
++J_c(p)r(t)
++v(t)
+\]
+
+여기서
+
+\[
+w(t)\sim\Normal(0,Q_c),
+\qquad
+v(t)\sim\Normal(0,R_c)
+\]
+
+이다. \(w\)는 process/model error, \(v\)는 sensor measurement error이다.
+
+샘플링 간격 \(\Delta t\)로 이산화하면
+
+\[
+x_{k+1}
+=
+A_dx_k+B_dc_k+E_dr_k+w_k
+\]
+
+\[
+o_k
+=
+C_dx_k+D_dc_k+J_dr_k+v_k
+\]
+
+이며, zero-order hold를 가정할 때
+
+\[
+\begin{aligned}
+A_d &= e^{A_c\Delta t},\\
+B_d &= \int_0^{\Delta t}e^{A_c\tau}B_c\,d\tau,\\
+E_d &= \int_0^{\Delta t}e^{A_c\tau}E_c\,d\tau
+\end{aligned}
+\]
+
+로 구성한다. 이는 Kalman의 선형 state-space filtering 틀에 해당한다 \cite{kalman1960}.
+
+\subsection{\(A,B\)와 차량 파라미터의 offline 추정}
+
+현재처럼 KF를 실행하기 전에 dynamics parameter를 calibration data로 맞출 수 있다.
+
+\[
+\hat p
+=
+\arg\min_p
+\left[
+\sum_{k=1}^{T}
+\left\|
+o_k-\hat o_k(p)
+\right\|_{W}^{2}
++\lambda\mathcal R(p)
+\right]
+\]
+
+그 후
+
+\[
+A_d^{*}=A_d(\hat p),
+\qquad
+B_d^{*}=B_d(\hat p)
+\]
+
+를 KF에서 사용한다.
+
+가능하면 \(A,B\)의 원소를 완전히 자유롭게 맞추기보다
+
+\[
+\begin{aligned}
+p=\{&
+m_s,I_y,m_{uf},m_{ur},\\
+&k_{sf},k_{sr},c_{sf},c_{sr},\\
+&k_{tf},k_{tr},\ldots\}
+\end{aligned}
+\]
+
+와 같은 물리 파라미터나, 안정성이 보장되는 modal parameter를 맞춘 뒤 \(A,B\)를 계산하는 편이 좋다. 그래야 음의 질량·감쇠나 불안정 pole 같은 비물리적 해를 방지할 수 있다.
+
+\subsection{Kalman filter prediction--correction}
+
+Road가 known input이면 \(r_k\)를 그대로 사용하고, road를 추정하지 않는 모델이면 해당 항을 제거한다.
+
+\subsubsection{Prediction}
+
+\[
+\hat x_{k|k-1}
+=
+A_d\hat x_{k-1|k-1}
++B_dc_{k-1}
++E_d r_{k-1}
+\]
+
+\[
+P_{k|k-1}
+=
+A_dP_{k-1|k-1}A_d^\top+Q
+\]
+
+\subsubsection{Innovation과 gain}
+
+\[
+e_k
+=
+o_k-
+\left(
+C_d\hat x_{k|k-1}
++D_dc_k
++J_dr_k
+\right)
+\]
+
+\[
+S_k
+=
+C_dP_{k|k-1}C_d^\top+R
+\]
+
+\[
+K_k
+=
+P_{k|k-1}C_d^\top S_k^{-1}
+\]
+
+\subsubsection{Correction}
+
+\[
+\hat x_{k|k}
+=
+\hat x_{k|k-1}+K_ke_k
+\]
+
+수치적으로 안정적인 Joseph form은
+
+\[
+\begin{aligned}
+P_{k|k}
+={}&(I-K_kC_d)P_{k|k-1}(I-K_kC_d)^\top\\
+&+K_kRK_k^\top
+\end{aligned}
+\]
+
+이다.
+
+\subsection{재구성 신호와 feature}
+
+KF posterior로부터 측정 불가능한 센서 신호를 계산한다.
+
+\[
+\hat s_k
+=
+H_\tau\hat x_{k|k}
+\]
+
+예를 들어
+
+\[
+\hat s_k
+=
+\begin{bmatrix}
+\widehat{\dot z_s}_k\\
+\widehat{\dot\theta}_k
+\end{bmatrix}
+\]
+
+가 bounce rate와 pitch rate가 된다. 한 window의 downstream feature는
+
+\[
+\hat\tau_{ui}^{KF}
+=
+\Phi
+\left(
+\hat s_{1:T},o_{1:T}
+\right)
+\]
+
+로 계산한다. \(\Phi\)는 RMS, peak, standard deviation, derivative feature 등을 만드는 기존 feature extractor이다.
+
+\subsection{Bump 통과가 끝난 뒤의 smoothing}
+
+온라인 제어가 아니라 한 구간 전체가 수집된 뒤 feature를 복원하는 목적이라면 filtering만 쓰기보다 Rauch--Tung--Striebel smoother를 추가하는 것이 적절하다.
+
+\[
+G_k
+=
+P_{k|k}A_d^\top
+\left(P_{k+1|k}\right)^{-1}
+\]
+
+\[
+\hat x_{k|T}
+=
+\hat x_{k|k}
++G_k
+\left(
+\hat x_{k+1|T}-\hat x_{k+1|k}
+\right)
+\]
+
+\[
+\begin{aligned}
+P_{k|T}
+={}&P_{k|k}\\
+&+G_k
+\left(P_{k+1|T}-P_{k+1|k}\right)
+G_k^\top
+\end{aligned}
+\]
+
+Xue et al.도 half-car road reconstruction에서 augmented KF와 RTS smoothing을 결합한다 \cite{xue2020}.
+
+\section{기존 Bayesian model에 추가하는 세 가지 설계}
+
+세 방법은 같은 residual을 서로 다르게 표현한 것이 아니다.
+
+\begin{itemize}
+
+\item
+  Feature residual: 최종 \(\tau\)의 복원오차를 보정
+\item
+  Dynamics residual: 매 time step의 상태전이 오차를 보정
+\item
+  Road bump estimation: vehicle error가 아니라 물리적인 미지 외란 \(r_k\)를 복원
+\end{itemize}
+
+초기 모델에서는 세 항을 모두 자유롭게 동시에 추정하면 안 된다. 특히 dynamics residual과 road input은 동일한 진동을 서로 대신 설명할 수 있어 식별성이 크게 떨어진다.
+
+\subsection{Feature residual을 Bayesian하게 추정}
+
+\subsubsection{Calibration data}
+
+일부 calibration 구간에서 실제 target sensor를 측정할 수 있다고 가정한다.
+
+\[
+\hat\tau_{ui,j}^{KF}
+=
+\Phi_j
+\left(
+\hat x_{ui,1:T}
+\right)
+\]
+
+\[
+r_{ui,j}^{\tau}
+=
+\tau_{ui,j}^{true}
+-\hat\tau_{ui,j}^{KF}
+\]
+
+\subsubsection{Bayesian residual regression}
+
+\[
+r_{ui,j}^{\tau}
+=
+q_{ui}^{\top}\beta_j
++b_{u,j}
++\epsilon_{ui,j}
+\]
+
+\[
+\epsilon_{ui,j}
+\iid
+\Normal(0,\sigma_{\tau,j}^{2})
+\]
+
+\[
+\begin{aligned}
+\beta_j &\sim\Normal(0,\lambda_{\beta,j}^{2}I),\\
+b_{u,j} &\sim\Normal(0,\omega_j^2),\\
+\sigma_{\tau,j} &\sim\HalfNormal(s_j)
+\end{aligned}
+\]
+
+여기서 \(\beta_j\)는 Beta 분포가 아니라, speed·torque·bump 조건 등이 residual 평균에 미치는 영향을 나타내는 \textbf{회귀계수 벡터}이다. 예를 들면
+
+\[
+q_{ui}
+=
+\begin{bmatrix}
+1&
+\bar v_{ui}&
+T_{ui}^{peak}&
+a_{x,ui}^{RMS}
+\end{bmatrix}^{\top}
+\]
+
+로 둘 수 있다.
+
+따라서 실측할 수 없는 feature의 조건부 평균을
+
+\[
+\mu_{ui,j}^{\tau}
+=
+\hat\tau_{ui,j}^{KF}
++q_{ui}^{\top}\beta_j
++b_{u,j}
+\]
+
+로 두면,
+
+\[
+\tau_{ui,j}^{mis}\mid\mu_{ui,j}^{\tau},\sigma_{\tau,j}
+\sim
+\Normal\!\left(\mu_{ui,j}^{\tau},\sigma_{\tau,j}^{2}\right)
+\]
+
+가 된다.
+
+\(q_{ui}\)가 필요하지 않은 가장 단순한 시작 모델은
+
+\[
+\tau_{ui,j}^{mis}
+\sim
+\Normal
+\left(
+\hat\tau_{ui,j}^{KF}+b_j,
+\sigma_{\tau,j}^{2}
+\right)
+\]
+
+이다.
+
+위 식은 KF posterior mean을 offset으로 쓰는 가장 단순한 형태이다. KF/EKF가 covariance까지 출력하도록 구현하면 더 완전하게
+
+\[
+x_{ui,1:T}^{(m)}
+\sim
+p_{KF}
+\left(
+x_{ui,1:T}\mid o_{ui,1:T}
+\right)
+\]
+
+\[
+\begin{aligned}
+\tau_{ui,j}^{(m)}
+={}&\Phi_j\!\left(x_{ui,1:T}^{(m)}\right)
++q_{ui}^{\top}\beta_j\\
+&+b_{u,j}
++\epsilon_{ui,j}^{(m)}
+\end{aligned}
+\]
+
+로 state-reconstruction uncertainty와 feature-residual uncertainty를 함께 전달할 수 있다. 따라서 현재 코드가 state mean만 반환한다면 \(P_{k|k}\) 또는 smoothed trajectory draw도 반환하도록 수정해야 한다.
+
+\subsubsection{기존 hierarchical Bayesian model과의 결합}
+
+기존 사용자별 coefficient 구조를 유지한다.
+
+\[
+\gamma_u
+\sim
+\Normal(\mu_\gamma,\Sigma_\gamma)
+\]
+
+관측·복원 feature를
+
+\[
+\widetilde\tau_{ui}
+=
+\begin{bmatrix}
+\tau_{ui}^{obs}\\
+\tau_{ui}^{mis}
+\end{bmatrix}
+\]
+
+로 묶는다. 이진 outcome을 예로 들면
+
+\[
+y_{ui}\mid\widetilde\tau_{ui},\gamma_u
+\sim
+\Bernoulli\!\left[
+\sigmoid\!\left(\gamma_u^\top\widetilde\tau_{ui}\right)
+\right]
+\]
+
+최종 예측은 feature posterior를 적분한다.
+
+\[
+\begin{aligned}
+p(y_{ui}\mid o_{ui},\Data)
+={}&
+\int p(y_{ui}\mid\tau_{ui},\gamma_u)\\
+&\times p(\tau_{ui}^{mis}\mid o_{ui},\Data)
+p(\gamma_u\mid\Data)
+\,d\tau\,d\gamma
+\end{aligned}
+\]
+
+즉 Normal 객체를 단순히 기존 \texttt{fit()}에 넣는 것이 아니라, posterior draw를 사용하거나 joint model 안에서 latent feature를 직접 샘플링한다.
+
+이 설계와 통계적으로 가장 가까운 문헌은 Bayesian covariate-measurement-error와 latent-predictor model이다. Bartlett and Keogh는 true covariate를 latent하게 두고 outcome model까지 uncertainty를 전달하며, Schofield는 추정된 latent variable을 predictor로 쓸 때 measurement error를 함께 반영한다 \cite{bartlett2018,schofield2015}. 물리모델 출력 뒤의 discrepancy라는 관점에서는 Kennedy--O'Hagan calibration과 대응한다 \cite{kennedy2001}.
+
+\subsection{Dynamics residual을 Bayesian하게 추정}
+
+\(A^{*},B^{*}\) 또는 nonlinear dynamics parameter \(\hat p\)를 먼저 맞춘 뒤 다음과 같이 둔다.
+
+\subsubsection{선형식}
+
+\[
+x_{k+1}
+=
+A^{*}x_k+B^{*}c_k+E^{*}r_k+d_k+w_k
+\]
+
+가장 단순한 systematic bias는
+
+\[
+d_k=b_x,
+\qquad
+b_x\sim\Normal(0,\Sigma_b)
+\]
+
+이다. 상태·입력 조건에 따라 error가 달라지면
+
+\[
+d_k
+=
+W\phi(x_k,c_k)
+\]
+
+\[
+\vecop(W)
+\sim
+\Normal(0,\Lambda_W)
+\]
+
+로 둔다.
+
+\subsubsection{Nonlinear식}
+
+\[
+x_{k+1}
+=
+F_d(x_k,c_k,r_k;\hat p)
++d(x_k,c_k)
++w_k
+\]
+
+\[
+d(\cdot)\sim\GP(0,k_d)
+\]
+
+처럼 residual function에 Gaussian-process prior를 둘 수도 있다. BayesRace는 nominal vehicle model과 실제 transition 간 residual을 GP로 보정하며 \cite{jain2021}, GP state-space model은 latent state와 transition dynamics를 fully Bayesian하게 함께 추정한다 \cite{frigola2013}.
+
+\subsubsection{무엇이 Bayesian 확장인가}
+
+\[
+w_k\sim\Normal(0,Q)
+\]
+
+를 고정된 \(Q\)와 함께 추가하는 것만으로는 이미 일반 KF와 같다. Bayesian dynamics residual이라고 부르려면 최소한
+
+\[
+p(b_x,W,Q\mid o_{1:T},c_{1:T})
+\]
+
+또는
+
+\[
+p(d(\cdot),Q\mid o_{1:T},c_{1:T})
+\]
+
+를 추정해야 한다.
+
+100 Hz raw transition residual은 시간상관이 남을 가능성이 높으므로, IID가 맞지 않으면
+
+\[
+d_{k+1}
+=
+\rho_d d_k+\eta_k,
+\qquad
+\eta_k\sim\Normal(0,Q_d)
+\]
+
+와 같은 colored residual이 더 적절하다.
+
+State posterior sample마다 feature를 계산하면
+
+\[
+x_{1:T}^{(m)}
+\sim
+p(x_{1:T}\mid o_{1:T})
+\]
+
+\[
+\tau_{ui}^{(m)}
+=
+\Phi
+\left(
+x_{1:T}^{(m)}
+\right)
+\]
+
+이므로 dynamics uncertainty가 downstream feature까지 전달된다.
+
+\subsection{Road bump를 Bayesian하게 추정}
+
+Road bump는 vehicle-model residual이 아니라 별도의 물리적 unknown input이다.
+
+\[
+x_{k+1}
+=
+F_d(x_k,c_k,r_{f,k},r_{r,k};p)
++w_k
+\]
+
+\[
+o_k
+=
+h(x_k,c_k,r_{f,k},r_{r,k};p)
++v_k
+\]
+
+초기 bump 모델에서는 dynamics discrepancy \(d_k\)를 빼고, 고정 또는 사전 calibration된 vehicle model을 사용한다.
+
+\subsubsection{하나의 공간 profile}
+
+Front axle의 진행 위치를 \(s_k\)라고 하면
+
+\[
+s_{k+1}
+=
+s_k+v_{x,k}\Delta t
+\]
+
+\[
+r_{f,k}
+=
+\rho(s_k)
+\]
+
+\[
+r_{r,k}
+=
+\rho(s_k-L)
+\]
+
+이다. \(L=a+b\)는 wheelbase이다. 일정 속도일 때 이는
+
+\[
+r_r(t)
+=
+r_f
+\left(
+t-\frac{L}{v}
+\right)
+\]
+
+와 같다. Zhu et al.도 front/rear road excitation을 wheelbase와 speed에 따른 delay로 연결한다 \cite{zhu2022}.
+
+\subsubsection{형태가 알려진 speed bump: parametric Bayesian inverse problem}
+
+Bump가 하나의 매끄러운 돌출부라고 가정하면
+
+\[
+\begin{aligned}
+\rho(s;\alpha)
+={}&
+\frac{h_b}{2}
+\left[
+1-\cos\!\left(
+\frac{2\pi(s-s_0)}{L_b}
+\right)
+\right]\\
+&\times
+\mathbf 1\!\left(0\le s-s_0\le L_b\right)
+\end{aligned}
+\]
+
+\[
+\alpha=
+\begin{bmatrix}
+h_b&L_b&s_0
+\end{bmatrix}^{\top}
+\]
+
+로 둘 수 있다.
+
+\[
+\begin{aligned}
+h_b &\sim\HalfNormal(s_h),\\
+L_b &\sim\LogNormal(\mu_L,\sigma_L^2),\\
+s_0 &\sim\Normal(\mu_s,\sigma_s^2)
+\end{aligned}
+\]
+
+처럼 prior를 두고
+
+\[
+p(x_{0:T},\alpha\mid o_{1:T},c_{1:T})
+\]
+
+를 추정한다. 높이·폭·위치라는 소수의 파라미터만 추정하므로 현재처럼 vertical suspension sensor가 제한된 상황에서 가장 식별하기 쉽다.
+
+\subsubsection{형태를 모르는 road: nonparametric spatial state}
+
+공간 grid \(j\)에서
+
+\[
+\begin{bmatrix}
+\rho_{j+1}\\
+\rho'_{j+1}
+\end{bmatrix}
+=
+\begin{bmatrix}
+1&\Delta s\\
+0&1
+\end{bmatrix}
+\begin{bmatrix}
+\rho_j\\
+\rho'_j
+\end{bmatrix}
++\eta_j
+\]
+
+와 같은 smooth random-walk prior를 둘 수 있다. 이 경우 front와 rear가 같은 \(\rho\)를 서로 다른 위치에서 읽도록 buffer 또는 batch spatial smoother가 필요하다.
+
+\subsubsection{대표 추정 방법}
+
+이론적으로는 \textbf{joint state--unknown input estimation} 또는 \textbf{augmented-state nonlinear state-space estimation}이다.
+
+\begin{itemize}
+
+\item
+  선형·온라인: augmented KF 또는 minimum-variance joint input--state estimator
+\item
+  비선형·온라인: augmented EKF/UKF
+\item
+  bump 통과 후 전체 복원: EKF/UKF + RTS-type smoother
+\item
+  posterior가 강하게 비Gaussian이면: particle smoother
+\end{itemize}
+
+Gillijns and De Moor는 state와 unknown input을 함께 minimum-variance unbiased하게 추정하는 재귀식을 제시한다 \cite{gillijns2007}. 차량 road-profile 사례로는 quarter-car augmented KF를 사용한 Doumiati et al.과, half-car에 AKF·regularization·RTS smoothing을 결합한 Xue et al., half-car joint input--state 추정을 사용한 Zhu et al.이 직접적인 근거이다 \cite{doumiati2011,xue2020,zhu2022}.
+
+\subsection{세 Bayesian 설계의 최종 역할}
+
+\begin{table*}[t]
+\caption{세 Bayesian 설계의 역할}
+\label{tab:bayesian-roles}
+\centering
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabular}{
+>{\raggedright\arraybackslash}p{0.18\textwidth}
+>{\raggedright\arraybackslash}p{0.25\textwidth}
+>{\raggedright\arraybackslash}p{0.29\textwidth}
+>{\raggedright\arraybackslash}p{0.20\textwidth}}
+\toprule
+설계 & 보정·추정 대상 & 권장 위치 & 초기 연구에서의 역할 \\
+\midrule
+Feature residual
+  & RMS·peak 등 최종 feature error
+  & KF와 hierarchical outcome model 사이
+  & 주 Bayesian feature model \\
+Dynamics residual
+  & 매 time-step vehicle transition error
+  & KF/EKF process model 내부
+  & 별도 ablation \\
+Road bump
+  & 물리적 외부 입력 \(\rho(s)\) 또는 bump parameter
+  & KF/EKF state/input layer
+  & Bump 실험에서 필수 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+권장 조합은 다음과 같다.
+
+\[
+\boxed{
+\begin{gathered}
+\text{calibrated vehicle dynamics}
++\text{latent bump}\\
++\text{KF/EKF smoother}\\
++\text{Bayesian feature residual}\\
++\text{hierarchical outcome model}
+\end{gathered}
+}
+\]
+
+Dynamics residual과 bump를 동시에 자유롭게 추정하는 모델은 초기 주모델로 두지 않는다.
+
+\section{KF 모델 4개 최종 내용}
+
+\subsection{모델 1 --- 축약 bounce--pitch linear KF}
+
+\subsubsection{근거 논문의 기본 차량 수식}
+
+Half-car vertical dynamics는 일반적으로 다음 2차계 형태로 표현된다.
+
+\[
+M\ddot q+C\dot q+Kq
+=
+S_r r(t)+S_c c(t)
+\]
+
+\[
+q=
+\begin{bmatrix}
+z_s&\theta&z_{uf}&z_{ur}
+\end{bmatrix}^{\top}
+\]
+
+Zhu et al.도 차량의 mass, damping, stiffness matrix를 이용하여
+
+\[
+M\ddot Y+C\dot Y+KY=S_pF(t)
+\]
+
+로 쓰고, 이를
+
+\[
+\begin{aligned}
+\dot X
+={}&
+\begin{bmatrix}
+0&I\\
+-M^{-1}K&-M^{-1}C
+\end{bmatrix}X\\
+&+
+\begin{bmatrix}
+0\\
+M^{-1}S_p
+\end{bmatrix}F
+\end{aligned}
+\]
+
+로 변환한다 \cite[eqs.~(7)--(9)]{zhu2022}.
+
+\begin{itemize}
+
+\item
+  차량 형태: front--rear를 포함하는 longitudinal half-car
+\item
+  원 논문의 online 추정 대상: vehicle response state와 unknown road force/input
+\item
+  원 논문의 고정 파라미터: \(M,C,K\)에 들어가는 질량·관성·강성·감쇠
+\item
+  현재 모델 1에서는 위 full half-car 중 low-frequency sprung-body bounce와 pitch mode만 남긴다.
+\end{itemize}
+
+\subsubsection{우리 수정 모델 수식}
+
+현재 코드에 가까운 상태를
+
+\[
+\begin{aligned}
+x_k
+&=
+\begin{bmatrix}
+x_{b,k}^{\top}&d_k^{\top}
+\end{bmatrix}^{\top},\\
+x_{b,k}
+&=
+\begin{bmatrix}
+z&\dot z&\theta&\dot\theta
+\end{bmatrix}^{\top},\\
+d_k
+&=
+\begin{bmatrix}
+\eta_z&\eta_\theta&b_z&g_r
+\end{bmatrix}^{\top}
+\end{aligned}
+\]
+
+로 둔다.
+
+연속시간 gray-box 식은 다음처럼 정리할 수 있다.
+
+\[
+\ddot z
+=
+-\omega_z^2z
+-2\zeta_z\omega_z\dot z
++\kappa_a a_x
++\eta_z
+\]
+
+\[
+\begin{aligned}
+\ddot\theta
+={}&
+c_{z\theta}\dot z
+-\omega_\theta^2\theta
+-2\zeta_\theta\omega_\theta\dot\theta\\
+&+g_a a_x
++g_TT_w
++g_{\Delta a}\Delta a_{fr}
++\eta_\theta
+\end{aligned}
+\]
+
+Colored excitation과 bias는
+
+\[
+\eta_{z,k+1}
+=
+\rho_z\eta_{z,k}+\xi_{z,k}
+\]
+
+\[
+\eta_{\theta,k+1}
+=
+\rho_\theta\eta_{\theta,k}+\xi_{\theta,k}
+\]
+
+\[
+b_{z,k+1}=b_{z,k}+\xi_{b,k},
+\qquad
+g_{r,k+1}=g_{r,k}+\xi_{g,k}
+\]
+
+로 둔다.
+
+관측식은
+
+\[
+o_{z,k}
+=
+\ddot z_k+b_{z,k}+\nu_{z,k}
+\]
+
+\[
+o_{x,k}-\dot v_{x,k}
+\simeq
+g\theta_k+g\,g_{r,k}+b_x+\nu_{x,k}
+\]
+
+이다. IMU 좌표계·부호에 따라 \(g\theta\) 항의 부호는 실제 calibration으로 확정해야 한다.
+
+\begin{itemize}
+
+\item
+  수정 이유:
+
+  \begin{itemize}
+  
+  \item
+    현재 센서에는 suspension deflection과 wheel vertical acceleration이 없으므로 full road-input model보다 관측 가능한 저차 body mode부터 안정적으로 복원한다.
+  \item
+    bump를 물리적인 road height로 분리하지 않고 \(\eta_z,\eta_\theta\)가 미모델링 excitation을 흡수한다.
+  \item
+    torque와 front--rear wheel-speed-derived acceleration difference를 pitch excitation으로 사용한다.
+  \end{itemize}
+\item
+  사용하는 센서:
+
+  \begin{itemize}
+  
+  \item
+    vertical IMU acceleration: \(o_z\)
+  \item
+    longitudinal IMU acceleration: \(o_x\)
+  \item
+    네 바퀴 wheel speed: \(v_x\), \(\dot v_x\), \(\Delta a_{fr}\) 계산
+  \item
+    wheel/motor torque estimate: \(T_w\)
+  \item
+    roll rate: 이 2D 모델에서 추정하지 않고 측정값을 그대로 사용
+  \end{itemize}
+\item
+  Online 추정 state:
+
+  \begin{itemize}
+  
+  \item
+    \(z,\dot z,\theta,\dot\theta\)
+  \item
+    colored excitation \(\eta_z,\eta_\theta\)
+  \item
+    vertical bias \(b_z\), grade-like state \(g_r\)
+  \end{itemize}
+\item
+  Offline 최적화 대상:
+
+  \begin{itemize}
+  
+  \item
+    \(\omega_z,\zeta_z,\omega_\theta,\zeta_\theta\)
+  \item
+    \(c_{z\theta},\kappa_a,g_a,g_T,g_{\Delta a}\)
+  \item
+    \(Q,R\) 또는 그 diagonal scale
+  \end{itemize}
+\item
+  최종 재구성:
+
+  \begin{itemize}
+  
+  \item
+    bounce rate: \(\widehat{\dot z}\)
+  \item
+    pitch rate: 부호정의에 따른 \(\pm\widehat{\dot\theta}\)
+  \end{itemize}
+\item
+  한계:
+
+  \begin{itemize}
+  
+  \item
+    unsprung mass와 tire가 없으므로 bump height·width를 물리적으로 복원할 수 없다.
+  \item
+    이 모델에서 road는 상태가 아니라 process excitation이다.
+  \end{itemize}
+\end{itemize}
+
+\subsection{모델 2 --- Quarter-car augmented KF}
+
+\subsubsection{근거 논문 수식}
+
+Doumiati et al.의 2-DOF quarter-car는 sprung mass \(m_s\)와 unsprung mass \(m_u\)로 구성된다.
+
+\[
+m_s\ddot z_s
+=
+-k_s(z_s-z_u)
+-c_s(\dot z_s-\dot z_u)
+\]
+
+\[
+m_u\ddot z_u
+=
+k_s(z_s-z_u)
++c_s(\dot z_s-\dot z_u)
+-k_t(z_u-r)
+-c_t(\dot z_u-\dot r)
+\]
+
+논문은 road를 unknown state에 포함하여
+
+\[
+x_k
+=
+\begin{bmatrix}
+z_s&
+\dot z_s&
+z_u&
+\dot z_u&
+r&
+\dot r
+\end{bmatrix}^{\top}
+\]
+
+\[
+x_{k+1}=A_kx_k+w_k
+\]
+
+로 둔다. Road prior는
+
+\[
+\ddot r=0
+\]
+
+인 constant-slope/random-walk 형태이다. 논문의 observation은
+
+\[
+o_k
+=
+\begin{bmatrix}
+z_s-z_u&
+z_s&
+\ddot z_s
+\end{bmatrix}^{\top}
+\]
+
+이다 \cite[eqs.~(1)--(4)]{doumiati2011}.
+
+Chaabane et al.도 quarter-car에서 road input을 상태에 붙여
+
+\[
+x_{k+1}^{a}
+=
+\begin{bmatrix}
+A_d&B_d\\
+0&I
+\end{bmatrix}
+x_k^{a}
++
+\begin{bmatrix}
+w_k\\
+\eta_k
+\end{bmatrix}
+\]
+
+\[
+o_k=[C\;D]x_k^a+v_k
+\]
+
+인 augmented KF를 사용한다 \cite[eq.~(3.5)]{chaabane2019}.
+
+\begin{itemize}
+
+\item
+  차량 형태: 차체 1/4과 한 wheel/axle을 나타내는 2-DOF quarter-car
+\item
+  원 논문의 online 추정 대상:
+
+  \begin{itemize}
+  
+  \item
+    \(z_s,\dot z_s,z_u,\dot z_u\)
+  \item
+    road height \(r\)와 road rate \(\dot r\)
+  \end{itemize}
+\item
+  원 논문의 고정 파라미터:
+
+  \begin{itemize}
+  
+  \item
+    \(m_s,m_u,k_s,c_s,k_t,c_t\)
+  \end{itemize}
+\item
+  원 논문의 센서:
+
+  \begin{itemize}
+  
+  \item
+    vertical acceleration
+  \item
+    suspension deflection
+  \item
+    적분으로 얻은 body displacement
+  \end{itemize}
+\item
+  pitch와 roll은 모델에 포함되지 않는다.
+\end{itemize}
+
+\subsubsection{우리 수정 모델 수식}
+
+현재 센서만 사용할 때 vertical observation은
+
+\[
+o_k
+=
+a_{z,k}^{IMU}
+\]
+
+로 단순화한다. 여기서
+
+\[
+a_{z,k}^{IMU}
+=
+\ddot z_{s,k}+b_{z,k}+\nu_{z,k}
+\]
+
+이다. Wheel speed로 얻은 \(v_x\)는 quarter-car vertical KF의 correction에 직접 넣기보다
+
+\[
+s_{k+1}=s_k+\bar v_{w,k}\Delta t
+\]
+
+로 road를 시간축에서 공간축으로 바꾸는 보조 입력으로 사용한다.
+
+Speed bump의 형태가 대략 알려져 있다면 자유로운 \((r,\dot r)\) random walk보다
+
+\[
+r_k=\rho(s_k;\alpha),
+\qquad
+\alpha=
+\begin{bmatrix}
+h_b&L_b&s_0
+\end{bmatrix}^{\top}
+\]
+
+로 제한하는 것이 현재 센서 구성에서는 더 적절하다.
+
+\begin{itemize}
+
+\item
+  수정 이유:
+
+  \begin{itemize}
+  
+  \item
+    논문이 사용하는 suspension deflection sensor가 현재 데이터에는 없으므로 동일한 observability를 주장할 수 없다.
+  \item
+    자유 road state는 body vertical acceleration 하나와 강하게 confound되므로, known bump shape 또는 informative prior가 필요하다.
+  \item
+    quarter-car는 pitch를 표현하지 못하므로 pitch-rate reconstruction의 최종 모델이 아니라 road-estimation ablation으로 사용한다.
+  \end{itemize}
+\item
+  사용하는 센서:
+
+  \begin{itemize}
+  
+  \item
+    vertical IMU acceleration
+  \item
+    네 wheel speed 평균으로 얻은 \(v_x\)와 이동거리 \(s\)
+  \item
+    torque는 순수 quarter-car vertical 식에는 직접 사용하지 않음
+  \end{itemize}
+\item
+  Online 추정 대상:
+
+  \begin{itemize}
+  
+  \item
+    \(z_s,\dot z_s,z_u,\dot z_u\)
+  \item
+    제한된 road state 또는 bump parameter
+  \item
+    필요하면 \(b_z\)
+  \end{itemize}
+\item
+  Offline 고정·calibration 대상:
+
+  \begin{itemize}
+  
+  \item
+    \(m_s,m_u,k_s,c_s,k_t,c_t,Q,R\)
+  \end{itemize}
+\item
+  한계:
+
+  \begin{itemize}
+  
+  \item
+    현재 센서만으로 arbitrary road profile amplitude를 안정적으로 식별하기 어렵다.
+  \item
+    bounce 검증용 baseline에는 유용하지만 pitch target에는 구조적으로 부족하다.
+  \end{itemize}
+\end{itemize}
+
+\subsection{모델 3 --- Linear half-car joint state--road estimation}
+
+\subsubsection{근거 논문 수식}
+
+Zhu et al.은 half-car 계열 차량의 동역학을
+
+\[
+M\ddot Y+C\dot Y+KY=S_pF(t)
+\]
+
+로 두고
+
+\[
+X_{k+1}
+=
+A_dX_k+B_dF_k+w_k
+\]
+
+\[
+Z_k
+=
+GX_k+JF_k+v_k
+\]
+
+로 이산화한다. Acceleration, velocity, displacement selection matrix를 \(S_a,S_v,S_d\)라 하면
+
+\[
+G
+=
+\begin{bmatrix}
+S_d-S_aM^{-1}K&
+S_v-S_aM^{-1}C
+\end{bmatrix}
+\]
+
+\[
+J=S_aM^{-1}S_p
+\]
+
+이다 \cite[eqs.~(7)--(13)]{zhu2022}.
+
+해당 논문의 unknown-input update는
+
+\[
+\widetilde R_k
+=
+GP_{k|k-1}G^\top+R
+\]
+
+\[
+M_k
+=
+\left(
+J^\top\widetilde R_k^{-1}J
+\right)^{-1}
+J^\top\widetilde R_k^{-1}
+\]
+
+\[
+\hat F_{k|k}
+=
+M_k
+\left(
+Z_k-G\hat X_{k|k-1}
+\right)
+\]
+
+로 road input을 먼저 구한 뒤 state를 update한다.
+
+Xue et al.은 bounce와 pitch를 포함하는 half-car를 사용하고, front와 rear에서 추정한 동일 road profile의 일치도를 목적함수로 삼아 vehicle parameter를 최적화한 뒤 AKF, regularization, RTS smoothing으로 road를 복원한다 \cite{xue2020}.
+
+\begin{itemize}
+
+\item
+  차량 형태:
+
+  \begin{itemize}
+  
+  \item
+    Zhu: equipment를 포함한 상세 2D half-vehicle
+  \item
+    Xue: bounce--pitch와 front/rear unsprung motion을 포함한 half-car
+  \end{itemize}
+\item
+  원 논문의 online 추정 대상:
+
+  \begin{itemize}
+  
+  \item
+    body·axle state
+  \item
+    front/rear road input
+  \end{itemize}
+\item
+  Xue의 offline identification:
+
+  \begin{itemize}
+  
+  \item
+    front/rear road-profile consistency를 이용한 vehicle mechanical parameter 최적화
+  \end{itemize}
+\item
+  원 논문의 핵심 제약:
+
+  \begin{itemize}
+  
+  \item
+    front와 rear wheel은 같은 road를 wheelbase/speed만큼 시간차를 두고 통과
+  \end{itemize}
+\end{itemize}
+
+\subsubsection{우리 수정 차량 수식}
+
+현재 목적에는 standard 4-DOF passenger half-car로 단순화한다.
+
+\[
+\delta_f=z_s+a\theta-z_{uf},
+\qquad
+\delta_r=z_s-b\theta-z_{ur}
+\]
+
+\[
+F_{sf}
+=
+k_{sf}\delta_f
++c_{sf}\dot\delta_f
+\]
+
+\[
+F_{sr}
+=
+k_{sr}\delta_r
++c_{sr}\dot\delta_r
+\]
+
+\[
+F_{tf}
+=
+k_{tf}(z_{uf}-r_f),
+\qquad
+F_{tr}
+=
+k_{tr}(z_{ur}-r_r)
+\]
+
+정적 평형을 원점으로 두고 upward-positive sign convention을 쓰면
+
+\[
+m_s\ddot z_s
+=
+-F_{sf}-F_{sr}
+\]
+
+\[
+I_y\ddot\theta
+=
+-aF_{sf}
++bF_{sr}
++M_T
+\]
+
+\[
+m_{uf}\ddot z_{uf}
+=
+F_{sf}-F_{tf}
+\]
+
+\[
+m_{ur}\ddot z_{ur}
+=
+F_{sr}-F_{tr}
+\]
+
+Torque-induced pitch moment는 가장 단순하게
+
+\[
+M_T=\lambda_TT_w
+\]
+
+로 두거나, longitudinal tire force를 계산할 수 있으면
+
+\[
+F_x=\frac{T_w}{R_{\mathrm{eff}}},
+\qquad
+M_T=-h_{cg}F_x
+\]
+
+로 물리 경로를 사용한다.
+
+상태는
+
+\[
+\begin{aligned}
+q&=
+\begin{bmatrix}
+z_s&\theta&z_{uf}&z_{ur}
+\end{bmatrix}^{\top},\\
+x&=
+\begin{bmatrix}
+q^\top&\dot q^\top
+\end{bmatrix}^{\top}
+\end{aligned}
+\]
+
+이다.
+
+Road는 두 개의 독립 random walk가 아니라
+
+\[
+r_{f,k}=\rho(s_k),
+\qquad
+r_{r,k}=\rho(s_k-L)
+\]
+
+로 묶는다.
+
+현재 센서에 맞춘 observation은
+
+\[
+a_{z,k}^{IMU}
+=
+\ddot z_{s,k}
++x_I\ddot\theta_k
++b_{z,k}
++\nu_{z,k}
+\]
+
+\[
+a_{x,k}^{IMU}-\dot v_{x,k}
+\simeq
+g\theta_k+b_{x,k}+\nu_{x,k}
+\]
+
+\[
+v_{w,k}^{f/r}
+\simeq
+v_{x,k}+\nu_{v,k}^{f/r}
+\]
+
+로 둔다.
+
+\begin{itemize}
+
+\item
+  수정 이유:
+
+  \begin{itemize}
+  
+  \item
+    원 Zhu 모델의 equipment DOF는 일반 passenger vehicle 센서 재구성에 불필요하므로 제거한다.
+  \item
+    현재 센서에는 suspension displacement와 axle vertical acceleration이 없으므로, \(J\)가 두 road input에 대해 full column rank라고 보장할 수 없다.
+  \item
+    따라서 instant direct-input update보다 하나의 spatial road profile, front--rear delay, informative prior, full-window smoothing을 함께 사용한다.
+  \item
+    longitudinal torque가 pitch에 주는 영향을 명시한다.
+  \end{itemize}
+\item
+  사용하는 센서:
+
+  \begin{itemize}
+  
+  \item
+    vertical IMU acceleration
+  \item
+    longitudinal IMU acceleration
+  \item
+    front/rear axle별 평균 wheel speed
+  \item
+    wheel/motor torque estimate
+  \item
+    roll rate는 2D half-car 밖이므로 측정값 pass-through
+  \end{itemize}
+\item
+  Online 또는 smoothed 추정 대상:
+
+  \begin{itemize}
+  
+  \item
+    \(z_s,\theta,z_{uf},z_{ur}\)와 각 속도
+  \item
+    bounce rate \(\dot z_s\), pitch rate \(\dot\theta\)
+  \item
+    하나의 road profile \(\rho(s)\) 또는 bump parameter \(\alpha\)
+  \item
+    IMU bias \(b_z,b_x\)
+  \end{itemize}
+\item
+  Offline 최적화 대상:
+
+  \begin{itemize}
+  
+  \item
+    우선 \(k_{sf},k_{sr},c_{sf},c_{sr},k_{tf},k_{tr},\lambda_T,Q,R\)
+  \item
+    질량·관성은 차량 제원값을 우선 고정
+  \item
+    모든 질량·강성·감쇠와 bump amplitude를 동시에 자유롭게 맞추지 않음
+  \end{itemize}
+\item
+  장점:
+
+  \begin{itemize}
+  
+  \item
+    모델 2와 달리 bounce와 pitch를 동시에 표현한다.
+  \item
+    front--rear delay가 bump의 식별성을 높인다.
+  \end{itemize}
+\item
+  한계:
+
+  \begin{itemize}
+  
+  \item
+    current sensor set에서는 road height와 suspension parameter가 여전히 confound될 수 있으므로 observability/Fisher-information 검사가 필요하다.
+  \end{itemize}
+\end{itemize}
+
+\subsection{모델 4 --- \texttt{vehicle\_model.py} 기반 nonlinear EKF}
+
+\subsubsection{EKF의 기본 원리}
+
+Nonlinear state-space model은
+
+\[
+x_{k+1}
+=
+F_d(x_k,c_k)+w_k
+\]
+
+\[
+o_k=h(x_k,c_k)+v_k
+\]
+
+로 쓴다. EKF는 현재 추정점에서 1차 Taylor linearization을 수행한다. 비선형 차량 상태추정에서는 UKF도 대표적인 대안이며 \cite{antonov2011}, nonlinear half-vehicle multibody model과 augmented/constrained EKF를 결합한 직접적인 사례도 있다 \cite{debarbouille2022}.
+
+Jacobian은
+
+\[
+F_k
+=
+\left.
+\frac{\partial F_d}{\partial x}
+\right|_{\hat x_{k|k},c_k}
+\]
+
+\[
+H_k
+=
+\left.
+\frac{\partial h}{\partial x}
+\right|_{\hat x_{k|k-1},c_k}
+\]
+
+이다.
+
+Prediction은
+
+\[
+\hat x_{k+1|k}
+=
+F_d(\hat x_{k|k},c_k)
+\]
+
+\[
+P_{k+1|k}
+=
+F_kP_{k|k}F_k^\top+Q
+\]
+
+이고, correction은
+
+\[
+e_{k+1}
+=
+o_{k+1}-h(\hat x_{k+1|k},c_{k+1})
+\]
+
+\[
+S_{k+1}
+=
+H_{k+1}P_{k+1|k}H_{k+1}^\top+R
+\]
+
+\[
+K_{k+1}
+=
+P_{k+1|k}H_{k+1}^\top S_{k+1}^{-1}
+\]
+
+\[
+\hat x_{k+1|k+1}
+=
+\hat x_{k+1|k}+K_{k+1}e_{k+1}
+\]
+
+이다.
+
+\subsubsection{\texttt{vehicle\_model.py}의 원래 형태}
+
+앞서 확인한 코드의 상태는
+
+\[
+\begin{aligned}
+v&=
+\begin{bmatrix}
+\dot z_s&\dot\theta&\dot z_{uf}&\dot z_{ur}&v_x
+\end{bmatrix}^{\top},\\
+q&=
+\begin{bmatrix}
+z_s&\theta&z_{uf}&z_{ur}&s
+\end{bmatrix}^{\top},\\
+X&=
+\begin{bmatrix}
+v^\top&q^\top
+\end{bmatrix}^{\top}
+\end{aligned}
+\]
+
+이며
+
+\[
+\dot X
+=
+f_{\mathrm{veh}}
+\left(
+X,T_w,r_f,r_r;p
+\right)
+\]
+
+형태이다.
+
+\begin{itemize}
+
+\item
+  차량 형태: bounce, pitch, front/rear unsprung motion, longitudinal speed를 결합한 nonlinear 4-DOF half-car
+\item
+  원 코드의 known input:
+
+  \begin{itemize}
+  
+  \item
+    wheel/motor torque
+  \item
+    front/rear road profile \(r_f,r_r\)
+  \end{itemize}
+\item
+  원 코드의 dynamic state:
+
+  \begin{itemize}
+  
+  \item
+    sprung/unsprung vertical velocities and displacements
+  \item
+    pitch rate and pitch angle
+  \item
+    longitudinal speed and traveled position
+  \end{itemize}
+\item
+  원 코드에서 road는 추정 대상이 아니라 주어진 입력이었다.
+\end{itemize}
+
+\subsubsection{우리 수정 nonlinear dynamics}
+
+Suspension force를
+
+\[
+F_{sf}
+=
+f_{sf}
+\left(
+\delta_f,\dot\delta_f;p
+\right)
+\]
+
+\[
+F_{sr}
+=
+f_{sr}
+\left(
+\delta_r,\dot\delta_r;p
+\right)
+\]
+
+로 두면 linear spring--damper, nonlinear stiffness, saturation을 모두 포함할 수 있다.
+
+\[
+F_{tf}
+=
+f_{tf}(z_{uf}-r_f),
+\qquad
+F_{tr}
+=
+f_{tr}(z_{ur}-r_r)
+\]
+
+Torque와 longitudinal force는
+
+\[
+F_x
+=
+\sat
+\left(
+\frac{T_w}{R_{\mathrm{eff}}}
+\right)
+\]
+
+\[
+\dot v_x
+=
+\frac{
+F_x-F_{\mathrm{roll}}(v_x)-F_{\mathrm{aero}}(v_x)
+}{m_{\mathrm{tot}}}
+\]
+
+로 둔다.
+
+Vertical/pitch dynamics는
+
+\[
+\ddot z_s
+=
+\frac{-F_{sf}-F_{sr}}{m_s}
+\]
+
+\[
+\ddot\theta
+=
+\frac{-aF_{sf}+bF_{sr}-h_{cg}F_x}{I_y}
+\]
+
+\[
+\ddot z_{uf}
+=
+\frac{F_{sf}-F_{tf}}{m_{uf}}
+\]
+
+\[
+\ddot z_{ur}
+=
+\frac{F_{sr}-F_{tr}}{m_{ur}}
+\]
+
+로 쓸 수 있다. 실제 구현에서는 \texttt{vehicle\_model.py}가 사용하는 좌표·pitch 부호와 위 식을 하나로 통일해야 한다.
+
+\subsubsection{Known road를 latent bump로 변경}
+
+원래 입력이던 \(r_f,r_r\)를
+
+\[
+r_{f,k}
+=
+\rho(s_k;\alpha)
+\]
+
+\[
+r_{r,k}
+=
+\rho(s_k-L;\alpha)
+\]
+
+로 교체한다.
+
+Parametric bump이면 augmented state를
+
+\[
+X_k^a
+=
+\begin{bmatrix}
+X_k^\top&\alpha^\top&b_z&b_x
+\end{bmatrix}^{\top}
+\]
+
+로 두고
+
+\[
+\alpha_{k+1}
+=
+\alpha_k+\eta_{\alpha,k}
+\]
+
+로 천천히 변하거나 거의 고정된 parameter처럼 추정한다. 실제로 하나의 bump만 통과한다면 \(\eta_{\alpha,k}\)를 매우 작게 두고, filter 후 batch smoother 또는 MAP refinement를 수행하는 편이 안정적이다.
+
+Actuator lag가 중요하면 실제 wheel torque도 state로 둔다.
+
+\[
+T_{w,k+1}
+=
+a_TT_{w,k}
++b_TT_{\mathrm{cmd},k}
++\xi_{T,k}
+\]
+
+\[
+T_{\mathrm{est},k}
+=
+T_{w,k}+\nu_{T,k}
+\]
+
+\subsubsection{우리 sensor observation model}
+
+\[
+a_{z,k}^{IMU}
+=
+\ddot z_{s,k}
++x_I\ddot\theta_k
++b_{z,k}
++\nu_{z,k}
+\]
+
+\[
+a_{x,k}^{IMU}
+=
+\dot v_{x,k}
++g\sin\theta_k
++b_{x,k}
++\nu_{x,k}
+\]
+
+작은 pitch에서는 \(g\sin\theta\simeq g\theta\)이다.
+
+\[
+v_{w,k}^{f}
+\simeq
+v_{x,k}+\nu_{vf,k}
+\]
+
+\[
+v_{w,k}^{r}
+\simeq
+v_{x,k}+\nu_{vr,k}
+\]
+
+Slip이 큰 구간에서는 wheel speed를 곧바로 \(v_x\)로 쓰지 말고 covariance를 키우거나 slip state를 추가해야 한다.
+
+\begin{itemize}
+
+\item
+  수정 이유:
+
+  \begin{itemize}
+  
+  \item
+    원 코드의 known road input을 bump latent variable로 전환해야 한다.
+  \item
+    position \(s\)는 road가 known time series일 때는 제거 가능하지만, 공간 bump \(\rho(s)\)를 추정할 때는 반드시 유지하는 것이 유리하다.
+  \item
+    torque command와 실제 torque estimate의 차이가 크면 actuator state를 추가한다.
+  \item
+    accelerometer bias를 state로 추가하여 gravity projection과 low-frequency drift를 분리한다.
+  \item
+    \(h_b,L_b>0\) 제약은 \(\log h_b,\log L_b\)를 state로 두어 만족시키고, bump 시작·끝의 indicator는 smooth gate로 근사하거나 filter 후 batch MAP에서 다룬다.
+  \item
+    saturation의 hard corner는 Jacobian이 불연속이므로 smooth saturation을 쓰거나, 비선형성이 강하면 UKF로 교체한다.
+  \end{itemize}
+\item
+  사용하는 센서:
+
+  \begin{itemize}
+  
+  \item
+    vertical IMU acceleration
+  \item
+    longitudinal IMU acceleration
+  \item
+    four-wheel speed; front/rear average와 slip consistency 계산
+  \item
+    motor/wheel torque command 및 estimate
+  \item
+    roll rate는 2D 모델에 포함하지 않고 measured channel을 그대로 사용
+  \end{itemize}
+\item
+  EKF/smoother 추정 대상:
+
+  \begin{itemize}
+  
+  \item
+    \(\dot z_s,\dot\theta,\dot z_{uf},\dot z_{ur},v_x\)
+  \item
+    \(z_s,\theta,z_{uf},z_{ur},s\)
+  \item
+    bump parameter \((h_b,L_b,s_0)\) 또는 제한된 spatial profile
+  \item
+    \(b_z,b_x\)와 필요 시 actual torque \(T_w\)
+  \end{itemize}
+\item
+  Offline 고정·calibration 대상:
+
+  \begin{itemize}
+  
+  \item
+    질량, 관성, wheelbase, CG height
+  \item
+    suspension/tire stiffness and damping
+  \item
+    rolling/aero resistance coefficient
+  \item
+    \(Q,R\)와 초기 covariance
+  \end{itemize}
+\item
+  추정하지 말아야 할 초기 항목:
+
+  \begin{itemize}
+  
+  \item
+    자유로운 vehicle dynamics residual과 자유로운 road profile을 동시에 추정하지 않음
+  \item
+    모든 물리 파라미터와 bump height를 동시에 online state로 두지 않음
+  \end{itemize}
+\item
+  검증:
+
+  \begin{itemize}
+  
+  \item
+    calibration 구간에서 실제 bounce/pitch-rate sensor는 EKF observation에 넣지 않고 reconstruction target/validation으로 남긴다.
+  \item
+    normalized innovation squared, state covariance consistency, bump parameter credible interval을 함께 평가한다.
+  \end{itemize}
+\end{itemize}
+
+\section{최종 연구 구성}
+
+\subsection{권장 비교 실험}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+
+\item
+  \textbf{Model 1: reduced linear KF}
+
+  \begin{itemize}
+  
+  \item
+    현재 baseline
+  \item
+    point feature만 downstream model에 입력
+  \end{itemize}
+\item
+  \textbf{Model 1 + Bayesian feature residual}
+
+  \begin{itemize}
+  
+  \item
+    dynamics는 그대로 유지
+  \item
+    교수님의 feature-level Bayesian modeling 효과만 분리해 검증
+  \end{itemize}
+\item
+  \textbf{Model 3: linear half-car + latent bump + RTS smoother}
+
+  \begin{itemize}
+  
+  \item
+    bump를 물리적 unknown input으로 추정
+  \item
+    bounce/pitch feature를 posterior sample로 생성
+  \end{itemize}
+\item
+  \textbf{Model 4: nonlinear \texttt{vehicle\_model.py} EKF + latent bump + smoother}
+
+  \begin{itemize}
+  
+  \item
+    nonlinear dynamics의 추가 이득 검증
+  \item
+    Model 3 대비 성능이 실제로 좋아지는지 비교
+  \end{itemize}
+\item
+  \textbf{Dynamics residual model}
+
+  \begin{itemize}
+  
+  \item
+    별도 ablation
+  \item
+    bump model과 동시에 자유롭게 두지 않고, known/controlled-road calibration에서 먼저 검증
+  \end{itemize}
+\end{enumerate}
+
+\subsection{최종 주모델}
+
+현재 센서 제약과 bump 통과 상황을 함께 고려하면 가장 방어하기 쉬운 주모델은
+
+\[
+\boxed{
+\begin{gathered}
+\text{Model 3 또는 4}
++\text{latent spatial bump}\\
++\text{front--rear wheelbase constraint}
++\text{smoother}\\
++\text{Bayesian feature residual}
+\end{gathered}
+}
+\]
+
+이다.
+
+Model 3은 선형성과 식별성 때문에 주 분석에 더 안전하고, Model 4는 nonlinear extension 또는 성능 비교모델로 두는 것이 합리적이다. \texttt{vehicle\_model.py}의 nonlinear EKF가 충분히 안정적이고 실제 hold-out data에서 Model 3보다 좋아질 때 Model 4를 최종 주모델로 승격한다.
+
+\subsection{반드시 명시할 한계}
+
+\begin{itemize}
+
+\item
+  현재 sensor set에는 suspension deflection과 wheel vertical acceleration이 없으므로, 기존 road-profile 논문과 동일한 관측가능성을 자동으로 얻지 못한다.
+\item
+  Wheel speed는 bump의 공간 위치와 front--rear delay를 알려주지만 vertical amplitude를 직접 측정하지 않는다.
+\item
+  Bump height, tire stiffness, suspension stiffness를 모두 자유롭게 추정하면 scale confounding이 생긴다.
+\item
+  2D half-car는 roll을 추정하지 못하므로 roll은 측정 channel을 유지하거나 별도의 full-car/roll model이 필요하다.
+\item
+  한 번도 target sensor를 측정하지 않은 경우 feature residual model의 bias와 variance를 데이터만으로 식별할 수 없다. 적어도 calibration 구간의 target sensor 또는 강한 물리 prior가 필요하다.
+\end{itemize}
+
+\begin{thebibliography}{99}
+
+\bibitem{kalman1960}
+R.~E. Kalman, ``A new approach to linear filtering and prediction
+problems,'' \emph{Journal of Basic Engineering}, vol.~82, no.~1,
+pp.~35--45, 1960, doi: 10.1115/1.3662552.
+
+\bibitem{xue2020}
+K. Xue, T. Nagayama, and B. Zhao, ``Road profile estimation and
+half-car model identification through the automated processing of
+smartphone data,'' \emph{Mechanical Systems and Signal Processing},
+vol.~142, Art.~no.~106722, 2020,
+doi: 10.1016/j.ymssp.2020.106722.
+
+\bibitem{bartlett2018}
+J.~W. Bartlett and R.~H. Keogh, ``Bayesian correction for covariate
+measurement error: A frequentist evaluation and comparison with
+regression calibration,'' \emph{Statistical Methods in Medical Research},
+vol.~27, no.~6, pp.~1695--1708, 2018,
+doi: 10.1177/0962280216667764.
+
+\bibitem{schofield2015}
+L.~S. Schofield, ``Correcting for measurement error in latent variables
+used as predictors,'' \emph{The Annals of Applied Statistics}, vol.~9,
+no.~4, pp.~2133--2152, 2015, doi: 10.1214/15-AOAS877.
+
+\bibitem{kennedy2001}
+M.~C. Kennedy and A. O'Hagan, ``Bayesian calibration of computer
+models,'' \emph{Journal of the Royal Statistical Society: Series B},
+vol.~63, no.~3, pp.~425--464, 2001,
+doi: 10.1111/1467-9868.00294.
+
+\bibitem{jain2021}
+A. Jain, M. O'Kelly, P. Chaudhari, and M. Morari, ``BayesRace:
+Learning to race autonomously using prior experience,'' in
+\emph{Proc. Conf. Robot Learning}, PMLR, vol.~155,
+pp.~1918--1929, 2021.
+
+\bibitem{frigola2013}
+R. Frigola, F. Lindsten, T.~B. Sch\"on, and C.~E. Rasmussen,
+``Bayesian inference and learning in Gaussian process state-space
+models with particle MCMC,'' in \emph{Advances in Neural Information
+Processing Systems 26}, 2013.
+
+\bibitem{zhu2022}
+J. Zhu, X. Chang, X. Zhang, Y. Su, and X. Long, ``A novel method for
+the reconstruction of road profiles from measured vehicle responses
+based on the Kalman filter method,'' \emph{Computer Modeling in
+Engineering \& Sciences}, vol.~130, no.~3, 2022,
+doi: 10.32604/cmes.2022.019140.
+
+\bibitem{gillijns2007}
+S. Gillijns and B. De Moor, ``Unbiased minimum-variance input and
+state estimation for linear discrete-time systems,'' \emph{Automatica},
+vol.~43, no.~1, pp.~111--116, 2007,
+doi: 10.1016/j.automatica.2006.08.002.
+
+\bibitem{doumiati2011}
+M. Doumiati, A. Victorino, A. Charara, and D. Lechner,
+``Estimation of road profile for vehicle dynamics motion:
+Experimental validation,'' in \emph{Proc. American Control Conference},
+pp.~5237--5242, 2011.
+
+\bibitem{chaabane2019}
+M.~M. Chaabane, D.~B. Hassen, M.~S. Abbes, S.~C. Baslamisli,
+F. Chaari, and M. Haddar, ``Road profile identification using
+estimation techniques: Comparison between independent component
+analysis and Kalman filter,'' \emph{Journal of Theoretical and Applied
+Mechanics}, vol.~57, no.~2, pp.~397--409, 2019,
+doi: 10.15632/jtam-pl/104592.
+
+\bibitem{antonov2011}
+S. Antonov, A. Fehn, and A. Kugi, ``Unscented Kalman filter for
+vehicle state estimation,'' \emph{Vehicle System Dynamics}, vol.~49,
+no.~9, pp.~1497--1520, 2011,
+doi: 10.1080/00423114.2010.527994.
+
+\bibitem{debarbouille2022}
+A. D\'ebarbouill\'e, F. Renaud, Z. Dimitrijevic, D. Chojnacki,
+L. Rota, and J.-L. Dion, ``Wheel forces estimation with an augmented
+and constrained extended Kalman filter applied on a nonlinear
+multi-body model of a half vehicle,'' \emph{Procedia Structural
+Integrity}, vol.~38, pp.~342--351, 2022,
+doi: 10.1016/j.prostr.2022.03.035.
+
+\end{thebibliography}
+
+\end{document}

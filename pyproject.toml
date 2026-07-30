@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "captum",
-    "gymnasium>=1.2.3",
+    "gymnasium[mujoco]>=1.2.3",
     "higher>=0.2.1",
     "matplotlib>=3.10.7",
     "numba>=0.63.1",
@@ -29,6 +29,7 @@ dependencies = [
     "scikit-learn>=1.7.2",
     "scipy>=1.16.3",
     "seaborn>=0.13.2",
+    "stable-baselines3>=2.9.0",
     "torch>=2.9.1",
     "torch-geometric>=2.7.0",
     "tsfresh>=0.21.1",

@@ -1,0 +1,81 @@
+\relax 
+\citation{kalman1960}
+\@writefile{toc}{\contentsline {section}{\numberline {I}모델 체계와 기호}{1}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {II}큰 틀에서 KF의 기본 수식 설계}{1}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {II-A}연속시간 차량 모델}{1}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {II-B}\(A,B\)와 차량 파라미터의 offline 추정}{1}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {II-C}Kalman filter prediction--correction}{1}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {II-C.1}Prediction}{1}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {II-C.2}Innovation과 gain}{1}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {II-C.3}Correction}{1}{}\protected@file@percent }
+\citation{xue2020}
+\@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces 비교할 네 가지 KF 계열 모델}}{2}{}\protected@file@percent }
+\newlabel{tab:model-overview}{{I}{2}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {II-D}재구성 신호와 feature}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {II-E}Bump 통과가 끝난 뒤의 smoothing}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {III}기존 Bayesian model에 추가하는 세 가지 설계}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {III-A}Feature residual을 Bayesian하게 추정}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {III-A.1}Calibration data}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {III-A.2}Bayesian residual regression}{2}{}\protected@file@percent }
+\citation{bartlett2018,schofield2015}
+\citation{kennedy2001}
+\citation{jain2021}
+\citation{frigola2013}
+\citation{zhu2022}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {III-A.3}기존 hierarchical Bayesian model과의 결합}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {III-B}Dynamics residual을 Bayesian하게 추정}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {III-B.1}선형식}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {III-B.2}Nonlinear식}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {III-B.3}무엇이 Bayesian 확장인가}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {III-C}Road bump를 Bayesian하게 추정}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {III-C.1}하나의 공간 profile}{3}{}\protected@file@percent }
+\citation{gillijns2007}
+\citation{doumiati2011,xue2020,zhu2022}
+\citation{zhu2022}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {III-C.2}형태가 알려진 speed bump: parametric Bayesian inverse problem}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {III-C.3}형태를 모르는 road: nonparametric spatial state}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {III-C.4}대표 추정 방법}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {III-D}세 Bayesian 설계의 최종 역할}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {IV}KF 모델 4개 최종 내용}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {IV-A}모델 1 --- 축약 bounce--pitch linear KF}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {IV-A.1}근거 논문의 기본 차량 수식}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {IV-A.2}우리 수정 모델 수식}{4}{}\protected@file@percent }
+\citation{doumiati2011}
+\citation{chaabane2019}
+\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces 세 Bayesian 설계의 역할}}{5}{}\protected@file@percent }
+\newlabel{tab:bayesian-roles}{{II}{5}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {IV-B}모델 2 --- Quarter-car augmented KF}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {IV-B.1}근거 논문 수식}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {IV-B.2}우리 수정 모델 수식}{5}{}\protected@file@percent }
+\citation{zhu2022}
+\citation{xue2020}
+\@writefile{toc}{\contentsline {subsection}{\numberline {IV-C}모델 3 --- Linear half-car joint state--road estimation}{6}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {IV-C.1}근거 논문 수식}{6}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {IV-C.2}우리 수정 차량 수식}{6}{}\protected@file@percent }
+\citation{antonov2011}
+\citation{debarbouille2022}
+\@writefile{toc}{\contentsline {subsection}{\numberline {IV-D}모델 4 --- \texttt  {vehicle\_model.py} 기반 nonlinear EKF}{7}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {IV-D.1}EKF의 기본 원리}{7}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {IV-D.2}\texttt  {vehicle\_model.py}의 원래 형태}{7}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {IV-D.3}우리 수정 nonlinear dynamics}{8}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {IV-D.4}Known road를 latent bump로 변경}{8}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {IV-D.5}우리 sensor observation model}{8}{}\protected@file@percent }
+\bibcite{kalman1960}{1}
+\bibcite{xue2020}{2}
+\bibcite{bartlett2018}{3}
+\bibcite{schofield2015}{4}
+\bibcite{kennedy2001}{5}
+\bibcite{jain2021}{6}
+\bibcite{frigola2013}{7}
+\bibcite{zhu2022}{8}
+\bibcite{gillijns2007}{9}
+\bibcite{doumiati2011}{10}
+\bibcite{chaabane2019}{11}
+\bibcite{antonov2011}{12}
+\bibcite{debarbouille2022}{13}
+\@writefile{toc}{\contentsline {section}{\numberline {V}최종 연구 구성}{9}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {V-A}권장 비교 실험}{9}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {V-B}최종 주모델}{9}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {V-C}반드시 명시할 한계}{9}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{References}{9}{}\protected@file@percent }
+\gdef \@abspage@last{9}
