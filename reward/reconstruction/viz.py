@@ -1,9 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from models.fully_bayesian.features import FNS
+from reward.fully_bayesian.features import FNS
 
-C = {"physics": "#eb6834", "kalman": "#eda100", "fir": "#1baf7a", "unet": "#2a78d6"}
+C = {"physics": "#eb6834", "kalman": "#eda100", "fir": "#1baf7a",
+     "lstm": "#d14a8c", "unet": "#2a78d6"}
 INK, MUTED = "#0b0b0b", "#52514e"
 BOUNCE_STATS = ["impulse_abs", "abs_peak_deriv", "p2p_deriv", "wrms_z_deriv"]
 

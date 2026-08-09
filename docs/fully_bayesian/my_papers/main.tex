@@ -1,0 +1,671 @@
+\documentclass[letterpaper,journal]{IEEEtran}
+
+\usepackage{amsmath,amsfonts,amssymb,bm}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{array}
+\usepackage{textcomp}
+\usepackage{stfloats}
+\usepackage{url}
+\usepackage{verbatim}
+\usepackage{graphicx}
+\usepackage{cite}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{xcolor}
+
+\hyphenation{op-tical net-works semi-conduc-tor IEEE-Xplore}
+
+% -----------------------------------------------------------------------------
+% Draft controls. Set \draftnotesfalse before submission and resolve every note.
+% -----------------------------------------------------------------------------
+\newif\ifdraftnotes
+\draftnotestrue
+\newcommand{\draftnote}[1]{\ifdraftnotes\textcolor{red}{\textbf{[TODO: #1]}}\fi}
+\newcommand{\Bern}{\operatorname{Bernoulli}}
+\newcommand{\Normal}{\mathcal{N}}
+\newcommand{\PG}{\operatorname{PG}}
+\newcommand{\KL}{D_{\mathrm{KL}}}
+\newcommand{\sigmoid}{\operatorname{sigmoid}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\operatorname{Var}}
+\newcommand{\given}{\,\middle|\,}
+
+% The paths below point to the executable snapshots used for the preliminary
+% tables in this draft. Replace them with frozen, confirmatory artifacts.
+\graphicspath{{../../../outputs/fully_bayesian/20260729_191716/}}
+\newcommand{\resultgraphic}[2]{\includegraphics[width=#2]{#1}}
+
+\begin{document}
+
+\title{Few-Feedback Personalization of Binary Ride Preference over Road Bumps Using Hierarchical Bayesian Learning}
+
+% T-IV uses single-blind review. Replace this placeholder with the real author
+% list and add affiliations/biographies in the journal-prescribed locations.
+\author{Anonymous Authors}
+
+\maketitle
+
+\begin{abstract}
+Ride preference varies across occupants, whereas most data-driven ride evaluators produce a population-level score. We present an uncertainty-aware hierarchical Bayesian framework that predicts whether an evaluator judges a road-bump response as good or bad and adapts to a previously unseen evaluator from limited feedback. Interpretable transient and frequency-weighted features are extracted from inertial and body-motion signals. Evaluator-specific logistic coefficients share a population distribution, and group spike-and-slab indicators select useful motion features. P\'{o}lya--Gamma augmentation supports posterior sampling for population learning and personalization. Projection-predictive and cross-fitted conditional-information analyses check feature sufficiency. Evaluation includes a high-feedback protocol and a sparse-feedback protocol with 10--35 labels per unseen evaluator, using discrimination, probability accuracy, log predictive density, and posterior uncertainty. In the current executable snapshot, personalization changes high-feedback-target AUROC from 0.843 to 0.846 and Brier score from 0.211 to 0.190. Across five sparse-feedback targets, macro-average Brier score improves from 0.244 to 0.205, although individual AUROC estimates remain highly uncertain. Replacing one body-motion channel with a driver-held-out recurrent reconstruction is evaluated only as a robustness study. These preliminary results motivate a confirmatory evaluator-held-out study with repeated sampling and stronger baselines.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Bayesian learning, human factors, intelligent vehicles, ride preference.
+\end{IEEEkeywords}
+
+\section{Introduction}
+\label{sec:introduction}
+
+Ride quality is simultaneously a vehicle-dynamics property and a human judgment.
+Objective quantities such as acceleration peaks, vibration dose value, and frequency-weighted
+root-mean-square acceleration are useful engineering descriptors, but they do not uniquely
+determine whether a particular occupant likes a particular transient response. The recent review
+by Guastadisegni \emph{et al.} emphasizes both the value of correlating objective measurements
+with subjective attributes and the need for nonlinear, multivariable models of human ride
+sensitivity~\cite{guastadisegni2024ride}. This need becomes more consequential in intelligent
+vehicles, where control policies and software-defined chassis settings can in principle be adapted
+to the current occupant rather than tuned only for an average customer.
+
+Three statistical difficulties arise in this setting. First, preferences differ across people, so
+pooling all labels into one classifier can erase meaningful heterogeneity. Second, a new occupant
+usually supplies only a few labels; fitting an independent model is then unstable. Third, an
+intelligent vehicle should distinguish uncertainty about the occupant from irreducible ambiguity in
+the feedback. A point estimate alone cannot indicate whether the system has observed enough
+feedback to personalize safely.
+
+We address these difficulties with a hierarchical Bayesian binary-response model. Each evaluator
+has an individual coefficient vector, while the population mean and covariance allow partial
+pooling across evaluators. A previously unseen evaluator begins from the population posterior and
+is updated sequentially using their own good/bad feedback. Exact-zero group spike-and-slab
+variables, projection-predictive search, and conditional-information analysis are used to study
+which physically interpretable motion features support prediction. The framework targets a
+human-factors capability within the scope of intelligent vehicles: learning an occupant-specific
+ride evaluation from in-vehicle sensing and sparse interaction.
+
+The contributions of this work are as follows.
+
+\begin{itemize}
+  \item We formulate road-bump good/bad preference as a hierarchical Bayesian logistic model that
+  transfers population knowledge to a new evaluator and exposes the full posterior predictive
+  distribution during sequential personalization.
+
+  \item We combine exact-zero feature inclusion with two predictive diagnostics---projection to
+  sparse submodels and cross-fitted conditional-information gain---to separate population-level
+  relevance, predictive redundancy, and evaluator heterogeneity among ride-response features.
+
+  \item We define two evaluator-held-out protocols: a high-feedback target experiment that traces
+  adaptation over many labels, and a sparse-feedback experiment that stresses 10--35-label target
+  histories. Probability scores and uncertainty intervals are reported alongside ranking metrics.
+
+  \item As a secondary robustness study, we replace the body bounce-rate channel with a causal
+  recurrent reconstruction learned without the target evaluator and measure the resulting change
+  in preference prediction.
+\end{itemize}
+
+The numerical results in this manuscript are an evidence-bound preliminary snapshot of the current
+implementation. They are included to make the draft executable and to expose limitations; the
+confirmatory study required for submission is specified in Section~\ref{sec:confirmatory}.
+
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Objective and Subjective Ride Evaluation}
+
+Whole-body vibration standards define frequency-weighted quantities for assessing human exposure,
+and vehicle studies commonly use acceleration, jerk, peak, and vibration-dose descriptors
+~\cite{iso2631,elbanhawi2015passenger}. Such quantities are valuable priors for representation
+design, but an inertial measurement unit mounted near the vehicle center is not a measurement at a
+seat, backrest, or foot contact point. Consequently, the weighted quantities in this work are
+\emph{ISO-inspired vehicle-response features}; they are not presented as standards-compliant
+occupant exposure values.
+
+Machine-learning studies have related acceleration and participant characteristics to subjective
+ride comfort~\cite{cieslak2020ride}, and a neural evaluator has been developed specifically for
+speed-bump measurements~\cite{kim2019evaluator}. These studies demonstrate that multichannel
+signals can predict subjective judgments, but a single pooled evaluator does not directly solve
+online cold-start personalization. Recent sensory-driven work explicitly accounts for differences
+in vibration perception through perception groups and bootstrap uncertainty
+~\cite{kikuchi2025personalizing}. Our model instead maintains a posterior coefficient distribution
+for each individual and adapts it from a shared continuous population distribution.
+
+\subsection{Preference-Aware Intelligent Vehicles}
+
+Preference-aware planning and control have been proposed to make automated-vehicle motion more
+consistent with occupant-specific acceleration and jerk limits~\cite{bae2020robocar}. Ran
+\emph{et al.} use Bayesian pairwise queries to learn preferred lane-centering trajectories online
+~\cite{ran2023online}. These approaches establish the value of explicit preference elicitation.
+The present problem differs in both feedback and output: feedback is a pointwise good/bad judgment
+after a detected bump, and the learned quantity is a posterior evaluator model that can later serve
+as an input to vehicle tuning or control. Closing that control loop is outside the scope of this
+paper.
+
+\subsection{Bayesian Computation and Feature Selection}
+
+P\'{o}lya--Gamma augmentation turns the logistic likelihood into a conditionally Gaussian form,
+enabling efficient Gibbs updates~\cite{polson2013pg}. Spike-and-slab modeling attaches posterior
+inclusion probabilities to candidate variables~\cite{george1993spike}. Because inclusion alone can
+be unstable when ride features are correlated, we also use projection-predictive selection, which
+seeks a small submodel that preserves a reference model's predictions
+~\cite{piironen2020projective}. Finally, conditional-information criteria help distinguish feature
+relevance from redundancy~\cite{brown2012conditional}. These tools answer different questions and
+are therefore reported together rather than collapsed into one importance ranking.
+
+\section{Problem Formulation}
+\label{sec:problem}
+
+Let evaluator $u\in\{1,\ldots,U\}$ provide binary feedback for road-bump episode $i$.
+The outcome
+\begin{equation}
+ y_{ui}=\begin{cases}
+ 1,&\text{the evaluator reports a good ride response},\\
+ 0,&\text{the evaluator reports a bad ride response}
+ \end{cases}
+\end{equation}
+is an operational preference label, not a standardized comfort rating. A synchronized sensor window
+$\bm{x}_{ui}\in\mathbb{R}^{T\times C}$ is mapped to a standardized feature vector
+$\bm{z}_{ui}=\phi(\bm{x}_{ui})\in\mathbb{R}^{d}$, including an intercept.
+
+The training set contains multiple evaluators with both label classes. At deployment, an unseen
+evaluator $\star$ initially has no personal labels. After receiving a chronological context
+$\mathcal{D}_{\star,t}=\{(\bm{z}_{\star i},y_{\star i})\}_{i=1}^{t}$, the model must estimate
+\begin{equation}
+ p_{\star j,t}=p(y_{\star j}=1\mid \bm{z}_{\star j},
+          \mathcal{D}_{\star,t},\mathcal{D}_{\mathrm{pop}})
+\end{equation}
+for held-out episodes $j$. The main questions are (i) how much a population prior helps at $t=0$,
+(ii) how quickly personal feedback improves probability estimates, and (iii) how uncertain those
+estimates remain when $t$ is small.
+
+\section{Hierarchical Bayesian Preference Model}
+\label{sec:model}
+
+\subsection{Population and Evaluator-Specific Coefficients}
+
+For evaluator $u$, let $\widetilde{\bm\theta}_u$ be a dense latent coefficient vector and let
+$\bm\gamma$ be a shared binary inclusion vector. The effective coefficients are
+$\bm\beta_u=\bm\gamma\odot\widetilde{\bm\theta}_u$. The observation model is
+\begin{align}
+ y_{ui}\mid\bm\beta_u &\sim \Bern\!\left(\sigmoid
+             (\bm z_{ui}^{\mathsf T}\bm\beta_u)\right),
+ \label{eq:likelihood}\\
+ \widetilde{\bm\theta}_u\mid\bm\mu,\bm\Sigma
+       &\sim \Normal(\bm\mu,\bm\Sigma).                 \label{eq:userprior}
+\end{align}
+Thus, $\bm\mu$ captures a population tendency while $\bm\Sigma$ captures between-evaluator
+variation and correlation among preferences. The conjugate population prior is
+\begin{align}
+ \bm\Sigma &\sim \operatorname{InvWishart}(\nu_0,\bm\Lambda_0),\\
+ \bm\mu\mid\bm\Sigma &\sim
+       \Normal(\bm m_0,\bm\Sigma/\kappa_0).             \label{eq:niw}
+\end{align}
+The executable configuration sets $\bm m_0=\bm 0$, $\kappa_0=1$,
+$\nu_0=d+2$, and $\bm\Lambda_0=\bm I_d$. These weak scale choices are applied after feature
+standardization and must be assessed by prior-predictive sensitivity checks in the confirmatory
+study.
+
+\subsection{Exact-Zero Group Spike-and-Slab Prior}
+
+Let $g=1,\ldots,G$ index either a single feature or all features derived from one sensor. The
+inclusion prior is
+\begin{align}
+ \gamma_g\mid\pi &\sim \Bern(\pi), &
+ \pi &\sim \operatorname{Beta}(a,b),                  \label{eq:spikeslab}
+\end{align}
+with $a=b=1$. A unit with $\gamma_g=0$ has an exactly zero effective coefficient for every
+evaluator; the intercept is always included. Posterior inclusion probability
+$\Pr(\gamma_g=1\mid\mathcal D)$ summarizes whether a feature is supported across population
+draws. Because correlated features can substitute for one another, this probability is interpreted
+together with predictive projection and conditional-information results.
+
+\subsection{P\'{o}lya--Gamma Gibbs Sampling}
+
+For compactness, define $\kappa_{ui}=y_{ui}-1/2$ and
+$\bm X_u=\bm Z_u\operatorname{diag}(\bm\gamma)$. Introducing
+\begin{equation}
+ \omega_{ui}\mid\widetilde{\bm\theta}_u
+ \sim \PG\!\left(1,(\bm\gamma\odot\bm z_{ui})^{\mathsf T}
+                       \widetilde{\bm\theta}_u\right)
+\end{equation}
+makes the coefficient conditional Gaussian. With
+$\bm\Omega_u=\operatorname{diag}(\bm\omega_u)$, its precision and mean are
+\begin{align}
+ \bm A_u &= \bm X_u^{\mathsf T}\bm\Omega_u\bm X_u
+              +\bm\Sigma^{-1},\\
+ \bm m_u &= \bm A_u^{-1}\left(
+              \bm X_u^{\mathsf T}\bm\kappa_u
+              +\bm\Sigma^{-1}\bm\mu\right),\\
+ \widetilde{\bm\theta}_u\mid - &\sim
+              \Normal(\bm m_u,\bm A_u^{-1}).           \label{eq:pgconditional}
+\end{align}
+The sampler alternates the P\'{o}lya--Gamma variables, group indicators, inclusion rate,
+evaluator coefficients, and normal--inverse-Wishart population parameters. The current snapshot
+uses 500 burn-in iterations and retains 1500 draws without thinning.
+
+\subsection{Cold Start and Sequential Personalization}
+\label{sec:personalization}
+
+For posterior draw $m$, a new evaluator is initialized by
+\begin{align}
+ \widetilde{\bm\theta}_{\star}^{(m)} &\sim
+  \Normal(\bm\mu^{(m)},\bm\Sigma^{(m)}),\\
+ \bm\beta_{\star}^{(m)} &=
+  \bm\gamma^{(m)}\odot\widetilde{\bm\theta}_{\star}^{(m)}.
+\end{align}
+This is the cold-start population prior. After context labels arrive, eight conditional
+P\'{o}lya--Gamma sweeps update $\widetilde{\bm\theta}_{\star}^{(m)}$ for every population draw
+while retaining the corresponding $\bm\gamma^{(m)}$. Predictions integrate over population and
+personal uncertainty:
+\begin{equation}
+ \widehat p_{\star j,t}=\frac{1}{M}\sum_{m=1}^{M}
+ \sigmoid\!\left(\bm z_{\star j}^{\mathsf T}
+                  \bm\beta_{\star,t}^{(m)}\right).      \label{eq:prediction}
+\end{equation}
+
+For an episode $j$, we summarize epistemic and Bernoulli uncertainty as
+\begin{align}
+ U_{\mathrm{epi},j} &= \Var_m(p_j^{(m)}),\\
+ U_{\mathrm{ale},j} &= \E_m[p_j^{(m)}(1-p_j^{(m)})].   \label{eq:uncertainty}
+\end{align}
+The first quantity can contract as personal evidence accumulates; the second remains high for
+intrinsically ambiguous posterior probabilities.
+
+\begin{algorithm}[t]
+\caption{Sequential personalization of an unseen evaluator}
+\label{alg:personalization}
+\begin{algorithmic}[1]
+\STATE Draw $\widetilde{\bm\theta}_{\star}^{(m)}$ from each population draw
+      $(\bm\mu^{(m)},\bm\Sigma^{(m)},\bm\gamma^{(m)})$
+\STATE Predict held-out episodes using the cold-start posterior
+\FOR{$t\in\{10,20,\ldots,n_{\mathrm{ctx}}\}$, including the final size}
+  \STATE Update all $\widetilde{\bm\theta}_{\star}^{(m)}$ using context $1{:}t$
+  \STATE Compute posterior predictive probabilities and uncertainty
+\ENDFOR
+\STATE Report the final context result; retain the best intermediate result only as an oracle diagnostic
+\end{algorithmic}
+\end{algorithm}
+
+\section{Ride-Response Representation}
+\label{sec:features}
+
+\subsection{Windowing and Preprocessing}
+
+The logger records a nominal 10-s episode at 100~Hz, spanning approximately 5~s before and 5~s
+after the detected bump event. The classifier uses only the interval from 2~s before to 2~s after
+that event. A second-order
+10-Hz low-pass filter is applied before downsampling by two, yielding a 50-Hz analysis signal.
+Five channels are loaded: 6-D sensor pitch rate and bounce rate, and inertial vertical,
+longitudinal, and lateral acceleration. The current manually selected representation uses 12
+statistics from bounce rate, vertical acceleration, and longitudinal acceleration; the other loaded
+channels remain available for ablations.
+
+All non-intercept features are standardized with means and standard deviations computed from
+population-training evaluators only. For a signal $x_1,\ldots,x_T$ at sampling rate $f_s$, the
+implemented transient descriptors include
+\begin{align}
+ \operatorname{P2P}(x) &= \max_t x_t-\min_t x_t,\\
+ I_{\mathrm{abs}}(x) &= f_s^{-1}\sum_t |x_t|,\\
+ \operatorname{Crest}(x) &=
+      \frac{\max_t|x_t|}{\sqrt{T^{-1}\sum_t x_t^2}+10^{-12}},\\
+ \operatorname{VDV}(x) &=
+      \left(f_s^{-1}\sum_t x_t^4\right)^{1/4}.          \label{eq:features}
+\end{align}
+Derivatives use a sampling-interval-aware numerical gradient. Frequency-weighted root-mean-square
+features multiply the discrete Fourier transform by the magnitude shape of the ISO $W_k$ vertical
+or $W_d$ horizontal weighting before inverse transformation and root-mean-square aggregation.
+Because the implementation does not reproduce a calibrated seat-location measurement chain, we do
+not interpret the resulting value as an ISO exposure measurement.
+
+\begin{table}[t]
+\caption{Current Manual Feature Set}
+\label{tab:features}
+\centering
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{p{0.30\columnwidth}p{0.62\columnwidth}}
+\toprule
+Signal & Statistics \\
+\midrule
+6-D bounce rate & Absolute impulse; derivative absolute peak; derivative peak-to-peak; derivative $W_k$-weighted RMS \\
+Vertical acceleration & Peak-to-peak; $W_k$-weighted RMS; crest factor; vibration dose value \\
+Longitudinal acceleration & Standard deviation; $W_d$-weighted RMS; absolute impulse; crest factor \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Complementary Feature Analyses}
+
+Projection-predictive selection treats the fitted hierarchical model as a reference. For candidate
+subset $S$ and reference probability $p_{ui}^{(m)}$, it solves
+\begin{equation}
+\begin{aligned}
+ \widehat{\bm b}_{S}^{(m,u)}
+ &=\underset{\bm b}{\operatorname{arg\,min}}\;\frac{1}{n_u}\sum_i
+ \KL\!\left[\Bern(p_{ui}^{(m)})\,\middle\|\right.\\
+ &\hspace{25mm}\left.\Bern\{\sigmoid(\bm z_{ui,S}^{\mathsf T}\bm b)\}\right].
+\end{aligned}
+ \label{eq:projection}
+\end{equation}
+Forward search greedily adds a sensor or feature. The current stopping rule selects the first
+subset recovering 95\% of the reduction from the intercept-only KL divergence to the full model,
+using 12 evenly spaced posterior draws.
+
+The conditional-information diagnostic uses five within-evaluator stratified folds. At a forward
+step with selected set $S$, candidate $A$ is scored by the cross-fitted log-score gain
+\begin{equation}
+ \widehat I(Y;Z_A\mid Z_S,U)=\frac{1}{U}\sum_u\frac{1}{n_u}
+ \sum_i\left[\ell_{ui}^{S\cup A,-k(i)}-\ell_{ui}^{S,-k(i)}\right].
+ \label{eq:cmi}
+\end{equation}
+The auxiliary logistic models contain evaluator-specific intercepts and slopes. Equation
+~\eqref{eq:cmi} is a model-based estimate of conditional information, not a nonparametric exact
+mutual-information estimator.
+
+\section{Secondary Missing-Signal Robustness Study}
+\label{sec:reconstruction}
+
+The main preference model assumes that 6-D body bounce rate is available. To test sensitivity to
+that assumption, a causal sequence-to-sequence long short-term memory network
+~\cite{hochreiter1997lstm} reconstructs bounce, roll, and pitch rates from 13 deployable channels:
+five inertial signals, four wheel speeds, and four motor-torque quantities. The network has one
+96-unit recurrent layer and a linear three-channel output (42,915 trainable parameters). It is
+trained for 45 epochs using mean squared error, batch size 32, and learning rate 0.005. All
+normalization statistics and network weights exclude every target evaluator.
+
+The preference pipeline is then refit after replacing measured 6-D channels in memory with the
+reconstruction. Although three channels are reconstructed, only reconstructed bounce rate affects
+the current 12-feature classifier in Table~\ref{tab:features}. This experiment therefore measures
+robustness to a virtual bounce-rate sensor; it is not presented as a new reconstruction method or
+as uncertainty-aware measurement-error inference.
+
+\section{Experimental Protocol}
+\label{sec:experiment}
+
+\subsection{Data and Evaluator Splits}
+
+The repository catalog contains 2891 real-vehicle episodes from 18 evaluators, of which 2682 have
+binary labels (1450 good and 1232 bad). The current executable experiments use 10 evaluators. Names
+are replaced by protocol-local identifiers, and no name is used as a model input. Table
+~\ref{tab:protocols} separates the two intended use cases.
+
+\begin{table*}[t]
+\caption{Evaluator-Held-Out Protocols in the Current Executable Snapshot}
+\label{tab:protocols}
+\centering
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{p{0.17\textwidth}cccp{0.14\textwidth}p{0.24\textwidth}}
+\toprule
+Protocol & \shortstack{Population\\evaluators} & \shortstack{Population\\labels} & \shortstack{Target\\evaluators} & Target labels & Context/holdout construction \\
+\midrule
+High-feedback target & 5 & 2325 & 1 & 205 & First 102 target labels form the growing context; the remaining 103 form a fixed holdout. \\
+Sparse-feedback targets & 5 & 2500 & 5 & 10--35 each (127 total) & First half of each target history is context (5--17); second half is holdout (5--18, 64 total). \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+The population model never uses labels from a target evaluator. Feature scaling and feature
+selection are also fit only on population evaluators. Context and holdout are split in recorded
+order rather than randomly, making the test closer to online adaptation but leaving possible
+session, vehicle, location, and repeated-bump dependence to be addressed by grouped sensitivity
+analyses.
+
+\draftnote{Before submission, state the exact participant recruitment criteria, demographics,
+vehicle models/settings, road/bump protocol, feedback interface and timing, compensation,
+informed-consent procedure, and the formal institutional ethics determination with approval or
+exemption identifier. Do not claim approval until it has been issued. Finalize and justify the
+eligibility rule for the eight cataloged evaluators not used in these protocols.}
+
+\subsection{Compared Prediction Stages}
+
+For each target evaluator we report the following stages.
+
+\begin{itemize}
+  \item \emph{Prior}: cold-start prediction from the population posterior with zero target labels.
+  \item \emph{Final}: prediction after all labels in the allowed context have been assimilated.
+  \item \emph{Peak}: the context size with the highest holdout area under the receiver-operating-
+  characteristic curve. This uses holdout labels for selection and is therefore an oracle
+  diagnostic, never a deployable result.
+\end{itemize}
+
+The raw-channel and reconstructed-channel variants are trained from the same evaluator split. A
+complete paper must additionally compare pooled logistic regression, independent per-evaluator
+models where feasible, regularized partial-pooling baselines, and competitive nonlinear models
+under identical evaluator-held-out splits.
+
+\subsection{Metrics and Uncertainty}
+
+We report the area under the receiver-operating-characteristic curve (AUROC), area under the
+precision--recall curve (AUPRC), Brier score~\cite{brier1950verification}, and mean log posterior
+predictive density
+\begin{equation}
+ \operatorname{MLPD}=\frac{1}{n}\sum_i
+ \log\left[y_i\widehat p_i+(1-y_i)(1-\widehat p_i)\right].
+\end{equation}
+Ranking metrics assess discrimination, whereas Brier score and log predictive density penalize
+poor probabilities. For AUROC uncertainty, each of 600 replicates samples one posterior draw and
+bootstraps holdout episodes, and the 2.5th and 97.5th percentiles form an interval. This combines
+posterior and finite-holdout variation but does not correct dependence among episodes. Exact or
+stratified refitting can additionally provide pointwise expected log predictive density following
+Bayesian predictive-evaluation practice~\cite{vehtari2017loo}.
+
+\draftnote{Seed the new-evaluator random-number generator explicitly, run multiple independent
+chains and seeds, report effective sample size and rank-normalized convergence diagnostics, and
+replace episode bootstrap intervals with evaluator/session/bump-group-aware intervals where the
+data hierarchy permits.}
+
+\section{Preliminary Results}
+\label{sec:results}
+
+\subsection{High-Feedback Target}
+
+Table~\ref{tab:highfeedback} reports the saved run in which the unseen target provides 102 context
+labels and 103 episodes remain fixed for evaluation. On measured channels, personalization changes
+AUROC only from 0.8429 to 0.8460, but improves Brier score from 0.2109 to 0.1901 and mean log
+predictive density from $-0.6104$ to $-0.5606$. Thus, in this split, the clearest benefit is better
+probability quality rather than a large change in ranking. The joint posterior--bootstrap AUROC
+interval is $[0.747,0.917]$ for the final measured-channel model; the cold-start interval is much
+wider, $[0.207,0.889]$, because population-posterior draws disagree about the target ranking.
+
+\begin{table}[t]
+\caption{High-Feedback Target: Preliminary Holdout Results}
+\label{tab:highfeedback}
+\centering
+\setlength{\tabcolsep}{3.3pt}
+\begin{tabular}{llcccc}
+\toprule
+Input & Stage & AUROC & AUPRC & Brier & MLPD \\
+\midrule
+Measured & Prior & 0.8429 & 0.8794 & 0.2109 & $-0.6104$ \\
+Measured & Final & 0.8460 & 0.8864 & 0.1901 & $-0.5606$ \\
+Reconstructed & Prior & 0.8409 & 0.8807 & 0.2101 & $-0.6091$ \\
+Reconstructed & Final & 0.8560 & 0.8936 & 0.1834 & $-0.5461$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The recurrent virtual sensor attains median held-out waveform correlations of 0.992, 0.995, and
+0.989 for bounce, roll, and pitch rate, respectively. Its bounce-feature correlations range from
+0.859 for derivative absolute peak to 0.992 for absolute impulse. The reconstructed preference
+variant is not worse in this single split and slightly improves all four final metrics, but the
+difference is too small and too dependent on one target to support a superiority claim.
+
+\begin{figure*}[t]
+\centering
+\resultgraphic{true/plots/population/spike_slab_inclusion.png}{0.74\textwidth}
+\caption{Posterior inclusion probabilities from the high-feedback executable snapshot. The plot
+summarizes population feature support and is a diagnostic output rather than confirmatory evidence.}
+\label{fig:diagnostics}
+\end{figure*}
+
+\draftnote{Regenerate the target-adaptation uncertainty plot with anonymous evaluator identifiers,
+publication-size typography, and fixed feedback checkpoints before including it in the final paper.}
+
+\subsection{Sparse-Feedback Targets}
+
+Table~\ref{tab:sparse} shows the five sparse targets using measured channels. The final update uses
+only 5--17 context labels, and holdouts contain as few as five episodes. Macro-average AUROC rises
+from 0.6863 to 0.7008 and Brier score improves from 0.2441 to 0.2045. However, target S3 becomes
+worse in AUROC after adaptation, and the near-perfect estimates for S4 or S5 are based on very few
+positive--negative pairs. The result therefore supports neither universal improvement nor a precise
+estimate of the mean effect. It instead demonstrates the regime in which posterior uncertainty and
+proper probability scores are essential.
+
+\begin{table}[t]
+\caption{Sparse-Feedback Measured-Channel Results}
+\label{tab:sparse}
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrcccc}
+\toprule
+Target & $n_{\rm ctx}$ & $n_{\rm hold}$ & AUROC$_0$ & AUROC$_T$ & Brier$_0$ & Brier$_T$ \\
+\midrule
+S1 & 17 & 17 & 0.7083 & 0.7361 & 0.2115 & 0.2032 \\
+S2 & 15 & 15 & 0.6481 & 0.7222 & 0.2304 & 0.2474 \\
+S3 & 17 & 18 & 0.7000 & 0.4625 & 0.2404 & 0.2520 \\
+S4 & 5  & 5  & 1.0000 & 0.8333 & 0.1880 & 0.1842 \\
+S5 & 9  & 9  & 0.3750 & 0.7500 & 0.3500 & 0.1356 \\
+\midrule
+Macro & -- & -- & 0.6863 & 0.7008 & 0.2441 & 0.2045 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+For the reconstructed variant, macro Brier score similarly improves from 0.2438 to 0.2069 and mean
+log predictive density from $-0.6823$ to $-0.5988$, while macro AUROC falls from 0.6986 to 0.6368.
+This mixed result is consistent with the intended interpretation of reconstruction as a robustness
+stress test rather than a performance contribution.
+
+\subsection{Population Feature Structure}
+
+Table~\ref{tab:feature-results} presents representative measured-channel posterior summaries from
+the high-feedback split. Vertical acceleration peak-to-peak and longitudinal weighted RMS are the
+first two features selected by the two predictive diagnostics, although their coefficient signs
+are conditional on the correlated standardized design. The projection search requires seven
+features plus the intercept to recover 95.4\% of the full-model KL reduction. The forward
+conditional-information analysis retains six features before the next gain becomes nonpositive.
+
+\begin{table*}[t]
+\caption{Representative Population Feature Results in the High-Feedback Split}
+\label{tab:feature-results}
+\centering
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{lrrrrl}
+\toprule
+Feature & PIP & Mean coefficient & 95\% interval & Forward CMI (nat) & Diagnostic role \\
+\midrule
+Vertical acceleration peak-to-peak & 1.000 & $-0.694$ & $[-1.317,-0.104]$ & 0.07148 & First in projection and CMI \\
+Longitudinal acceleration $W_d$ RMS & 1.000 & $-0.647$ & $[-1.407,0.094]$ & 0.01449 & Second in CMI; fifth in projection \\
+Longitudinal acceleration standard deviation & 1.000 & $0.564$ & $[-0.094,1.189]$ & 0.00487 & Third in CMI; sixth in projection \\
+Bounce-rate absolute impulse & 1.000 & $0.600$ & $[0.105,1.094]$ & 0.00318 & Early projection representative \\
+Bounce-rate derivative $W_k$ RMS & 0.758 & $-0.155$ & $[-0.831,0.372]$ & 0.00525 & Later nonredundant CMI gain \\
+Vertical acceleration vibration dose & 1.000 & $-0.070$ & $[-0.514,0.387]$ & -- & Completes 95\% projected subset \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+The posterior mean signs must not be read causally. Road severity, speed, vehicle setting, bump
+identity, and evaluator history may be confounded, and correlated transient statistics can reverse
+conditional signs. The defensible result is that several features jointly preserve predictive
+structure while evaluator-specific coefficients vary; causal suspension-design statements require
+controlled interventions.
+
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{What Personalization Changes}
+
+The high-feedback split suggests that the population prior already ranks episodes reasonably well,
+whereas target feedback sharpens probability calibration and predictive density. This is a useful
+distinction for intelligent-vehicle applications. A controller or recommendation layer often needs
+a probability that reflects confidence, not only a ranking. The hierarchical prior avoids fitting a
+new model from scratch, and the posterior trajectory makes it possible to define a future stopping
+rule based on uncertainty rather than selecting the context with best holdout AUROC.
+
+The sparse-target results show the other side of partial pooling. A few observations can move the
+posterior in a helpful direction, but they can also be unrepresentative. Strong shrinkage toward the
+population is desirable until the target supplies both good and bad examples. Future deployment
+should therefore expose an abstention or ``request more feedback'' state and should not treat the
+oracle peak as an online early-stopping mechanism.
+
+\subsection{Interpretability and Sensor Robustness}
+
+The three feature analyses are complementary. Spike-and-slab inclusion asks whether a feature is
+active across posterior draws. Projection asks how compactly the full fitted predictions can be
+reproduced. Cross-fitted conditional information asks whether a candidate improves held-out log
+score after conditioning on the already selected features and evaluator identity. Agreement on
+vertical peak-to-peak and longitudinal weighted RMS makes them stable descriptive candidates, but
+not necessarily physical causes of good or bad judgments.
+
+The reconstruction study indicates that a high-fidelity virtual bounce-rate signal can preserve
+downstream probability quality in one held-out target. A rigorous missing-sensor treatment would
+propagate reconstruction uncertainty into the preference likelihood rather than substituting a
+point waveform. That extension is intentionally separated from the paper's present contribution.
+
+\subsection{Limitations}
+
+The number of evaluators is small relative to the number of episodes, and episode-level sample size
+does not replace evaluator-level replication. Several sparse holdouts contain too few examples of
+one class for stable AUROC inference. The current split does not explicitly group repeated passes by
+bump, location, session, vehicle, or suspension setting, so within-group dependence and distribution
+shift may be understated. Good/bad feedback is intentionally simple but cannot be equated with a
+validated multi-attribute ride-comfort scale. The feature weights are vehicle-response proxies rather
+than calibrated whole-body exposure measurements. Finally, the current artifact uses one population
+chain and one principal split, and the available comparison set is not yet sufficient for a journal
+claim of superiority.
+
+\section{Confirmatory Study Required for Submission}
+\label{sec:confirmatory}
+
+The final T-IV evaluation should freeze preprocessing, priors, inclusion level, and stopping rules
+before inspecting test results. At minimum, it should include the following.
+
+\begin{enumerate}
+  \item Leave one sufficiently sampled evaluator out in turn, fitting every normalization,
+  feature-selection step, reconstruction model, and population posterior without that evaluator.
+
+  \item For sparse feedback, subsample context budgets such as 0, 2, 5, 10, and 20 with repeated
+  chronological starting points or session-aware blocks; keep a fixed group-held-out test set.
+
+  \item Compare against a population-only logistic model, regularized independent models,
+  mixed-effects or empirical-Bayes logistic regression, and at least one nonlinear sequence or
+  tree-based baseline under the identical outer split.
+
+  \item Report evaluator-macro proper scores with evaluator-level confidence intervals, calibration
+  curves, sensitivity to class imbalance, prior-predictive checks, and multiple-chain convergence
+  diagnostics. Treat episode-level intervals as secondary.
+
+  \item Repeat the measured-versus-reconstructed comparison across outer folds and propagate or
+  bound reconstruction error; do not tune the reconstruction network on final target evaluators.
+\end{enumerate}
+
+\draftnote{Replace all preliminary tables and the abstract's numerical claims with results from the
+frozen confirmatory pipeline. Record software versions, hardware, run identifiers, wall-clock
+costs, and inference seeds in a reproducibility appendix.}
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+This paper develops a hierarchical Bayesian framework for predicting evaluator-specific good/bad
+ride preference after road bumps. The population posterior supplies a principled cold start, and
+P\'{o}lya--Gamma personalization updates both predictions and uncertainty as sparse target feedback
+arrives. Exact-zero inclusion, predictive projection, and conditional-information analysis retain
+the interpretability of motion-derived features. Current executable results show improved
+probability scores for one high-feedback target and on average across five sparse targets, while
+also revealing substantial evaluator-level uncertainty and occasional negative adaptation. A
+driver-held-out recurrent reconstruction preserves performance in the high-feedback snapshot but
+remains a secondary robustness result. The next step is not a broader claim from the present split;
+it is the confirmatory evaluator- and session-grouped evaluation specified above.
+
+\section*{Acknowledgment}
+\draftnote{Add funding, data-collection acknowledgments, conflicts of interest, and any required
+ethics/consent statement after institutional confirmation.}
+
+\bibliographystyle{IEEEtran}
+\bibliography{refs}
+
+% T-IV regular papers require short biographies in the final manuscript.
+\ifdraftnotes
+\vspace{1ex}
+\noindent\draftnote{Add IEEE-format author biographies and photographs for the final files.}
+\fi
+
+\end{document}

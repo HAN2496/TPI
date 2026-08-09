@@ -1,0 +1,64 @@
+name: competence_fast_blend
+seed: 42
+data_root: data/runs
+
+environment:
+  id: Walker2d-v5
+  horizon: 500
+  terminate_when_unhealthy: true
+  contact_force_scale: 1000.0
+
+reward:
+  mode: competence_style
+  style_scale: 1.0
+
+styles:
+  params:
+    {v_ref: 1.0, v_fast: 3.0, foot_rest_height: 0.15, clearance_ref: 0.5,
+     bounce_sigma: 0.5, crouch_height: 1.0, crouch_sigma: 0.15}
+
+policy_blend:
+  base_model: data/runs/competence_fast_stage1_20260801/policies/_pretrained/step_001001472.zip
+  style_model: data/runs/competence_fast_stage1_20260801/policies/fast/step_000301056.zip
+  baseline_profile: baseline
+  style_weights: {sprint: 1.0}
+  alphas: [0.30]
+  min_speed_improvement: 0.05
+  device: cpu
+
+competence:
+  required: true
+  evaluation_episodes: 20
+  evaluation_seed: 50042
+  min_completion_rate: 0.90
+  min_mean_length_fraction: 0.95
+  min_forward_speed: 0.8
+
+collection:
+  episodes_per_checkpoint: 50
+  action_noise_std: 0.0
+  selected_only: true
+  shared_profile_seeds: true
+  device: cpu
+
+quality:
+  max_fall_rate: 0.10
+  min_mean_length_fraction: 0.95
+  fail_on_quality: true
+  profile_effects:
+    - {feature: speed_mean, higher: fast_blend_300, lower: baseline, min_difference: 0.05}
+
+feedback:
+  n_train_users: 20
+  n_test_users: 5
+  train_labels_per_user: 40
+  max_test_context: 20
+  theta_sd: 0.15
+  beta: 1.0
+  threshold_quantile: 0.5
+
+validation:
+  n_burnin: 80
+  n_samples: 160
+  newuser_n_iters: 4
+  spike_slab: false

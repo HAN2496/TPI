@@ -484,3 +484,42 @@ def plot_test_item_bridge(neigh_idxs, neigh_ws, item_owner_uid, train_drivers, t
     Path(save_path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(save_path, dpi=150)
     plt.close(fig)
+
+
+def plot_uncertainty_vs_context(ctx_sizes_list, epi_histories, ale_histories, test_driver_names, save_path):
+    """context 크기에 따른 holdout 평균 epistemic(MI)/aleatoric(E[H]) (Bayesian RM 전용)."""
+    fig, axes = plt.subplots(2, 1, figsize=(8, 8), sharex=True)
+    for ax, histories, label in zip(axes, (epi_histories, ale_histories),
+                                    ("Epistemic (MI)", "Aleatoric (E[H])")):
+        for ctx_sizes, us, name in zip(ctx_sizes_list, histories, test_driver_names):
+            ax.plot(ctx_sizes, [u.mean() for u in us], marker="o", ms=3, lw=1.5, label=name)
+        ax.set_ylabel(f"{label} [nat]")
+        ax.set_title(f"{label} vs Context")
+        ax.legend(fontsize=STYLE["diag"]["legend_fs"])
+        ax.grid(True, alpha=0.3)
+    axes[1].set_xlabel("Context Size (t)")
+    fig.tight_layout()
+    Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(save_path, dpi=150)
+    plt.close(fig)
+
+
+def plot_uncertainty_correct_wrong(epis, ales, probs, ys, test_driver_names, save_path):
+    """best ctx 시점, 맞춘 예측 vs 틀린 예측의 epistemic/aleatoric 분포 (전체 test driver 통합)."""
+    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+    for ax, us, label in zip(axes, (epis, ales), ("Epistemic (MI)", "Aleatoric (E[H])")):
+        correct = np.concatenate([u[(p > 0.5) == (y == 1)] for u, p, y in zip(us, probs, ys)])
+        wrong = np.concatenate([u[(p > 0.5) != (y == 1)] for u, p, y in zip(us, probs, ys)])
+        bp = ax.boxplot([correct, wrong], tick_labels=[f"correct (n={len(correct)})", f"wrong (n={len(wrong)})"],
+                        patch_artist=True, widths=0.5)
+        for box, c in zip(bp["boxes"], ("steelblue", "tomato")):
+            box.set_facecolor(c)
+            box.set_alpha(0.7)
+        ax.set_ylabel(f"{label} [nat]")
+        ax.set_title(label)
+        ax.grid(axis="y", alpha=0.3)
+    fig.suptitle(f"Uncertainty by Correctness — {len(test_driver_names)} test drivers")
+    fig.tight_layout()
+    Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(save_path, dpi=150)
+    plt.close(fig)

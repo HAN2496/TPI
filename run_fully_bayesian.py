@@ -12,17 +12,26 @@ from loader import Dataset, View
 from core import (Run, split_ctx, grid, Track,
                   pointwise_lpd, sum_se, auroc_trust_interval, trust_to_metric)
 from core.run import seed_all
-from models.fully_bayesian.model import Population
-from models.fully_bayesian.features import build_feature_pipeline
-from models.fully_bayesian import viz, utils
+from reward.fully_bayesian.model import Population
+from reward.fully_bayesian.features import build_feature_pipeline
+from reward.fully_bayesian import viz, utils
+from reward.reconstruction.config import KalmanConfig, LSTMConfig
+
+
+@dataclass
+class ReconstructionConfig:
+    methods: tuple = ("lstm",)  # ()=없음 | physics/kalman/fir/lstm/unet 조합
+    timestamp: str = None       # None이면 현재 run에서 학습, 아니면 저장된 artifact 로드
+    lstm: LSTMConfig = field(default_factory=LSTMConfig)
+    kalman: KalmanConfig = field(default_factory=KalmanConfig)
 
 
 @dataclass
 class Config:
-    # train: tuple = ("김진명", "조현석", "박재일", "한규택", "이지환")
-    # test: tuple = ("강신길",)
-    train: tuple = ("강신길", "조현석", "한규택", "박재일", "이지환")
-    test: tuple = ("김재호", "김진명", "김태근", "신민철", "이강근")
+    train: tuple = ("김진명", "조현석", "박재일", "한규택", "이지환")
+    test: tuple = ("강신길",)
+    # train: tuple = ("강신길", "조현석", "한규택", "박재일", "이지환")
+    # test: tuple = ("김재호", "김진명", "김태근", "신민철", "이강근")
     view: View = View(
         features=("Pitch_rate_6D", "Bounce_rate_6D", "IMU_VerAccelVal", 
                   "IMU_LongAccelVal", "IMU_LatAccelVal"),
@@ -33,11 +42,10 @@ class Config:
     verbose: int = 1
 
     # 6D 채널을 재구성 신호로 치환한 variant들을 추가로 학습·평가 (true와 쌍으로 비교).
-    # recon_timestamp: None -> 재구성 학습까지 이 run에서 수행, recon에 지정된 모델만 피팅
+    # recon.timestamp: None -> 재구성 학습까지 이 run에서 수행, recon.methods의 모델만 피팅
     #                          (산출물은 <run>/reconstruction/에 저장)
     #                  "test" 포함 timestamp -> outputs/reconstruction/<timestamp>/ 아티팩트 로드
-    recon: tuple = ("unet",)             # ()=없음 | "physics"/"kalman"/"fir"/"unet" 조합
-    recon_timestamp: str = None
+    recon: ReconstructionConfig = field(default_factory=ReconstructionConfig)
 
     # feature pipeline
     feature_method: str = "manual"     # "manual" | "manual_pca" | "ae"
@@ -155,7 +163,7 @@ def train(cfg, run, phi, pop, train_data):
 
     tic = time.time()
     if cfg.projpred:
-        from models.fully_bayesian import projpred
+        from reward.fully_bayesian import projpred
         print("Projection-Predictive Selection")
         for unit in cfg.selection_units:
             order = projpred.select(cfg, phi, pop, train_data, unit=unit)
@@ -165,7 +173,7 @@ def train(cfg, run, phi, pop, train_data):
 
     tic = time.time()
     if cfg.conditional_mi:
-        from models.fully_bayesian import conditional_mi
+        from reward.fully_bayesian import conditional_mi
         print("Conditional-MI Selection")
         for unit in cfg.selection_units:
             result = conditional_mi.select(cfg, phi, pop, train_data, unit=unit)
@@ -362,21 +370,24 @@ def train_and_evaluate(cfg, sub, train_data, test_data):
 def main(cfg=None):
     cfg = cfg or Config()
     run = Run("fully_bayesian", cfg)
-    print(f"[INFO] fully_bayesian  timestamp={cfg.timestamp} feature_method={cfg.feature_method} recon={cfg.recon}")
+    print(f"[INFO] fully_bayesian  timestamp={cfg.timestamp} feature_method={cfg.feature_method} recon={cfg.recon.methods}")
     ds = Dataset("datasets")
 
-    variants = ["true"] + list(cfg.recon)
-    if cfg.recon:
-        if cfg.recon_timestamp is None:               # 재구성 학습을 이 run 안에서 수행 (recon 모델만 피팅)
+    variants = ["true"] + list(cfg.recon.methods)
+    if cfg.recon.methods:
+        if cfg.recon.timestamp is None:               # 재구성 학습을 이 run 안에서 수행 (recon 모델만 피팅)
             import run_reconstruction
             seed_all(cfg.seed)
             art_dir = run.dir / "reconstruction"
             sub = SimpleNamespace(dir=art_dir, plots=art_dir / "plots", metrics={}, eval_only=False)
-            run_reconstruction.main(run_reconstruction.Config(test=cfg.test, seed=cfg.seed,
-                                                              methods=cfg.recon, show=cfg.recon), sub)
+            recon_cfg = run_reconstruction.Config(
+                test=cfg.test, seed=cfg.seed,
+                methods=cfg.recon.methods, show=cfg.recon.methods,
+                lstm=cfg.recon.lstm, kalman=cfg.recon.kalman)
+            run_reconstruction.main(recon_cfg, sub)
             run.metrics.update({f"recon/{k}": v for k, v in sub.metrics.items()})
         else:
-            art_dir = Path("outputs/reconstruction") / cfg.recon_timestamp
+            art_dir = Path("outputs/reconstruction") / cfg.recon.timestamp
         art = np.load(art_dir / "reconstructed_signals.npz")
 
     for v in variants:                                # true 먼저 (치환이 in-place라 순서 고정)
@@ -393,11 +404,11 @@ def main(cfg=None):
         for key, val in sub.metrics.items():
             run.metrics[f"{v}/{key}"] = val
 
-    if cfg.recon:
+    if cfg.recon.methods:
         for name in cfg.test:
             a = run.metrics[f"true/test/{name}"]["auroc"]
             row = "  ".join(f"{m}={run.metrics[f'{m}/test/{name}']['auroc']:.4f} ({run.metrics[f'{m}/test/{name}']['auroc'] - a:+.4f})"
-                            for m in cfg.recon)
+                            for m in cfg.recon.methods)
             print(f"[Recon] {name}: auroc true={a:.4f}  {row}")
     run.finish()
 

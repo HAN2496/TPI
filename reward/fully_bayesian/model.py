@@ -49,7 +49,7 @@ class UserReward:
             self.theta.copy(), self.pop, self.name,
             slab_theta=self.slab_theta.copy(), gamma=self.gamma.copy(),
         )
-
+ 
     def fit(self, Z, y, n_iters=None):
         """PG mini-Gibbs adaptation with population gamma fixed per draw."""
         pop = self.pop

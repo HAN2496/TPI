@@ -6,14 +6,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from scipy.signal import butter, filtfilt
-from scipy.optimize import minimize
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 OUT = ROOT / "outputs" / "lab" / "reconstruction"
 
 from loader import Dataset
-from models.fully_bayesian.features import FNS
+from lab.reconstruction.kalman_filters import KALMAN_FILTERS
+from reward.fully_bayesian.features import FNS
 
 BOUNCE_STATS = ["impulse_abs", "abs_peak_deriv", "p2p_deriv", "wrms_z_deriv"]
 
@@ -25,6 +25,20 @@ Y_CH = ["Bounce_rate_6D", "Roll_rate_6D", "Pitch_rate_6D"]
 TEST = {"김재호", "김진명", "김태근", "신민철", "이강근"}
 FS, T = 100.0, 1000
 DEV = "cuda"
+
+KALMAN_SPECS = {
+    **{name: (kf_class, True) for name, kf_class in KALMAN_FILTERS.items()},
+    "kalman": (KALMAN_FILTERS["delayed_road_kf"], True),
+    "kalman_nc": (KALMAN_FILTERS["delayed_road_kf"], False),
+    "delayed_road_kf_nc": (KALMAN_FILTERS["delayed_road_kf"], False),
+}
+
+# 실행할 baseline만 선택. 전체 실행 예시:
+# ("physics", "reduced_kf", "delayed_road_kf", "quarter_car_kf",
+#  "parametric_halfcar_kf", "parametric_halfcar_rts",
+#  "linear_halfcar_kf", "linear_halfcar_rts", "nonlinear_halfcar_ekf",
+#  "fir", "lstm", "unet", "unet1d", "waveunet")
+RUN_METHODS = ("physics", "unet", "lstm")
 
 
 def filt(x, fc, btype):
@@ -38,90 +52,6 @@ def physics(x):
     bounce = filt(np.cumsum(az - az.mean()) / FS, 0.3, "high")
     pitch = -filt(np.gradient((ax - np.gradient(vw) * FS) / 9.81) * FS, 2.0, "low")
     return np.stack([bounce, roll, pitch], 1)
-
-
-def batch_corr(a, b):
-    a = a - a.mean(1, keepdims=True)
-    b = b - b.mean(1, keepdims=True)
-    return (a * b).sum(1) / np.sqrt((a * a).sum(1) * (b * b).sum(1))
-
-
-class Kalman:
-    # half-car 정상상태 칼만. 상태 [z, z_dot, theta, theta_dot, eta(유색 heave 여기), eta_t(유색 pitch 여기),
-    # az바이어스, 노면경사], 입력 [v_dot, 토크, 앞뒤 v_dot 차], 측정 [az, ax - v_dot].
-    # p[:10] 물리 파라미터, p[10:] log 노이즈 분산.
-    # kappa: 종방향 힘의 수직 성분(anti-lift), czt: 앞뒤 서스펜션 비대칭의 pitch-heave 커플링.
-    # fit 옵션(기본 off): warmup=N이면 초기 N스텝 시변 게인, eta_t=True면 유색 pitch 여기 활성.
-    # control=False면 입력 u를 완전 차단 (B=D=0, 측정만으로 추정. 측정식의 v_dot은 유지).
-    def __init__(self, p, warmup=0, control=True):
-        self.p = np.asarray(p)
-        self.warmup = warmup
-        self.control = control
-        wz, zz, wt, zt, lever, g1, g2, kappa, czt, g3 = self.p[:10]
-        qz, qt, qe, qet, qb, qg, rz, rx = np.exp(self.p[10:])
-        dt = 1 / FS
-        self.A = np.eye(8)
-        self.A[0, 1] = dt
-        self.A[1, 0] = -wz * wz * dt
-        self.A[1, 1] = 1 - 2 * zz * wz * dt
-        self.A[1, 4] = dt
-        self.A[2, 3] = dt
-        self.A[3, 1] = czt * dt
-        self.A[3, 2] = -wt * wt * dt
-        self.A[3, 3] = 1 - 2 * zt * wt * dt
-        self.A[3, 5] = dt
-        self.B = np.zeros((8, 3))
-        self.B[1, 0] = kappa * dt
-        self.B[3] = g1 * dt, g2 * dt, g3 * dt
-        self.H = np.array([[-wz * wz, -2 * zz * wz + lever * czt, -lever * wt * wt, -2 * lever * zt * wt,
-                            1, lever, 1, 0],
-                           [0, 0, 9.81, 0, 0, 0, 0, 9.81]])
-        self.D = np.array([[kappa + lever * g1, lever * g2, lever * g3], [0.0, 0.0, 0.0]])
-        if not control:
-            self.B[:] = 0.0
-            self.D[:] = 0.0
-        Q = np.diag([0, qz, 0, qt, qe, qet, qb, qg]) * dt
-        R = np.diag([rz, rx])
-        P = np.eye(8) * (100.0 if warmup else 1.0)
-        self.Ks = np.empty((300, 8, 2))
-        for i in range(300):
-            P = self.A @ P @ self.A.T + Q
-            self.Ks[i] = P @ self.H.T @ np.linalg.inv(self.H @ P @ self.H.T + R)
-            P = (np.eye(8) - self.Ks[i] @ self.H) @ P
-        self.K = self.Ks[-1]
-
-    def predict(self, xr):
-        az = (xr[:, :, 1] - 1.0) * 9.81
-        whl = xr[:, :, 5:9] / 3.6
-        vdot = filt(np.gradient(whl.mean(2), axis=1) * FS, 5.0, "low")
-        dvfr = filt(np.gradient(whl[:, :, :2].mean(2) - whl[:, :, 2:].mean(2), axis=1) * FS, 5.0, "low")
-        u = np.stack([vdot, xr[:, :, 9] + xr[:, :, 10], dvfr], 2)
-        ym = np.stack([az, xr[:, :, 4] * 9.81 - vdot], 2)
-        s = np.zeros((len(xr), 8))
-        out = np.empty((len(xr), 2, xr.shape[1]))
-        for t in range(xr.shape[1]):
-            s = s @ self.A.T + u[:, t] @ self.B.T
-            K = self.Ks[t] if t < self.warmup else self.K
-            s += (ym[:, t] - s @ self.H.T - u[:, t] @ self.D.T) @ K.T
-            out[:, :, t] = s[:, [1, 3]]
-        return np.stack([out[:, 0], xr[:, :, 0], -out[:, 1]], 1)
-
-    @classmethod
-    def fit(cls, xr, yr, warmup=0, eta_t=False, control=True):
-        sub = np.linspace(0, len(xr) - 1, 400).astype(int)
-        xs, yb, yp = xr[sub], yr[sub, :, 0], yr[sub, :, 2]
-
-        def loss(p):
-            k = cls(p, warmup, control).predict(xs)
-            cost = 3 - batch_corr(k[:, 0], yb).mean() - 2 * batch_corr(k[:, 2], yp).mean()
-            return cost if np.isfinite(cost) else 10.0
-
-        p0 = np.array([8.0, 0.3, 7.8, 0.3, 0.5, 0.3, 0.0, 0.0, 0.0, 0.0]
-                      + list(np.log([1.0, 1.0, 1.0, 1.0 if eta_t else 1e-35, 1e-4, 1e-4, 0.1, 0.1])))
-        res = minimize(loss, p0, method="Powell", options={"maxfev": 600})
-        print(f"  fit loss {res.fun:.3f}  wz {res.x[0]:.1f}  wt {res.x[2]:.1f}  lever {res.x[4]:.2f}"
-              f"  czt {res.x[8]:.2f}  g3 {res.x[9]:.2f}")
-        return cls(res.x, warmup, control)
 
 
 def load():
@@ -151,6 +81,20 @@ class FIR(nn.Module):
         return self.conv(x)
 
 
+class LSTM(nn.Module):
+    """Causal sequence-to-sequence LSTM baseline without a physics residual."""
+
+    def __init__(self, ch, out_ch, hidden=96, layers=1, dropout=0.0):
+        super().__init__()
+        self.lstm = nn.LSTM(ch, hidden, num_layers=layers, batch_first=True,
+                            dropout=dropout if layers > 1 else 0.0)
+        self.out = nn.Linear(hidden, out_ch)
+
+    def forward(self, x):
+        z, _ = self.lstm(x.transpose(1, 2))
+        return self.out(z).transpose(1, 2)
+
+
 def block(ci, co):
     return nn.Sequential(nn.Conv1d(ci, co, 9, padding=4), nn.ReLU(),
                          nn.Conv1d(co, co, 9, padding=4), nn.ReLU())
@@ -170,6 +114,115 @@ class UNet(nn.Module):
         d2 = self.d2(torch.cat([F.interpolate(e3, scale_factor=2.0), e2], 1))
         d1 = self.d1(torch.cat([F.interpolate(d2, scale_factor=2.0), e1], 1))
         return self.out(d1)
+
+
+class UNet1D(nn.Module):
+    """Axis-only 1D adaptation of Ronneberger et al.'s original U-Net.
+
+    Reference: Ronneberger, Fischer, and Brox, "U-Net: Convolutional
+    Networks for Biomedical Image Segmentation," MICCAI 2015.
+
+    The original topology is preserved: four down/up levels, feature widths
+    64-128-256-512-1024, two unpadded kernel-3 convolutions per level,
+    max-pooling by 2, kernel-2 transposed convolutions, crop-and-concatenate
+    skips, and a final point-wise convolution.  Only the spatial operators and
+    task-specific input/output channel counts differ from the 2D paper model.
+
+    As in the paper's overlap-tile strategy, reflection context is added outside
+    the valid-convolution core and the central output is cropped back to the
+    requested sequence length.
+    """
+
+    def __init__(self, ch, out_ch=3):
+        super().__init__()
+
+        def conv_block(ci, co):
+            return nn.Sequential(nn.Conv1d(ci, co, 3), nn.ReLU(inplace=True),
+                                 nn.Conv1d(co, co, 3), nn.ReLU(inplace=True))
+
+        self.pool = nn.MaxPool1d(2, 2)
+        self.e1 = conv_block(ch, 64)
+        self.e2 = conv_block(64, 128)
+        self.e3 = conv_block(128, 256)
+        self.e4 = conv_block(256, 512)
+        self.mid = conv_block(512, 1024)
+
+        self.u4 = nn.ConvTranspose1d(1024, 512, 2, stride=2)
+        self.d4 = conv_block(1024, 512)
+        self.u3 = nn.ConvTranspose1d(512, 256, 2, stride=2)
+        self.d3 = conv_block(512, 256)
+        self.u2 = nn.ConvTranspose1d(256, 128, 2, stride=2)
+        self.d2 = conv_block(256, 128)
+        self.u1 = nn.ConvTranspose1d(128, 64, 2, stride=2)
+        self.d1 = conv_block(128, 64)
+        self.out = nn.Conv1d(64, out_ch, 1)
+        self.apply(self._init_original)
+
+    @staticmethod
+    def _init_original(module):
+        if isinstance(module, (nn.Conv1d, nn.ConvTranspose1d)):
+            n = module.in_channels * module.kernel_size[0]
+            nn.init.normal_(module.weight, mean=0.0, std=np.sqrt(2.0 / n))
+            if module.bias is not None:
+                nn.init.zeros_(module.bias)
+
+    @staticmethod
+    def _center_crop(x, length):
+        extra = x.shape[-1] - length
+        if extra < 0:
+            raise ValueError(f"cannot crop length {x.shape[-1]} to {length}")
+        start = extra // 2
+        return x[..., start:start + length]
+
+    @staticmethod
+    def _core_output_length(length):
+        n = int(length)
+        for _ in range(4):
+            n -= 4
+            if n < 2:
+                return -1
+            n //= 2
+        n -= 4
+        if n < 1:
+            return -1
+        for _ in range(4):
+            n = 2 * n - 4
+        return n
+
+    @classmethod
+    def _padded_input_length(cls, output_length):
+        n = int(output_length)
+        while cls._core_output_length(n) < output_length:
+            n += 1
+        return n
+
+    def _forward_core(self, x):
+        e1 = self.e1(x)
+        e2 = self.e2(self.pool(e1))
+        e3 = self.e3(self.pool(e2))
+        e4 = self.e4(self.pool(e3))
+        z = self.mid(self.pool(e4))
+
+        z = self.u4(z)
+        z = self.d4(torch.cat([self._center_crop(e4, z.shape[-1]), z], 1))
+        z = self.u3(z)
+        z = self.d3(torch.cat([self._center_crop(e3, z.shape[-1]), z], 1))
+        z = self.u2(z)
+        z = self.d2(torch.cat([self._center_crop(e2, z.shape[-1]), z], 1))
+        z = self.u1(z)
+        z = self.d1(torch.cat([self._center_crop(e1, z.shape[-1]), z], 1))
+        return self.out(z)
+
+    def forward(self, x):
+        length = x.shape[-1]
+        padded = self._padded_input_length(length)
+        extra = padded - length
+        left, right = extra // 2, extra - extra // 2
+        if max(left, right) >= length:
+            raise ValueError(f"sequence length {length} is too short for reflection padding")
+        if extra:
+            x = F.pad(x, (left, right), mode="reflect")
+        return self._center_crop(self._forward_core(x), length)
 
 
 class WaveUNet(nn.Module):
@@ -204,9 +257,10 @@ def netout(model, x, p):
     return model(x) if p is None else p + model(torch.cat([x, p], 1))
 
 
-def fit(model, x, y, p, epochs, bs=64, lr=1e-3):
+def fit(model, x, y, p, epochs, bs=64, lr=1e-3,
+        weight_decay=0.0, grad_clip=None):
     model.to(DEV)
-    opt = torch.optim.Adam(model.parameters(), lr)
+    opt = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     for ep in range(epochs):
         tot = 0.0
         for b in torch.randperm(len(x)).split(bs):
@@ -215,6 +269,8 @@ def fit(model, x, y, p, epochs, bs=64, lr=1e-3):
             loss = F.mse_loss(netout(model, xb, pb), yb)
             opt.zero_grad()
             loss.backward()
+            if grad_clip is not None:
+                nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
             opt.step()
             tot += loss.item() * len(b)
         if ep % 10 == 9:
@@ -235,27 +291,48 @@ def score(pred, y):
 
 
 if __name__ == "__main__":
+    known = {"physics", "fir", "lstm", "unet", "unet1d", "waveunet"} | set(KALMAN_SPECS)
+    unknown = set(RUN_METHODS) - known
+    if unknown:
+        raise ValueError(f"unknown RUN_METHODS: {sorted(unknown)}")
+
     x, y, p, te, ids, xr, yr = load()
     print(f"{len(x)} episodes  train {(~te).sum()}  test {te.sum()}")
     xtr, ytr, ptr = x[~te], y[~te], p[~te]
     xte, yte, pte = x[te], y[te], p[te]
 
-    preds = {"physics": pte.numpy()}
+    preds = {}
+    if "physics" in RUN_METHODS:
+        preds["physics"] = pte.numpy()
     tn = te.numpy()
     kalman_params = {}
-    for name, control in (("kalman", True), ("kalman_nc", False)):
+    for name, (kf_class, control) in KALMAN_SPECS.items():
+        if name not in RUN_METHODS:
+            continue
         print(name)
-        km = Kalman.fit(xr[~tn], yr[~tn], control=control)
+        km = kf_class.fit(xr[~tn], yr[~tn], fs=FS, control=control)
         kalman_params[name] = km.p
         kal = km.predict(xr)
         mk, sk = kal[~tn].mean((0, 2), keepdims=True), kal[~tn].std((0, 2), keepdims=True)
         preds[name] = ((kal - mk) / sk)[tn]
-    ch = len(X_CH) + 3
-    models = {"fir": (FIR(ch), 20, True), "unet": (UNet(ch), 40, True),
-              "waveunet": (WaveUNet(len(X_CH)), 40, False)}
-    for name, (model, epochs, residual) in models.items():
+    ch = len(X_CH) + len(Y_CH)
+    model_specs = {
+        "fir": (lambda: FIR(ch), 20, True, {}),
+        "lstm": (lambda: LSTM(len(X_CH), len(Y_CH)), 45, False,
+                 {"bs": 32, "lr": 5e-3, "weight_decay": 0.0, "grad_clip": 1.0}),
+        "unet": (lambda: UNet(ch), 40, True, {}),
+        "unet1d": (lambda: UNet1D(len(X_CH)), 40, False, {}),
+        "waveunet": (lambda: WaveUNet(len(X_CH)), 40, False, {}),
+    }
+    models = {}
+    for name, (make_model, epochs, residual, fit_kwargs) in model_specs.items():
+        if name not in RUN_METHODS:
+            continue
+        model = make_model()
+        models[name] = (model, epochs, residual)
         print(name)
-        preds[name] = predict(fit(model, xtr, ytr, ptr if residual else None, epochs),
+        preds[name] = predict(fit(model, xtr, ytr, ptr if residual else None,
+                                  epochs, **fit_kwargs),
                               xte, pte if residual else None)
 
     print(f"\n{'':8s}" + "".join(f"{c:>28s}" for c in Y_CH))
@@ -264,9 +341,11 @@ if __name__ == "__main__":
         print(f"{name:8s}" + "".join(f"     {m:.3f} [{l:.3f}, {h:.3f}]" for m, l, h in zip(med, lo, hi)))
 
     OUT.mkdir(parents=True, exist_ok=True)
-    np.savez(OUT / "reconstruction_predictions.npz", y=yte.numpy(), ids=ids[te.numpy()],
-             kalman_params=kalman_params["kalman"], kalman_nc_params=kalman_params["kalman_nc"], **preds)
-    torch.save({name: m.state_dict() for name, (m, _, _) in models.items()}, OUT / "models.pt")
+    save_data = {"y": yte.numpy(), "ids": ids[te.numpy()], **preds}
+    save_data.update({f"{name}_params": params for name, params in kalman_params.items()})
+    np.savez(OUT / "reconstruction_predictions.npz", **save_data)
+    if models:
+        torch.save({name: m.state_dict() for name, (m, _, _) in models.items()}, OUT / "models.pt")
     true_bounce = yte.numpy()[:, 0]
     print(f"\nbounce stats corr (test episodes)\n{'':8s}" + "".join(f"{s:>16s}" for s in BOUNCE_STATS))
     for name, pr in preds.items():

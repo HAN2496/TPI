@@ -14,8 +14,8 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from core import seed_all
 from loader import Dataset, View
-from models.copl.similarity.vae import Conv1dVAE
-from models.copl.similarity.ae import Conv1dAE
+from reward.copl.similarity.vae import Conv1dVAE
+from reward.copl.similarity.ae import Conv1dAE
 
 
 @dataclass

@@ -7,13 +7,13 @@ import torch.nn.functional as F
 class RewardModel(nn.Module):
     uses_user_embedding = True
 
-    def __init__(self, obs_dim, user_dim, hidden=128, mlp_hidden=128):
+    def __init__(self, obs_dim, user_dim, hidden=128, mlp_hidden=128, dropout=0.0):
         super().__init__()
         self.obs_proj = nn.Linear(obs_dim, hidden)
         self.user_proj = nn.Linear(user_dim, hidden)
         self.mlp = nn.Sequential(
-            nn.Linear(hidden, mlp_hidden), nn.ReLU(),
-            nn.Linear(mlp_hidden, hidden), nn.ReLU(),
+            nn.Linear(hidden, mlp_hidden), nn.ReLU(), nn.Dropout(dropout),
+            nn.Linear(mlp_hidden, hidden), nn.ReLU(), nn.Dropout(dropout),
         )
         self.head = nn.Linear(hidden, 1)
 
@@ -48,7 +48,7 @@ class ObsOnlyRewardModel(nn.Module):
 class CNNRewardModel(nn.Module):
     uses_user_embedding = True
 
-    def __init__(self, obs_dim, user_dim, hidden=128, mlp_hidden=128, kernel_size=3, layers=2):
+    def __init__(self, obs_dim, user_dim, hidden=128, mlp_hidden=128, kernel_size=3, layers=2, dropout=0.0):
         super().__init__()
         self.obs_proj = nn.Linear(obs_dim, hidden)
         self.user_proj = nn.Linear(user_dim, hidden)
@@ -57,10 +57,11 @@ class CNNRewardModel(nn.Module):
         for _ in range(layers):
             conv_layers.append(nn.Conv1d(hidden, hidden, kernel_size=kernel_size, padding=kernel_size // 2))
             conv_layers.append(nn.LeakyReLU())
+            conv_layers.append(nn.Dropout(dropout))
         self.conv = nn.Sequential(*conv_layers)
 
         self.head = nn.Sequential(
-            nn.Linear(hidden, mlp_hidden), nn.LeakyReLU(),
+            nn.Linear(hidden, mlp_hidden), nn.LeakyReLU(), nn.Dropout(dropout),
             nn.Linear(mlp_hidden, 1)
         )
 

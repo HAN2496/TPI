@@ -11,6 +11,7 @@ requires-python = ">=3.12"
 dependencies = [
     "captum",
     "gymnasium[mujoco]>=1.2.3",
+    "hamiltorch",
     "higher>=0.2.1",
     "matplotlib>=3.10.7",
     "numba>=0.63.1",
@@ -37,10 +38,11 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["loader*", "core*", "models*"]
+include = ["loader*", "core*", "reward*", "envs*", "oracle*"]
 
 [tool.uv.sources]
 torch = [{ index = "pytorch-cu126", marker = "sys_platform == 'linux' or sys_platform == 'win32'" }]
+hamiltorch = { git = "https://github.com/AdamCobb/hamiltorch" }
 
 [[tool.uv.index]]
 name = "pytorch-cu126"

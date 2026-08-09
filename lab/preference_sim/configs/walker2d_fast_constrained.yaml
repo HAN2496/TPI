@@ -1,0 +1,81 @@
+name: competence_fast_constrained
+seed: 42
+data_root: data/runs
+
+environment:
+  id: Walker2d-v5
+  horizon: 500
+  terminate_when_unhealthy: true
+  contact_force_scale: 1000.0
+
+# These competence terms are common to every user and are not inferred as
+# preference features. They keep style optimization inside the walking regime.
+reward:
+  mode: competence_style
+  style_scale: 1.0
+  healthy_bonus: 1.0
+  fall_penalty: 100.0
+
+styles:
+  params:
+    {v_ref: 1.0, v_fast: 3.0, foot_rest_height: 0.15, clearance_ref: 0.5,
+     bounce_sigma: 0.5, crouch_height: 1.0, crouch_sigma: 0.15}
+  archetypes:
+    fast: {sprint: 0.5}
+  pairs: []
+
+training:
+  pretrained_model: data/runs/competence_fast_stage1_20260801/policies/_pretrained/step_001001472.zip
+  pretrained_baseline_profile: baseline
+  pretrain_steps: 0
+  checkpoint_steps: [50000, 100000, 200000]
+  checkpoint_selection: {metric: mean_forward_speed, mode: max}
+  learning_rate: 0.0001
+  n_steps: 2048
+  batch_size: 64
+  n_epochs: 5
+  gamma: 0.99
+  gae_lambda: 0.95
+  ent_coef: 0.0
+  net_arch: [128, 128]
+  device: cpu
+  torch_num_threads: 2
+  profile_seed_stride: 0
+  verbose: 0
+
+competence:
+  required: true
+  evaluation_episodes: 20
+  evaluation_seed: 50042
+  min_completion_rate: 0.90
+  min_mean_length_fraction: 0.95
+  min_forward_speed: 0.8
+  require_final_profile_gate: true
+
+collection:
+  episodes_per_checkpoint: 25
+  action_noise_std: 0.0
+  selected_only: true
+  device: cpu
+
+quality:
+  max_fall_rate: 0.10
+  min_mean_length_fraction: 0.95
+  fail_on_quality: true
+  profile_effects:
+    - {feature: speed_mean, higher: fast, lower: baseline, min_difference: 0.05}
+
+feedback:
+  n_train_users: 20
+  n_test_users: 5
+  train_labels_per_user: 30
+  max_test_context: 15
+  theta_sd: 0.15
+  beta: 1.0
+  threshold_quantile: 0.5
+
+validation:
+  n_burnin: 80
+  n_samples: 160
+  newuser_n_iters: 4
+  spike_slab: false

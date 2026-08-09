@@ -1,0 +1,56 @@
+name: style_smoke
+seed: 42
+data_root: data/runs
+
+environment:
+  id: Walker2d-v5
+  horizon: 500
+  terminate_when_unhealthy: true
+  contact_force_scale: 1000.0
+
+# Mechanics check only: too little training to expect distinct or stable gaits.
+styles:
+  params:
+    {v_ref: 1.0, v_fast: 3.0, foot_rest_height: 0.15, clearance_ref: 0.5,
+     bounce_sigma: 0.5, crouch_height: 1.0, crouch_sigma: 0.15}
+  archetypes:
+    neutral: {neutral: 1.0}
+    strider: {strider: 1.0}
+    bouncer: {bouncer: 1.0}
+  pairs: [[strider, bouncer]]
+  pair_alphas: [0.5]
+
+training:
+  pretrain_steps: 60000
+  checkpoint_steps: [20000]
+  learning_rate: 0.0003
+  n_steps: 512
+  batch_size: 64
+  n_epochs: 5
+  gamma: 0.99
+  gae_lambda: 0.95
+  ent_coef: 0.0
+  net_arch: [128, 128]
+  device: cpu
+  torch_num_threads: 2
+  verbose: 0
+
+collection:
+  episodes_per_checkpoint: 15
+  action_noise_std: 0.02
+  device: cpu
+
+feedback:
+  n_train_users: 20
+  n_test_users: 5
+  train_labels_per_user: 30
+  max_test_context: 15
+  theta_sd: 0.15
+  beta: 1.0
+  threshold_quantile: 0.5
+
+validation:
+  n_burnin: 80
+  n_samples: 160
+  newuser_n_iters: 4
+  spike_slab: false

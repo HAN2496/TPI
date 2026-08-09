@@ -9,10 +9,10 @@ from torch.utils.data import DataLoader
 from loader import Dataset, View
 from core import (Run, evaluate_predictions, plot_sequential_auroc,
                       plot_training_curves, compute_sequential_aurocs)
-from models.vpl.vae import VAEModel
-from models.vpl.trainer import VPLTrainer, Annealer
-from models.vpl.utils import PreferenceDataset, convert_to_pairwise, compute_step_rewards
-from models.vpl import viz
+from reward.vpl.vae import VAEModel
+from reward.vpl.trainer import VPLTrainer, Annealer
+from reward.vpl.utils import PreferenceDataset, convert_to_pairwise, compute_step_rewards
+from reward.vpl import viz
 
 
 @dataclass

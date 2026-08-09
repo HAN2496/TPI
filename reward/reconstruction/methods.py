@@ -109,6 +109,17 @@ class FIR(nn.Module):
         return self.conv(x)
 
 
+class LSTM(nn.Module):
+    def __init__(self, ch, out_ch, hidden=96, layers=1, dropout=0.0):
+        super().__init__()
+        self.lstm = nn.LSTM(ch, hidden, num_layers=layers, batch_first=True, dropout=dropout)
+        self.out = nn.Linear(hidden, out_ch)
+
+    def forward(self, x):
+        z, _ = self.lstm(x.transpose(1, 2))
+        return self.out(z).transpose(1, 2)
+
+
 class UNet(nn.Module):
     def __init__(self, ch, w=32):
         super().__init__()
@@ -133,16 +144,27 @@ class UNet(nn.Module):
         return self.out(d1)
 
 
-def fit(model, x, y, p, epochs, device, bs=64, lr=1e-3):
+def netout(model, x, p=None):
+    """Run either a direct model or a physics-residual model."""
+    if p is None:
+        return model(x)
+    return p + model(torch.cat([x, p], 1))
+
+
+def fit(model, x, y, p, epochs, device, bs=64, lr=1e-3,
+        weight_decay=0.0, grad_clip=None):
     model.to(device)
-    opt = torch.optim.Adam(model.parameters(), lr)
+    opt = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     for ep in range(epochs):
         tot = 0.0
         for b in torch.randperm(len(x)).split(bs):
-            xb, yb, pb = x[b].to(device), y[b].to(device), p[b].to(device)
-            loss = F.mse_loss(pb + model(torch.cat([xb, pb], 1)), yb)
+            xb, yb = x[b].to(device), y[b].to(device)
+            pb = None if p is None else p[b].to(device)
+            loss = F.mse_loss(netout(model, xb, pb), yb)
             opt.zero_grad()
             loss.backward()
+            if grad_clip is not None:
+                nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
             opt.step()
             tot += loss.item() * len(b)
         if ep % 10 == 9:
@@ -153,5 +175,7 @@ def fit(model, x, y, p, epochs, device, bs=64, lr=1e-3):
 @torch.no_grad()
 def predict(model, x, p, device, bs=64):
     model.to(device).eval()
-    return torch.cat([p[b].to(device) + model(torch.cat([x[b].to(device), p[b].to(device)], 1))
-                      for b in torch.arange(len(x)).split(bs)]).cpu().numpy()
+    return torch.cat([
+        netout(model, x[b].to(device), None if p is None else p[b].to(device))
+        for b in torch.arange(len(x)).split(bs)
+    ]).cpu().numpy()

@@ -1,0 +1,72 @@
+name: style_pilot
+seed: 42
+data_root: data/runs
+
+environment:
+  id: Walker2d-v5
+  horizon: 500
+  terminate_when_unhealthy: true
+  contact_force_scale: 1000.0
+
+styles:
+  params:
+    {v_ref: 1.0, v_fast: 3.0, foot_rest_height: 0.15, clearance_ref: 0.5,
+     bounce_sigma: 0.5, crouch_height: 1.0, crouch_sigma: 0.15}
+  # Ground styles carry a glider share (glider = contact-gated smoothness, so it
+  # actively suppresses flight); strider/sprinter/bouncer/hopper are aerial gaits.
+  archetypes:
+    neutral:  {neutral: 1.0}
+    sprinter: {sprint: 1.0}
+    strider:  {strider: 0.8, glider: 0.2}
+    shuffler: {shuffler: 0.7, glider: 0.3}
+    bouncer:  {bouncer: 1.0}
+    glider:   {glider: 1.0}
+    hopper:   {hopper: 1.0}
+    croucher: {croucher: 0.7, glider: 0.3}
+  # Interpolations: style-to-style plus mild variants via the neutral corner.
+  pairs:
+    - [strider, bouncer]
+    - [strider, neutral]
+    - [bouncer, neutral]
+    - [glider, croucher]
+    - [shuffler, croucher]
+    - [sprinter, glider]
+  pair_alphas: [0.5]
+
+training:
+  # Reuse the robust pure-neutral walker from the first pilot instead of
+  # re-running the 1M-step pretraining on every sweep iteration.
+  pretrained_model: data/runs/style_pilot/policies/_pretrained/step_001000448.zip
+  pretrain_steps: 1000000
+  checkpoint_steps: [300000]
+  learning_rate: 0.0003
+  n_steps: 1024
+  batch_size: 128
+  n_epochs: 8
+  gamma: 0.99
+  gae_lambda: 0.95
+  ent_coef: 0.0
+  net_arch: [128, 128]
+  device: cpu
+  torch_num_threads: 2
+  verbose: 0
+
+collection:
+  episodes_per_checkpoint: 15
+  action_noise_std: 0.02
+  device: cpu
+
+feedback:
+  n_train_users: 28
+  n_test_users: 7
+  train_labels_per_user: 60
+  max_test_context: 20
+  theta_sd: 0.15
+  beta: 1.0
+  threshold_quantile: 0.5
+
+validation:
+  n_burnin: 100
+  n_samples: 240
+  newuser_n_iters: 6
+  spike_slab: false

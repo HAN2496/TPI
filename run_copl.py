@@ -7,25 +7,30 @@ from torch.utils.data import DataLoader
 from loader import Dataset, View
 from core import (Run, split_ctx, grid, Track,
                       evaluate_predictions, plot_sequential_auroc, plot_training_curves)
-from models.copl.dataset import CoPLGraphDataset
-from models.copl.gcf import CoPLGCF
-from models.copl.rm import (RewardModel, CNNRewardModel, MoLECNNRewardModel,
+from reward.copl.dataset import CoPLGraphDataset
+from reward.copl.gcf import CoPLGCF
+from reward.copl.rm import (RewardModel, CNNRewardModel, MoLECNNRewardModel,
                          PreferenceTransformerRewardModel, RMEdgeDataset, rm_collate)
-from models.copl.similarity import build_similarity
-from models.copl.trainer import CoPLGCFTrainer, CoPLRMTrainer
-from models.copl import viz
+from reward.copl.bayesian_reward_models import (BayesianRM, EnsembleRM, HMCPosteriorRM,
+                                                MCDropoutRM, hmc_sample)
+from reward.copl.similarity import build_similarity
+from reward.copl.trainer import CoPLGCFTrainer, CoPLRMTrainer
+from reward.copl import viz
 
 
 
 
 @dataclass
 class Config:
-    train: tuple = ("조현석", "한규택", "박재일", "이지환", "강신길")
-    test: tuple = ("김재호", "김진명", "김태근", "신민철", "이강근")
+    train: tuple = ("김진명", "조현석", "박재일", "한규택", "이지환")
+    test: tuple = ("강신길",)
+    # train: tuple = ("조현석", "한규택", "박재일", "이지환", "강신길")
+    # test: tuple = ("김재호", "김진명", "김태근", "신민철", "이강근")
     view: View = View(
-        features=("Pitch_rate_6D", "Bounce_rate_6D", "IMU_LongAccelVal", "IMU_LatAccelVal",
-                  "IMU_YawRtVal", "Roll_rate_6D", "SAS_AnglVal", "SAS_SpdVal", "IMU_RollRtVal",
-                  "VCU_AccPedDepVal", "IEB_StrkDpthPcVal", "IEB_BrkActvSta", "IEB_EstTtlBrkFrcNmV"),
+        features=("Pitch_rate_6D", "Bounce_rate_6D", "IMU_LongAccelVal", "Roll_rate_6D",),
+        # features=("Pitch_rate_6D", "Bounce_rate_6D", "IMU_LongAccelVal", "IMU_LatAccelVal",
+        #           "IMU_YawRtVal", "Roll_rate_6D", "SAS_AnglVal", "SAS_SpdVal", "IMU_RollRtVal",
+        #           "VCU_AccPedDepVal", "IEB_StrkDpthPcVal", "IEB_BrkActvSta", "IEB_EstTtlBrkFrcNmV"),
         around=(-1, 1.5), downsample=5, smooth=(15.0, 2))
     normalize: bool = True
     val_size: float = 0.1
@@ -93,6 +98,17 @@ class Config:
     rm_num_heads: int = 8
     rm_max_len: int = 1000
 
+    # Bayesian RM (mlp/cnn 전용)
+    rm_bayes: str = "none"                     # "none" | "mc_dropout" | "ensemble" | "hmc"
+    rm_dropout: float = 0.0                    # mc_dropout이면 >0으로
+    rm_mc_samples: int = 30
+    rm_ensemble_k: int = 5
+    rm_prior_std: float = 1.0
+    hmc_step_size: float = 0.0005
+    hmc_leapfrog: int = 30
+    hmc_num_samples: int = 100
+    hmc_burn: int = 50
+
     # Test-time adaptation
     adapt_topk: int = 30
     adapt_use_neg: bool = True
@@ -105,10 +121,11 @@ class Config:
 
 
 RM_MODELS = {
-    "mlp": lambda cfg, obs: RewardModel(obs_dim=obs, user_dim=cfg.gcf_emb_dim, hidden=cfg.rm_mlp_hidden),
+    "mlp": lambda cfg, obs: RewardModel(obs, cfg.gcf_emb_dim, hidden=cfg.rm_mlp_hidden,
+                                        dropout=cfg.rm_dropout),
     "cnn": lambda cfg, obs: CNNRewardModel(obs_dim=obs, user_dim=cfg.gcf_emb_dim, hidden=cfg.rm_hidden,
                                            mlp_hidden=cfg.rm_mlp_hidden, kernel_size=cfg.rm_kernel_size,
-                                           layers=cfg.rm_layers),
+                                           layers=cfg.rm_layers, dropout=cfg.rm_dropout),
     "mole_cnn": lambda cfg, obs: MoLECNNRewardModel(obs_dim=obs, user_dim=cfg.gcf_emb_dim, hidden=cfg.rm_hidden,
                                                     mlp_hidden=cfg.rm_mlp_hidden, kernel_size=cfg.rm_kernel_size,
                                                     layers=cfg.rm_layers, num_experts=cfg.rm_num_experts,
@@ -149,7 +166,7 @@ def build_gcf(cfg, gds, device):
                   dropout=cfg.gcf_dropout, l=cfg.gcf_layers,
                   item_item_adj_norm=gds.Aii_norm, item_item_weight=cfg.item_item_weight)
     if cfg.gcf_model == "gcf_gcn":
-        from models.copl.gcf_gcn import CoPLGCF_PyG
+        from reward.copl.gcf_gcn import CoPLGCF_PyG
         return CoPLGCF_PyG(**common).to(device)
 
     Z = torch.tensor(gds.Z_train, dtype=torch.float32)
@@ -189,19 +206,53 @@ def train(cfg, run, gds, gcf, rm, device):
                             batch_size=cfg.rm_batch_size, shuffle=False, collate_fn=rm_collate)
 
     rm_path = load_path(cfg, run, "rm")
-    if rm_path is None:
-        print("\n[2] Training Reward Model...")
-        trainer = CoPLRMTrainer(rm, {
-            "device": cfg.device, "rm_lr": cfg.rm_lr,
-            "rm_weight_decay": cfg.rm_weight_decay, "rm_lambda_reg": cfg.rm_lambda_reg,
-            "rm_epochs": cfg.rm_epochs, "use_pos_weight": cfg.use_pos_weight,
-        }, log_dir=run.dir)
-        rm_auc, rm_hist = trainer.train(train_loader, val_loader, E_u, gds.tr_y, verbose=cfg.verbose)
-        print(f"  RM Best Val AUC: {rm_auc:.4f}")
+    rm_cfg = {"device": cfg.device, "rm_lr": cfg.rm_lr,
+              "rm_weight_decay": cfg.rm_weight_decay, "rm_lambda_reg": cfg.rm_lambda_reg,
+              "rm_epochs": cfg.rm_epochs, "use_pos_weight": cfg.use_pos_weight}
+
+    if cfg.rm_bayes == "ensemble":
+        members, aucs, hists = [], [], []
+        for k in range(cfg.rm_ensemble_k):
+            m = rm if k == 0 else RM_MODELS[cfg.rm_model](cfg, gds.obs_dim).to(device)
+            if rm_path is None:
+                print(f"\n[2] Training Reward Model (ensemble {k + 1}/{cfg.rm_ensemble_k})...")
+                auc_k, hist_k = CoPLRMTrainer(m, rm_cfg, log_dir=run.dir, checkpoint_name=f"best_rm_{k}.pt").train(
+                    train_loader, val_loader, E_u, gds.tr_y, verbose=cfg.verbose)
+                aucs.append(auc_k)
+                hists.append(hist_k)
+            else:
+                print(f"\n[2] Loading Reward Model (ensemble {k + 1}/{cfg.rm_ensemble_k}) from {rm_path}...")
+                m.load_state_dict(torch.load(rm_path / f"best_rm_{k}.pt", map_location=device, weights_only=True))
+            members.append(m)
+        rm = EnsembleRM(members)
+        rm_auc = float(np.mean(aucs)) if aucs else float("nan")
+        rm_hist = {key: np.mean([h[key] for h in hists], axis=0) for key in hists[0]} if hists else {}
     else:
-        print(f"\n[2] Loading Reward Model from {rm_path}...")
-        rm.load_state_dict(torch.load(rm_path / "best_rm.pt", map_location=device, weights_only=True))
-        rm_auc, rm_hist = float("nan"), {}
+        if rm_path is None:
+            print("\n[2] Training Reward Model...")
+            rm_auc, rm_hist = CoPLRMTrainer(rm, rm_cfg, log_dir=run.dir).train(
+                train_loader, val_loader, E_u, gds.tr_y, verbose=cfg.verbose)
+            print(f"  RM Best Val AUC: {rm_auc:.4f}")
+        else:
+            print(f"\n[2] Loading Reward Model from {rm_path}...")
+            rm.load_state_dict(torch.load(rm_path / "best_rm.pt", map_location=device, weights_only=True))
+            rm_auc, rm_hist = float("nan"), {}
+
+        if cfg.rm_bayes == "mc_dropout":
+            rm = MCDropoutRM(rm, cfg.rm_mc_samples)
+        elif cfg.rm_bayes == "hmc":
+            if rm_path is None:
+                print("\n[2b] HMC sampling around trained RM...")
+                u = E_u[torch.tensor(gds.tr_u, dtype=torch.long, device=device)]
+                obs = torch.tensor(gds.item_series[gds.tr_i], dtype=torch.float32, device=device)
+                y = torch.tensor(gds.tr_y, dtype=torch.float32, device=device)
+                pw = torch.tensor([(1 - gds.tr_y).sum() / max(1, gds.tr_y.sum())],
+                                  dtype=torch.float32, device=device) if cfg.use_pos_weight else None
+                samples = hmc_sample(rm, u, obs, y, cfg, pos_weight=pw)
+                torch.save(samples, run.dir / "rm_hmc_samples.pt")
+            else:
+                samples = torch.load(rm_path / "rm_hmc_samples.pt", map_location=device, weights_only=True)
+            rm = HMCPosteriorRM(rm, samples)
 
     hist = {}
     for src, tag in ((gcf_hist, "gcf"), (rm_hist, "rm")):
@@ -211,7 +262,7 @@ def train(cfg, run, gds, gcf, rm, device):
     if hist:
         plot_training_curves(hist, run.plots / "training_curves.png", title="CoPL Training")
     run.metrics["train/val_auroc"] = {"gcf": gcf_auc, "rm": rm_auc}
-    return E_u, E_i
+    return E_u, E_i, rm
 
 
 def eval_driver(cfg, gds, rm, E_u, E_i, name, X, y, device):
@@ -227,15 +278,23 @@ def eval_driver(cfg, gds, rm, E_u, E_i, name, X, y, device):
     pcts = {t: p for t, p in pcts.items() if t <= len(ctx_y)}
 
     trk = Track(hold_y)
-    d = {"name": name, "holdout_y": hold_y, "snapshots": {}, "wu_history": []}
+    d = {"name": name, "holdout_y": hold_y, "snapshots": {}, "wu_history": [],
+         "epi_history": [], "ale_history": []}
     for t in grid(len(ctx_y)):
         _, neigh_idx, neigh_w = gds.attach_test_items(ctx_X[:t], E_i.cpu(), topk=cfg.adapt_topk, device=device)
         e_u, w_u = gds.adapt_test_user(ctx_y[:t], neigh_idx, neigh_w, E_u, device=device)
         d["wu_history"].append(w_u)
+        emb = e_u.unsqueeze(0).expand(len(hold_X), -1)
         with torch.no_grad():
-            probs = torch.sigmoid(rm(e_u.unsqueeze(0).expand(len(hold_X), -1), hold_obs)).cpu().numpy()
+            if isinstance(rm, BayesianRM):
+                p_mean, p_epi, p_ale = rm.uncertainty(emb, hold_obs)
+                probs, epi, ale = p_mean.cpu().numpy(), p_epi.cpu().numpy(), p_ale.cpu().numpy()
+            else:
+                probs, epi, ale = torch.sigmoid(rm(emb, hold_obs)).cpu().numpy(), None, None
+        d["epi_history"].append(epi)
+        d["ale_history"].append(ale)
         if trk.add(t, probs):
-            d["best"] = dict(probs=probs, w_u=w_u, neigh_idx=neigh_idx, neigh_w=neigh_w,
+            d["best"] = dict(probs=probs, epi=epi, ale=ale, w_u=w_u, neigh_idx=neigh_idx, neigh_w=neigh_w,
                              ctx=t, auroc=trk.aurocs[-1])
         if t in pcts:
             print(f"  [Context {pcts[t]:>3}%] AUROC={trk.aurocs[-1]:.4f}")
@@ -272,6 +331,16 @@ def evaluate(cfg, run, gds, rm, E_u, E_i, test_data, device):
 
     plot_sequential_auroc([d["ctx_sizes"] for d in drivers], [d["aurocs"] for d in drivers],
                           plots, names, save_name="seq_auroc")
+
+    if isinstance(rm, BayesianRM):
+        viz.plot_uncertainty_vs_context([d["ctx_sizes"] for d in drivers],
+                                        [d["epi_history"] for d in drivers],
+                                        [d["ale_history"] for d in drivers],
+                                        names, plots / "uncertainty_vs_context.png")
+        viz.plot_uncertainty_correct_wrong([d["best"]["epi"] for d in drivers],
+                                           [d["best"]["ale"] for d in drivers],
+                                           [d["best"]["probs"] for d in drivers], ys, names,
+                                           plots / "uncertainty_correct_vs_wrong.png")
 
     ms = evaluate_predictions(ys, [d["best"]["probs"] for d in drivers], plots, names,
                               save_name="metrics_best", title="CoPL (best ctx per driver)")
@@ -339,7 +408,7 @@ def main(cfg=None):
     gcf = build_gcf(cfg, gds, device)
     rm = RM_MODELS[cfg.rm_model](cfg, gds.obs_dim).to(device)
 
-    E_u, E_i = train(cfg, run, gds, gcf, rm, device)
+    E_u, E_i, rm = train(cfg, run, gds, gcf, rm, device)
     evaluate(cfg, run, gds, rm, E_u, E_i, test_data, device)
     run.finish()
 

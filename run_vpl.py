@@ -9,10 +9,10 @@ from torch.utils.data import DataLoader
 from loader import Dataset, View
 from core import (Run, split_ctx, grid, Track,
                       evaluate_predictions, plot_sequential_auroc, plot_training_curves)
-from models.vpl.vae_binary import VAEModel
-from models.vpl.trainer import VPLTrainerBinary, Annealer
-from models.vpl.utils import PreferenceDataset, convert_to_binary_context
-from models.vpl import viz
+from reward.vpl.vae_binary import VAEModel
+from reward.vpl.trainer import VPLTrainerBinary, Annealer
+from reward.vpl.utils import PreferenceDataset, convert_to_binary_context
+from reward.vpl import viz
 
 
 @dataclass

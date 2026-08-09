@@ -12,7 +12,7 @@ sys.path.insert(0, str(ROOT))
 
 from run_fully_bayesian import Config
 from loader import Dataset, View
-from models.fully_bayesian.features import build_feature_pipeline
+from reward.fully_bayesian.features import build_feature_pipeline
 
 OUT = ROOT / "outputs/lab/fully_bayesian/label_consistency"
 ANOM_Q = 0.01          # 같은-라벨 쌍 거리의 하위 1% 보다 가까운 다른-라벨 쌍 = 모순

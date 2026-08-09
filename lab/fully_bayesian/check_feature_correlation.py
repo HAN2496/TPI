@@ -11,7 +11,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from run_fully_bayesian import Config
 from loader import Dataset
-from models.fully_bayesian.features import build_feature_pipeline
+from reward.fully_bayesian.features import build_feature_pipeline
 
 OUT = ROOT / "outputs/lab/fully_bayesian/feature_correlation"
 

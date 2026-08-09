@@ -1,13 +1,14 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import time
 import numpy as np
 import torch
 
 from loader import Dataset
 from core import Run
-from models.reconstruction import methods, viz
-from models.reconstruction.methods import physics, Kalman, FIR, UNet
-from models.fully_bayesian.features import FNS
+from reward.reconstruction import methods, viz
+from reward.reconstruction.config import KalmanConfig, LSTMConfig
+from reward.reconstruction.methods import physics, Kalman, FIR, LSTM, UNet
+from reward.fully_bayesian.features import FNS
 
 
 @dataclass
@@ -30,11 +31,12 @@ class Config:
     seed: int = 42
 
     fir_epochs: int = 20
+    # Driver-held-out sweep: 42,915 params; selected by the performance-size Pareto rule.
+    lstm: LSTMConfig = field(default_factory=LSTMConfig)
+    kalman: KalmanConfig = field(default_factory=KalmanConfig)
     unet_epochs: int = 40
-    kalman_warmup: int = 0
-    kalman_eta_t: bool = False
-    methods: tuple = ("physics", "kalman", "fir", "unet")   # 피팅·평가·저장할 method
-    show: tuple = ("physics", "kalman", "fir", "unet")      # 시각화할 method (methods의 부분집합), 마지막이 기준
+    methods: tuple = ("physics", "kalman", "fir", "unet")   # 사용 가능: physics/kalman/fir/lstm/unet
+    show: tuple = ("physics", "kalman", "fir", "unet")      # methods의 부분집합, 마지막이 시각화 기준
 
 
 def load(ds, cfg):
@@ -53,8 +55,12 @@ def load(ds, cfg):
 
 
 def main(cfg=None, run=None):
-    # run 지정 시 외부 run 폴더에 산출물 저장 (run_fully_bayesian의 recon_timestamp=None 인라인 학습용)
+    # run 지정 시 외부 run 폴더에 산출물 저장 (run_fully_bayesian의 recon.timestamp=None 인라인 학습용)
     cfg = cfg or Config()
+    available = {"physics", "kalman", "fir", "lstm", "unet"}
+    unknown = set(cfg.methods) - available
+    if unknown:
+        raise ValueError(f"unknown reconstruction methods: {sorted(unknown)}")
     if set(cfg.show) - set(cfg.methods):
         raise ValueError(f"show에 피팅하지 않는 method 포함: {sorted(set(cfg.show) - set(cfg.methods))}")
     standalone = run is None
@@ -75,31 +81,40 @@ def main(cfg=None, run=None):
     print(f"Load + Physics Done. ({time.time() - tic:.2f} sec)")
 
     preds = {}
-    ch = len(cfg.x_channels) + 3
+    ch = len(cfg.x_channels) + len(cfg.y_channels)
     state = torch.load(run.dir / "models.pt", weights_only=False) if run.eval_only else {}
     if "physics" in cfg.methods:
         preds["physics"] = p.numpy()
     if "kalman" in cfg.methods:
         if run.eval_only:
-            km = Kalman(state["kalman"], cfg.fs, cfg.kalman_warmup)
+            km = Kalman(state["kalman"], cfg.fs, cfg.kalman.warmup)
         else:
             print("kalman")
-            km = Kalman.fit(xr[~te], yr[~te], cfg.fs, cfg.kalman_warmup, cfg.kalman_eta_t)
+            km = Kalman.fit(xr[~te], yr[~te], cfg.fs, cfg.kalman.warmup, cfg.kalman.eta_t)
             state["kalman"] = km.p
         kal = km.predict(xr)
         mk, sk = kal[~te].mean((0, 2), keepdims=True), kal[~te].std((0, 2), keepdims=True)
         preds["kalman"] = (kal - mk) / sk
-    for name, cls, epochs in (("fir", FIR, cfg.fir_epochs), ("unet", UNet, cfg.unet_epochs)):
+    model_specs = (
+        ("fir", lambda: FIR(ch), cfg.fir_epochs, True, {}),
+        ("lstm", lambda: LSTM(len(cfg.x_channels), len(cfg.y_channels),
+                              **cfg.lstm.model_kwargs()),
+         cfg.lstm.epochs, False, cfg.lstm.fit_kwargs()),
+        ("unet", lambda: UNet(ch), cfg.unet_epochs, True, {}),
+    )
+    for name, make_model, epochs, residual, fit_kwargs in model_specs:
         if name not in cfg.methods:
             continue
-        net = cls(ch)
+        net = make_model()
         if run.eval_only:
             net.load_state_dict(state[name])
         else:
-            print(name)
-            methods.fit(net, x[~tt], y[~tt], p[~tt], epochs, cfg.device)
+            n_params = sum(v.numel() for v in net.parameters())
+            print(f"{name}  params={n_params:,}")
+            methods.fit(net, x[~tt], y[~tt], p[~tt] if residual else None,
+                        epochs, cfg.device, **fit_kwargs)
             state[name] = net.state_dict()
-        preds[name] = methods.predict(net, x, p, cfg.device)
+        preds[name] = methods.predict(net, x, p if residual else None, cfg.device)
     if not run.eval_only:
         torch.save(state, run.dir / "models.pt")
 
