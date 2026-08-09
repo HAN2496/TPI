@@ -135,15 +135,15 @@ class Users:
 
 ARCHETYPES = {
     "pitch_averse": dict(step={"pitch_rate_sq": 0.85, "long_accel_sq": 0.15},
-                         mu=-1.00, T=0.25),
+                         mu=-1.00, T=0.18),
     "long_averse": dict(step={"pitch_rate_sq": 0.25, "long_accel_sq": 0.75},
-                        mu=-1.00, T=0.30),
+                        mu=-1.00, T=0.25),
     "rms_averse": dict(episode={"pitch_rate_rms": 0.70, "long_accel_rms": 0.30},
-                       mu=-1.00, T=0.20),
+                       mu=-1.00, T=0.10),
     "peak_averse": dict(episode={"pitch_rate_p2p": 0.60, "long_accel_p2p": 0.40},
-                        mu=-0.85, T=0.20),
+                        mu=-0.85, T=0.12),
     "balanced": dict(step={"pitch_rate_sq": 0.40, "long_accel_sq": 0.30},
-                     episode={"pitch_rate_p2p": 0.30}, mu=-1.10, T=0.40),
+                     episode={"pitch_rate_p2p": 0.30}, mu=-1.10, T=0.30),
 }
 
 MANUAL_STATS = {
