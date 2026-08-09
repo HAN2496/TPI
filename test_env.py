@@ -12,10 +12,9 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from envs.vmc import VMCEnv, episode_features
-from envs.vmc.users import USERS, User
-from oracle import calibrate
-from oracle.base import sigmoid
+from envs.vmc import VMCEnv
+from envs.vmc.features import rms
+from envs.vmc.users import ARCHETYPES, Users
 
 OUT = Path("outputs/test_env")
 PARAMS = ({"controller": "p", "kp": 100.0},          # q_diag index 1 = dtheta (STATE_KEYS 순서)
@@ -27,9 +26,9 @@ def rollout():
     env = VMCEnv()
     for params in PARAMS:
         tau = env.rollout(params, n=1, seed=0)[0]
-        f = episode_features(tau)
         print(f"[{params['controller']:3s}] T={len(tau)}  channels={len(tau.channels)}  "
-              f"pitch_rms={f['pitch_rate_rms']:.5f}  long_rms={f['long_accel_rms']:.4f}  "
+              f"pitch_rms={rms(tau.channels['dtheta']):.5f}  "
+              f"long_rms={rms(tau.channels['ddx_com']):.4f}  "
               f"env_return={tau.channels['env_reward'].sum():.3f}")
 
 
@@ -37,7 +36,7 @@ def sweep():
     env = VMCEnv()
     for kp in (0.0, 50.0, 150.0):                    # kp=0 = 무개입 기준선
         taus = env.rollout({"controller": "p", "kp": kp}, n=2, seed=0)
-        pr = np.mean([episode_features(t)["pitch_rate_rms"] for t in taus])
+        pr = np.mean([rms(t.channels["dtheta"]) for t in taus])
         print(f"kp={kp:5.0f}: pitch_rate_rms={pr:.5f}")
 
 
@@ -51,30 +50,25 @@ def _bank(env, episodes=5):
 
 
 def feasible():
-    """User 설계 보상의 feasible 점검:
-      spread     — R(τ)가 뱅크에서 퍼지는가 (0이면 식별 불가)
-      base_corr  — R이 base 승차감 보상과 양의 상관인가 (음수면 진동 선호 = 비합리)
-      informative— p=σ(β·R)가 0/1로 포화되지 않은 비율 (β=1 기준)."""
     taus = _bank(VMCEnv())
     base = np.asarray([t.channels["env_reward"].sum() for t in taus])
-    print(f"bank: {len(taus)} eps")
+    specs = {**ARCHETYPES, "irrational_shaky": dict(step={"pitch_rate_sq": -1.0}, mu=1.0, T=0.25)}
+    users = Users.designed(specs)
+    print(f"bank: {len(taus)} eps  {users!r}")
 
-    cases = {**USERS, "irrational_shaky": User("irrational_shaky", step={"dtheta": -75.0})}
-    calibrate(list(cases.values()), taus)
-    for name, u in cases.items():
-        R = np.asarray([u.R(t) for t in taus])
-        p = sigmoid(R)
-        base_corr = float(np.mean((R - R.mean()) * (base - base.mean()))
-                          / max(R.std() * base.std(), 1e-12))
-        informative = float(np.mean((0.05 < p) & (p < 0.95)))
-        flag = "OK " if base_corr >= -0.1 and R.std() > 0.05 else "X  "
-        print(f"  {flag}{name:17s} spread={R.std():.3f}  base_corr={base_corr:+.2f}  informative={informative:.2f}"
-              f"  r_step_mean={u.r_step(taus[0]).mean():+.3f}")
+    stats = users.summary(taus, ref=base)
+    bad = [n for n, m in stats.items() if m["corr"] < -0.1 or m["R_std"] < 0.05]
+    print(f"  verdict: {'OK' if not bad else 'X  ' + ', '.join(bad)}")
+    print("  r_step mean(tau0): " + "  ".join(
+        f"{u.name}={u.r_step(taus[0]).mean():+.3f}" for u in users))
 
-    R = np.asarray([USERS["pitch_averse"].R(t) for t in taus])
-    print("  beta sweep (pitch_averse): " + "  ".join(
-        f"b={b}: informative={np.mean((0.05 < sigmoid(b * R)) & (sigmoid(b * R) < 0.95)):.2f}"
-        for b in (1.0, 3.0, 10.0, 30.0)))
+    u, sweep, T0 = users["pitch_averse"], [], users["pitch_averse"].T
+    for T in (0.2, 0.5, 1.0, 2.0):
+        u.T = T
+        p = u.p_good(taus)
+        sweep.append(f"T={T}: informative={np.mean((0.05 < p) & (p < 0.95)):.2f}")
+    u.T = T0
+    print("  T sweep (pitch_averse): " + "  ".join(sweep))
 
 
 def plot():

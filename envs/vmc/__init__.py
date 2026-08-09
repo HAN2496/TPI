@@ -1,1 +1,2 @@
-from .rollout import CHANNELS, FEATURES, VMCEnv, episode_features
+from .features import EPISODE, NAMES, STEP
+from .rollout import CHANNELS, VMCEnv
