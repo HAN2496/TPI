@@ -50,7 +50,7 @@ class UserReward:
             slab_theta=self.slab_theta.copy(), gamma=self.gamma.copy(),
         )
  
-    def fit(self, Z, y, n_iters=None):
+    def fit(self, Z, y, n_iters=None, rng=None):
         """PG mini-Gibbs adaptation with population gamma fixed per draw."""
         pop = self.pop
         n_iters = n_iters or pop.newuser_n_iters
@@ -59,7 +59,7 @@ class UserReward:
         Sinv, Sinv_mu = pop._cache()
         M, d = self.slab_theta.shape
         Ij = pop.jitter * np.eye(d)
-        rng = np.random.default_rng()
+        rng = np.random.default_rng() if rng is None else rng
 
         eps = np.zeros((M, N))
         if not pop.spike_slab:
@@ -419,8 +419,9 @@ class Population:
             gamma=self.gamma_samples,
         )
 
-    def new_user(self, name="*"):
-        rng = np.random.default_rng(self.random_state + 1)
+    def new_user(self, name="*", seed=None):
+        seed = self.random_state + 1 if seed is None else seed
+        rng = np.random.default_rng(seed)
         M, d = self.n_samples, self.d
         Ij = self.jitter * np.eye(d)
         slab_theta = np.empty((M, d))

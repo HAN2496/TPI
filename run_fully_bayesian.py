@@ -20,7 +20,7 @@ from reward.reconstruction.config import KalmanConfig, LSTMConfig
 
 @dataclass
 class ReconstructionConfig:
-    methods: tuple = ("lstm",)  # ()=없음 | physics/kalman/fir/lstm/unet 조합
+    methods: tuple = ()  # ()=없음 | physics/kalman/fir/lstm/unet 조합
     timestamp: str = None       # None이면 현재 run에서 학습, 아니면 저장된 artifact 로드
     lstm: LSTMConfig = field(default_factory=LSTMConfig)
     kalman: KalmanConfig = field(default_factory=KalmanConfig)
@@ -28,10 +28,10 @@ class ReconstructionConfig:
 
 @dataclass
 class Config:
-    train: tuple = ("김진명", "조현석", "박재일", "한규택", "이지환")
-    test: tuple = ("강신길",)
-    # train: tuple = ("강신길", "조현석", "한규택", "박재일", "이지환")
-    # test: tuple = ("김재호", "김진명", "김태근", "신민철", "이강근")
+    # train: tuple = ("김진명", "조현석", "박재일", "한규택", "이지환")
+    # test: tuple = ("강신길",)
+    train: tuple = ("강신길", "조현석", "한규택", "박재일", "이지환")
+    test: tuple = ("김재호", "김진명", "김태근", "신민철", "이강근")
     view: View = View(
         features=("Pitch_rate_6D", "Bounce_rate_6D", "IMU_VerAccelVal", 
                   "IMU_LongAccelVal", "IMU_LatAccelVal"),
@@ -72,9 +72,9 @@ class Config:
         # "IMU_LongAccelVal": ["std", "wrms_xy", "impulse_abs", "crest"],
 
         # secondary
-        "Bounce_rate_6D": ["impulse_abs", "abs_peak_deriv", "p2p_deriv", "wrms_z_deriv"],
-        "IMU_VerAccelVal": ["p2p", "wrms_z", "crest", "vdv"],
-        "IMU_LongAccelVal": ["std", "wrms_xy", "impulse_abs", "crest"],
+        # "Bounce_rate_6D": ["impulse_abs", "abs_peak_deriv", "p2p_deriv", "wrms_z_deriv"],
+        # "IMU_VerAccelVal": ["p2p", "wrms_z", "crest", "vdv"],
+        # "IMU_LongAccelVal": ["std", "wrms_xy", "impulse_abs", "crest"],
 
     })
     manual_pca_dim: int = 20
@@ -329,7 +329,7 @@ def evaluate(cfg, run, phi, pop, train_data, test_data, pca):
                        for d in drivers}, f, ensure_ascii=False)
 
 
-def apply_recon(ds, art, method):
+def apply_reconstruction(ds, art, method):
     signals = art[method]                             # (E, 3, T) native 단위
     row = {i: k for k, i in enumerate(art["ids"])}
     for ep in ds.episodes:
@@ -392,7 +392,7 @@ def main(cfg=None):
 
     for v in variants:                                # true 먼저 (치환이 in-place라 순서 고정)
         if v != "true":
-            apply_recon(ds, art, v)
+            apply_reconstruction(ds, art, v)
         print(f"===== variant: {v} =====")
         seed_all(cfg.seed)                            # variant 간 동일 RNG 상태에서 시작 (공정 비교)
         sub = SimpleNamespace(dir=run.dir / v, plots=run.dir / v / "plots",

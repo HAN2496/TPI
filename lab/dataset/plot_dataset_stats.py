@@ -34,7 +34,7 @@ for i, total in enumerate(counts.sum(axis=1)):
     ax.text(i, ax.get_ylim()[1] * 0.96, f"Total: {total}", ha="center", weight="bold", fontsize=10)
 
 plt.tight_layout()
-out = root / "outputs/dataset_stats.png"
+out = root / "outputs/lab/dataset/dataset_stats.png"
 out.parent.mkdir(parents=True, exist_ok=True)
 plt.savefig(out, dpi=150)
 print(out)
