@@ -1,4 +1,7 @@
-1. 비슷한 성향 사람 pair가 있었는데 하나씩 빼놓고서 테스트 타임에 잘 나오는지 보기
-2. 두 명 다 떼놓고 training했는데 test 했을 때 어떻게 되는지 (미리 latent 안만들어놨는데도 잘 되는지)
-
-논문 쓴다고 생각하고 researching 문제를 만들면 
+1. kp=30~300 사이에서 data generation.
+   - 여러 사용자에 대해 데이터 수집
+   - test env에서 사용자별 하이퍼파라미터 테스트. (mu, T, good 비율, 여러 사용자별 weight 분포(현재 fully bayesian이 정규분포의 하이퍼파라미터를 갖고 있다고 가정했으므로 우리도 그렇게 생성할 예정))
+2. 이에 맞게 copl, fully bayesian rm 추정 (각 사용자별)
+3. rm을 최대화하는 gain scheduling or 최적화.
+   - CMA-ES를 통해 사용자가 가장 선호하는 p gain 찾기 (VMC 코드에서는 grid search)
+   - RL을 통해 사용자가 선호하는 scheduling

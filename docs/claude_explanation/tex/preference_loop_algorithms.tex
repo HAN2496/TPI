@@ -1,0 +1,121 @@
+% Standalone capture sheet for the preference-loop methodology.
+% Two-column IEEE layout; each algorithm box is column-width for slide capture.
+\documentclass[letterpaper,journal]{IEEEtran}
+
+\usepackage{amsmath,amsfonts,amssymb,bm}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{float}
+
+\newcommand{\Bern}{\operatorname{Bernoulli}}
+\newcommand{\E}{\mathbb{E}}
+\renewcommand{\thealgorithm}{\arabic{algorithm}}
+\pagestyle{empty}
+
+\begin{document}
+
+\section*{Preference Loop: Personalized Controller Optimization}
+
+Scenario $s$ (initial velocity, bump geometry), controller parameter
+$c \in \mathcal{C} = [30, 300]^P$, trajectory $\tau(c, s) = \mathrm{rollout}(c, s)$,
+episode feature $z = \phi(\tau) \in \mathbb{R}^D$, user preference
+$\bm\theta_i \in \mathbb{R}^D$. The user-optimal controller is
+\begin{equation*}
+  c_i^{*} = \arg\max_{c}\; \bm\theta_i^{\top} g(c),
+  \qquad
+  g(c) := \E_{s}\!\left[ z(c, s) \right],
+\end{equation*}
+and the loop replaces both unknowns with estimates:
+$\bm\theta_i \to \bar{\bm\theta}_i$ (hierarchical Bayes posterior mean) and
+$g \to \hat g$ (online: fixed-scenario Monte Carlo; offline: scenario-covariate
+regression).
+
+\begin{algorithm}[H]
+\caption{Preference data generation and reward estimation}
+\label{alg:data}
+\begin{algorithmic}[1]
+\FOR{user $i = 1, \dots, n$}
+  \FOR{episode $j = 1, \dots, N$}
+    \STATE $c_{ij} \sim U(\mathcal{C}), \qquad s_{ij} \sim p(s)$
+    \STATE $\tau_{ij} \leftarrow \mathrm{rollout}(c_{ij}, s_{ij})$
+    \STATE $z_{ij} \leftarrow \phi(\tau_{ij})$
+    \STATE $y_{ij} \sim \Bern\!\left(\sigma(\bm\theta_i^{\top} z_{ij})\right)$
+  \ENDFOR
+\ENDFOR
+\STATE $\{\bar{\bm\theta}_i\}_{i=1}^{n} \leftarrow
+       \mathrm{HierBayesFit}\big(\{(z_{ij}, y_{ij})\}\big)$
+\STATE $S_{\mathrm{eval}} \leftarrow \{s'_1, \dots, s'_K\}$
+       \COMMENT{held-out scenarios}
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Search subroutines (return a maximizer of $J$)}
+\label{alg:search}
+\begin{algorithmic}[1]
+\STATE \textbf{function} $\mathrm{Grid}(J)$
+\STATE \quad $\mathcal{G} \leftarrow$ linspace grid over $\mathcal{C}$
+       \COMMENT{$20^{P}$ candidates}
+\STATE \quad \textbf{return} $\arg\max_{c \in \mathcal{G}} J(c)$
+\STATE
+\STATE \textbf{function} $\mathrm{CMAES}(J)$
+       \COMMENT{normalized $[0,1]^P$ space}
+\STATE \quad $m \leftarrow 0.5, \quad \sigma \leftarrow 0.25, \quad C \leftarrow I$
+\STATE \quad \textbf{for} generation $= 1, \dots, 15$ \textbf{do}
+\STATE \quad\quad sample $x_1, \dots, x_8 \sim \mathcal{N}(m, \sigma^2 C)$
+\STATE \quad\quad decode each $x_k$ into $\mathcal{C}$, score $J(x_k)$
+\STATE \quad\quad update $(m, \sigma, C)$ toward top-ranked $x_k$
+\STATE \quad \textbf{return} $\mathrm{decode}(m)$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Online optimization}
+\label{alg:online}
+\begin{algorithmic}[1]
+\STATE $S_{\mathrm{opt}} \leftarrow \{s_1, \dots, s_M\}$
+\FOR{user $i = 1, \dots, n$}
+  \STATE $\!\begin{aligned}[t]
+         \hat J_i(c) &:= \E_{\theta_i \mid \mathcal{D}}\!\Big[
+           \tfrac{1}{M} \textstyle\sum_{s \in S_{\mathrm{opt}}}
+           \theta_i^{\top} z(c, s) \Big] \\
+         &\;= \tfrac{1}{M} \textstyle\sum_{s \in S_{\mathrm{opt}}}
+           \bar{\bm\theta}_i^{\top} z(c, s)
+         \end{aligned}$
+         \COMMENT{linear reward}
+  \STATE $\hat c_i \leftarrow \mathrm{Search}(\hat J_i)$
+         \COMMENT{$\mathrm{Search} \in \{\mathrm{Grid}, \mathrm{CMAES}\}$}
+\ENDFOR
+\RETURN $\displaystyle \{\hat c_i\}_{i=1}^{n}, \qquad
+        \hat c_i = \arg\max_{c \,\in\, \mathcal{C}} \hat J_i(c)$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Offline optimization and evaluation}
+\label{alg:offline}
+\begin{algorithmic}[1]
+\STATE $\mathcal{D} \leftarrow \bigcup_{i \in \mathrm{train}}
+       \{(c_{ij}, s_{ij}, z_{ij})\}_{j=1}^{N}$
+       \COMMENT{pooled log, no rollouts}
+\STATE $\hat f \leftarrow \mathrm{fit}\big((c, s) \mapsto z;\ \mathcal{D}\big)$
+       \COMMENT{polynomial ridge}
+\STATE $\displaystyle \hat g(c) := \tfrac{1}{n} \sum_{j} \hat f(c, s_j)$
+       \COMMENT{logged scenarios = test course}
+\FOR{user $i = 1, \dots, n$}
+  \STATE $\hat J_i(c) := \bar{\bm\theta}_i^{\top} \hat g(c),
+         \qquad J^{*}_i(c) := \bm\theta_i^{\top} \hat g(c)$
+  \STATE $\hat c_i \leftarrow \mathrm{Search}(\hat J_i)$
+         \COMMENT{no rollouts}
+  \STATE $c_i^{\mathrm{oracle}} \leftarrow \mathrm{Search}(J^{*}_i)$
+  \STATE $\displaystyle J^{\mathrm{eval}}_i(c) :=
+         \tfrac{1}{K} \sum_{s \in S_{\mathrm{eval}}}
+         \bm\theta_i^{\top} z(c, s)$
+         \COMMENT{simulator only here}
+  \STATE $\mathrm{regret}_i \leftarrow
+         J^{\mathrm{eval}}_i(c_i^{\mathrm{oracle}}) - J^{\mathrm{eval}}_i(\hat c_i)$
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+\end{document}

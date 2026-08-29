@@ -1,0 +1,207 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="440" viewBox="0 0 1600 440" role="img" aria-labelledby="title desc">
+  <title id="title">Fully Bayesian personalized control pipeline</title>
+  <desc id="desc">Four-panel pipeline showing randomized closed-loop rollouts, multi-user binary feedback, a Gaussian population distribution with sample-based asymmetric user posterior marginals, and preference-aware gain control.</desc>
+
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#6b6b6b"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+      <path d="M0,0 L9,3.5 L0,7 Z" fill="#4e79a7"/>
+    </marker>
+    <symbol id="user" viewBox="0 0 40 52">
+      <circle cx="20" cy="12" r="9" fill="#454545"/>
+      <path d="M7 48 C8 31, 13 25, 20 25 C27 25, 32 31, 33 48 Z" fill="#454545"/>
+    </symbol>
+    <symbol id="vehicle" viewBox="0 0 120 62">
+      <path d="M15 39 L24 22 L43 16 L83 16 L101 29 L111 33 L111 45 L10 45 L10 39 Z" fill="#dfe9f4" stroke="#3f678d" stroke-width="3"/>
+      <path d="M47 19 L44 31 L82 31 L77 19 Z" fill="#ffffff" stroke="#3f678d" stroke-width="2"/>
+      <circle cx="32" cy="46" r="10" fill="#383838"/>
+      <circle cx="91" cy="46" r="10" fill="#383838"/>
+      <circle cx="32" cy="46" r="4" fill="#bdbdbd"/>
+      <circle cx="91" cy="46" r="4" fill="#bdbdbd"/>
+    </symbol>
+    <filter id="soft-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#000000" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="440" fill="#ffffff"/>
+
+  <!-- Stage panels -->
+  <g fill="#f7f7f7" stroke="#dfdfdf" stroke-width="1.5" filter="url(#soft-shadow)">
+    <rect x="30" y="24" width="345" height="322" rx="12"/>
+    <rect x="405" y="24" width="345" height="322" rx="12"/>
+    <rect x="780" y="24" width="390" height="322" rx="12"/>
+    <rect x="1200" y="24" width="370" height="322" rx="12"/>
+  </g>
+
+  <!-- Large arrows between panels -->
+  <g fill="none" stroke="#b9b9b9" stroke-width="3" marker-end="url(#arrow)">
+    <path d="M379 185 H399"/>
+    <path d="M754 185 H774"/>
+    <path d="M1174 185 H1194"/>
+  </g>
+
+  <!-- Panel 1: randomized closed-loop rollouts -->
+  <g font-family="Arial, Helvetica, sans-serif" fill="#303030">
+    <rect x="52" y="51" width="91" height="42" rx="7" fill="#ffffff" stroke="#8aa9c5" stroke-width="1.5"/>
+    <text x="98" y="69" text-anchor="middle" font-size="15" font-weight="700">P controller</text>
+    <text x="98" y="86" text-anchor="middle" font-size="15" fill="#4e79a7">kp = 30...300</text>
+    <path d="M145 72 H169" stroke="#4e79a7" stroke-width="2" marker-end="url(#arrow-blue)"/>
+    <use href="#vehicle" x="167" y="42" width="130" height="68"/>
+
+    <rect x="265" y="54" width="90" height="37" rx="18" fill="#ffffff" stroke="#b0b0b0"/>
+    <text x="310" y="69" text-anchor="middle" font-size="13" font-weight="700">random bumps</text>
+    <text x="310" y="84" text-anchor="middle" font-size="13">b_i ~ p(b)</text>
+
+    <path d="M51 151 H113 C125 151,128 124,141 124 C154 124,158 151,171 151 H353" fill="none" stroke="#555555" stroke-width="3"/>
+    <text x="201" y="173" text-anchor="middle" font-size="13" fill="#666666">independent random bump per rollout</text>
+
+    <g transform="translate(58 202)">
+      <text x="0" y="-10" font-size="13" font-weight="700">vehicle response</text>
+      <path d="M0 77 H282 M0 8 V77" stroke="#a6a6a6" stroke-width="1"/>
+      <path d="M3 56 C22 48,34 18,50 22 S79 63,98 53 S132 30,150 36 S181 61,201 50 S242 42,280 45" fill="none" stroke="#4e79a7" stroke-width="2.4"/>
+      <path d="M3 67 C27 66,43 46,61 51 S91 70,110 62 S143 40,163 47 S201 68,222 61 S253 52,280 57" fill="none" stroke="#e07b39" stroke-width="2.4"/>
+      <text x="190" y="19" font-size="12" fill="#4e79a7">pitch rate</text>
+      <text x="190" y="35" font-size="12" fill="#e07b39">long. accel.</text>
+      <text x="282" y="92" text-anchor="end" font-size="13" font-style="italic">tau(kp, b_i)</text>
+    </g>
+  </g>
+
+  <!-- Panel 2: feedback matrix -->
+  <g font-family="Arial, Helvetica, sans-serif" fill="#303030">
+    <text x="593" y="53" text-anchor="middle" font-size="14" font-weight="700">same ride set for every user</text>
+    <g font-size="12" fill="#5c5c5c" text-anchor="middle">
+      <text x="526" y="83">tau 1</text><text x="578" y="83">tau 2</text><text x="630" y="83">tau 3</text><text x="682" y="83">tau 4</text>
+    </g>
+
+    <!-- tiny trajectory thumbnails -->
+    <g fill="none" stroke="#7e98b0" stroke-width="1.4">
+      <path d="M507 99 C515 88,520 111,528 99 S540 105,545 96"/>
+      <path d="M559 99 C566 106,572 87,580 99 S592 108,598 94"/>
+      <path d="M611 99 C619 91,625 108,633 101 S645 90,650 98"/>
+      <path d="M663 99 C671 106,677 92,685 98 S697 111,702 94"/>
+    </g>
+
+    <g>
+      <use href="#user" x="439" y="118" width="36" height="47"/>
+      <use href="#user" x="439" y="184" width="36" height="47"/>
+      <use href="#user" x="439" y="250" width="36" height="47"/>
+      <text x="458" y="177" text-anchor="middle" font-size="12">u1</text>
+      <text x="458" y="243" text-anchor="middle" font-size="12">u2</text>
+      <text x="458" y="309" text-anchor="middle" font-size="12">u3</text>
+    </g>
+
+    <!-- feedback cells -->
+    <g stroke-width="1.3">
+      <g fill="#e4f2e2" stroke="#59a14f">
+        <rect x="502" y="124" width="42" height="35" rx="6"/><rect x="606" y="124" width="42" height="35" rx="6"/>
+        <rect x="554" y="190" width="42" height="35" rx="6"/><rect x="658" y="190" width="42" height="35" rx="6"/>
+        <rect x="502" y="256" width="42" height="35" rx="6"/><rect x="554" y="256" width="42" height="35" rx="6"/>
+      </g>
+      <g fill="#f8e4e4" stroke="#e15759">
+        <rect x="554" y="124" width="42" height="35" rx="6"/><rect x="658" y="124" width="42" height="35" rx="6"/>
+        <rect x="502" y="190" width="42" height="35" rx="6"/><rect x="606" y="190" width="42" height="35" rx="6"/>
+        <rect x="606" y="256" width="42" height="35" rx="6"/><rect x="658" y="256" width="42" height="35" rx="6"/>
+      </g>
+    </g>
+    <g font-size="21" font-weight="700" text-anchor="middle">
+      <g fill="#43833b">
+        <text x="523" y="149">+</text><text x="627" y="149">+</text><text x="575" y="215">+</text><text x="679" y="215">+</text><text x="523" y="281">+</text><text x="575" y="281">+</text>
+      </g>
+      <g fill="#c74648">
+        <text x="575" y="149">-</text><text x="679" y="149">-</text><text x="523" y="215">-</text><text x="627" y="215">-</text><text x="627" y="281">-</text><text x="679" y="281">-</text>
+      </g>
+    </g>
+    <g font-size="13">
+      <circle cx="514" cy="319" r="5" fill="#59a14f"/><text x="526" y="324">Good</text>
+      <circle cx="590" cy="319" r="5" fill="#e15759"/><text x="602" y="324">Bad</text>
+      <text x="704" y="324" text-anchor="end" font-style="italic">y_us</text>
+    </g>
+  </g>
+
+  <!-- Panel 3: Gaussian population and sampled user posterior marginals -->
+  <g font-family="Arial, Helvetica, sans-serif" fill="#303030">
+    <text x="975" y="52" text-anchor="middle" font-size="14" font-weight="700">population preference distribution</text>
+    <path d="M847 127 H1103" stroke="#b5b5b5" stroke-width="1"/>
+    <path d="M850 127 C888 126,902 117,918 83 C932 53,951 51,965 82 C982 119,1003 126,1100 127" fill="#e8e1f3" stroke="#8064a2" stroke-width="2.5"/>
+    <line x1="950" y1="62" x2="950" y2="128" stroke="#8064a2" stroke-width="1.4" stroke-dasharray="4 4"/>
+    <text x="1019" y="78" font-size="15" fill="#674d8e">N(mu_theta, Sigma_theta)</text>
+
+    <path d="M950 137 V163 M950 163 H852 V180 M950 163 V180 M950 163 H1048 V180" fill="none" stroke="#8064a2" stroke-width="1.7" marker-end="url(#arrow-blue)"/>
+
+    <g>
+      <rect x="806" y="184" width="92" height="93" rx="8" fill="#ffffff" stroke="#b6a7cd"/>
+      <rect x="929" y="184" width="92" height="93" rx="8" fill="#ffffff" stroke="#b6a7cd"/>
+      <rect x="1052" y="184" width="92" height="93" rx="8" fill="#ffffff" stroke="#b6a7cd"/>
+      <g fill="#eee9f5" stroke="#8064a2" stroke-width="2">
+        <path d="M814 249 C823 249,828 244,833 223 C838 202,846 197,852 209 C858 221,860 234,869 241 C877 247,885 248,890 249 L890 252 L814 252 Z"/>
+        <path d="M937 249 C947 248,956 245,964 239 C974 231,981 212,990 212 C1000 212,1004 229,1012 248 L1012 252 L937 252 Z"/>
+        <path d="M1060 249 C1070 249,1076 244,1081 230 C1087 211,1094 202,1101 207 C1108 212,1110 230,1116 239 C1121 246,1129 248,1137 249 L1137 252 L1060 252 Z"/>
+      </g>
+      <g fill="#8064a2">
+        <circle cx="826" cy="255" r="1.5"/><circle cx="834" cy="255" r="1.5"/><circle cx="839" cy="255" r="1.5"/><circle cx="844" cy="255" r="1.5"/><circle cx="849" cy="255" r="1.5"/><circle cx="856" cy="255" r="1.5"/><circle cx="866" cy="255" r="1.5"/><circle cx="881" cy="255" r="1.5"/>
+        <circle cx="946" cy="255" r="1.5"/><circle cx="958" cy="255" r="1.5"/><circle cx="968" cy="255" r="1.5"/><circle cx="978" cy="255" r="1.5"/><circle cx="985" cy="255" r="1.5"/><circle cx="991" cy="255" r="1.5"/><circle cx="997" cy="255" r="1.5"/><circle cx="1005" cy="255" r="1.5"/>
+        <circle cx="1075" cy="255" r="1.5"/><circle cx="1084" cy="255" r="1.5"/><circle cx="1090" cy="255" r="1.5"/><circle cx="1096" cy="255" r="1.5"/><circle cx="1101" cy="255" r="1.5"/><circle cx="1106" cy="255" r="1.5"/><circle cx="1113" cy="255" r="1.5"/><circle cx="1125" cy="255" r="1.5"/>
+      </g>
+      <g font-size="13" font-weight="700" text-anchor="middle">
+        <text x="852" y="270">p(theta_1 | D)</text>
+        <text x="975" y="270">p(theta_2 | D)</text>
+        <text x="1098" y="270">p(theta_3 | D)</text>
+      </g>
+    </g>
+
+    <rect x="864" y="294" width="222" height="35" rx="17" fill="#8064a2"/>
+    <text x="975" y="317" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff">personalized reward posterior</text>
+  </g>
+
+  <!-- Panel 4: fixed gain and gain scheduling -->
+  <g font-family="Arial, Helvetica, sans-serif" fill="#303030">
+    <g transform="translate(1223 53)">
+      <text x="74" y="0" text-anchor="middle" font-size="14" font-weight="700">fixed gain</text>
+      <path d="M0 91 H148 M0 16 V91" stroke="#9d9d9d" stroke-width="1"/>
+      <path d="M4 82 C30 67,48 36,71 28 C92 22,112 41,144 79" fill="none" stroke="#4e79a7" stroke-width="2.5"/>
+      <line x1="78" y1="25" x2="78" y2="92" stroke="#e15759" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <circle cx="78" cy="25" r="5" fill="#e15759"/>
+      <text x="86" y="19" font-size="12" fill="#c74648">kp_u*</text>
+      <text x="148" y="107" text-anchor="end" font-size="12">kp</text>
+      <text x="5" y="13" font-size="12">R_hat_u</text>
+      <rect x="36" y="119" width="77" height="28" rx="14" fill="#e9f2e6" stroke="#79a46c"/>
+      <text x="74" y="138" text-anchor="middle" font-size="13" font-weight="700">CMA-ES</text>
+    </g>
+
+    <g transform="translate(1223 221)">
+      <text x="74" y="0" text-anchor="middle" font-size="14" font-weight="700">gain scheduling</text>
+      <path d="M0 77 H148 M0 15 V77" stroke="#9d9d9d" stroke-width="1"/>
+      <path d="M4 62 C21 57,30 29,49 34 S77 71,96 56 S120 25,144 37" fill="none" stroke="#59a14f" stroke-width="2.5"/>
+      <text x="148" y="92" text-anchor="end" font-size="12">time</text>
+      <text x="4" y="12" font-size="12">kp_t</text>
+      <rect x="48" y="102" width="53" height="28" rx="14" fill="#e9f2e6" stroke="#79a46c"/>
+      <text x="74" y="121" text-anchor="middle" font-size="13" font-weight="700">RL</text>
+    </g>
+
+    <path d="M1388 174 H1413" stroke="#6b6b6b" stroke-width="2" marker-end="url(#arrow)"/>
+    <path d="M1388 276 H1413" stroke="#6b6b6b" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="1417" y="133" width="129" height="151" rx="10" fill="#ffffff" stroke="#8fa780" stroke-width="1.5"/>
+    <text x="1482" y="158" text-anchor="middle" font-size="14" font-weight="700">Personalized</text>
+    <text x="1482" y="176" text-anchor="middle" font-size="14" font-weight="700">Controller</text>
+    <use href="#vehicle" x="1430" y="190" width="104" height="54"/>
+    <text x="1482" y="266" text-anchor="middle" font-size="12" fill="#666666">random test rollouts</text>
+  </g>
+
+  <!-- Stage labels below panels -->
+  <g font-family="Arial, Helvetica, sans-serif" fill="#343434" text-anchor="middle">
+    <text x="202" y="382" font-size="22" font-weight="700">Randomized Control Rollouts</text>
+    <text x="202" y="407" font-size="14" fill="#666666">independent random bumps across gains</text>
+
+    <text x="577" y="382" font-size="22" font-weight="700">Multi-user Feedback</text>
+    <text x="577" y="407" font-size="14" fill="#666666">binary Good / Bad labels</text>
+
+    <text x="975" y="382" font-size="22" font-weight="700">Hierarchical Bayesian Learning</text>
+    <text x="975" y="407" font-size="14" fill="#666666">population to individual preference posteriors</text>
+
+    <text x="1385" y="382" font-size="22" font-weight="700">Preference-Aware Control</text>
+    <text x="1385" y="407" font-size="14" fill="#666666">fixed gain or dynamic scheduling</text>
+  </g>
+</svg>

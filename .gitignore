@@ -12,11 +12,8 @@ CLAUDE.md
 .venv/
 __pycache__/
 uv.lock
-
-
 *.py[codz]
 *$py.class
-
 *.egg-info/
 .installed.cfg
 *.egg
@@ -31,7 +28,7 @@ test.md
 tmp.md
 temp/
 tmp/
-
+.tmp/
 
 docs/fully_bayesian/features/*
 !docs/fully_bayesian/features/*.tex
@@ -42,3 +39,25 @@ docs/fully_bayesian/my_papers/*
 !docs/fully_bayesian/my_papers/*.pdf
 !docs/fully_bayesian/my_papers/*.cls
 !docs/fully_bayesian/my_papers/*.bib
+
+# LaTeX compile artifacts
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.log
+*.lot
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+*.nav
+*.snm
+*.vrb
+*.xdv
+*.idx
+*.ind
+*.ilg

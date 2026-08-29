@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "captum",
+    "cmaes>=0.13.0",
     "gymnasium[mujoco]>=1.2.3",
     "hamiltorch",
     "higher>=0.2.1",
@@ -38,7 +39,7 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["loader*", "core*", "reward*", "envs*", "oracle*"]
+include = ["loader*", "core*", "reward*", "envs*", "oracle*", "preference_loop*"]
 
 [tool.uv.sources]
 torch = [{ index = "pytorch-cu126", marker = "sys_platform == 'linux' or sys_platform == 'win32'" }]

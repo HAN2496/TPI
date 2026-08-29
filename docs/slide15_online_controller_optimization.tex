@@ -1,0 +1,174 @@
+\documentclass[11pt]{article}
+
+\usepackage[a4paper,margin=20mm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\algrenewcommand\algorithmicrequire{\textbf{Input:}}
+\algrenewcommand\algorithmicensure{\textbf{Output:}}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.6em}
+
+\title{Slide 15: Online Personalized Controller Optimization}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section*{1. Posterior preference estimate}
+
+For user $u$, summarize the fully Bayesian posterior samples by their posterior mean:
+
+\begin{equation}
+\overline{\boldsymbol{\theta}}_u
+= \mathbb{E}\!\left[\boldsymbol{\theta}_u \mid \mathcal{D}_u\right]
+\approx \frac{1}{L}\sum_{\ell=1}^{L}\boldsymbol{\theta}_u^{(\ell)}.
+\end{equation}
+
+Because the trajectory reward is linear in the feature vector,
+
+\begin{equation}
+R_u(\tau)=\boldsymbol{\theta}_u^{\top}\boldsymbol{z}(\tau),
+\end{equation}
+
+the posterior expected reward is
+
+\begin{equation}
+\widehat{R}_u(\tau)
+= \mathbb{E}\!\left[R_u(\tau)\mid\mathcal{D}_u\right]
+= \overline{\boldsymbol{\theta}}_u^{\top}\boldsymbol{z}(\tau).
+\end{equation}
+
+\section*{2. Online controller objective}
+
+Let $k$ denote a controller parameter and let
+$\mathcal{S}_{\mathrm{opt}}=\{s_1,\ldots,s_M\}$ be the fixed set of online optimization scenarios.
+The score of a candidate controller is the scenario-averaged posterior expected reward:
+
+\begin{equation}
+\widehat{J}_u(k)
+= \frac{1}{M}\sum_{m=1}^{M}
+\widehat{R}_u\!\left(\tau(k,s_m)\right)
+= \overline{\boldsymbol{\theta}}_u^{\top}
+\left[
+\frac{1}{M}\sum_{m=1}^{M}
+\boldsymbol{z}\!\left(\tau(k,s_m)\right)
+\right].
+\end{equation}
+
+The personalized controller is selected as
+
+\begin{equation}
+\widehat{k}_u
+= \underset{k\in\mathcal{K}}{\operatorname{arg\,max}}
+\;\widehat{J}_u(k).
+\end{equation}
+
+In the current experiment, $M=40$. Every candidate is evaluated on the same scenarios,
+so differences in score are attributable to the controller rather than scenario sampling noise.
+
+\section*{3. Pseudocode}
+
+\begin{algorithm}
+\caption{Online Personalized Controller Optimization}
+\label{alg:online-personalized-controller}
+\begin{algorithmic}[1]
+\Require Posterior samples $\{\boldsymbol{\theta}_u^{(\ell)}\}_{\ell=1}^{L}$;
+fixed scenarios $\mathcal{S}_{\mathrm{opt}}$;
+optimizer $A\in\{\textsc{Grid},\textsc{CMA-ES}\}$
+\Ensure Personalized controller $\widehat{k}_u$
+\State $\overline{\boldsymbol{\theta}}_u
+\gets L^{-1}\sum_{\ell=1}^{L}\boldsymbol{\theta}_u^{(\ell)}$
+\Function{OnlineScore}{$k,\overline{\boldsymbol{\theta}}_u,\mathcal{S}_{\mathrm{opt}}$}
+    \State $v\gets 0$
+    \ForAll{$s\in\mathcal{S}_{\mathrm{opt}}$}
+        \State $\tau\gets\Call{Rollout}{k,s}$
+        \State $v\gets v+\overline{\boldsymbol{\theta}}_u^{\top}\boldsymbol{z}(\tau)$
+    \EndFor
+    \State \Return $v/|\mathcal{S}_{\mathrm{opt}}|$
+\EndFunction
+\If{$A=\textsc{Grid}$}
+    \ForAll{$k\in\mathcal{K}_{\mathrm{grid}}$}
+        \State $r(k)\gets\Call{OnlineScore}{k,\overline{\boldsymbol{\theta}}_u,
+        \mathcal{S}_{\mathrm{opt}}}$
+    \EndFor
+    \State $\widehat{k}_u\gets\operatorname*{arg\,max}_{k\in\mathcal{K}_{\mathrm{grid}}}r(k)$
+\ElsIf{$A=\textsc{CMA-ES}$}
+    \State $q_0\gets\Call{InitializeCMA}{\boldsymbol{m}_0=0.5,\sigma_0=0.25,
+    [0,1]^{d_k}}$
+    \For{$g=1,\ldots,G$}
+        \State $\mathcal{B}_g\gets\varnothing$
+        \For{$i=1,\ldots,\lambda$}
+            \State $\boldsymbol{x}_i\gets\Call{Ask}{q_{g-1}}$
+            \State $k_i\gets\Call{Decode}{\boldsymbol{x}_i}$
+            \State $r_i\gets\Call{OnlineScore}{k_i,\overline{\boldsymbol{\theta}}_u,
+            \mathcal{S}_{\mathrm{opt}}}$
+            \State $\mathcal{B}_g\gets\mathcal{B}_g\cup\{(\boldsymbol{x}_i,-r_i)\}$
+        \EndFor
+        \State $q_g\gets\Call{Tell}{q_{g-1},\mathcal{B}_g}$
+    \EndFor
+    \State $\widehat{k}_u\gets\Call{Decode}{\operatorname{mean}(q_G)}$
+\EndIf
+\State \Return $\widehat{k}_u$
+\end{algorithmic}
+\end{algorithm}
+
+The current implementation uses $|\mathcal{S}_{\mathrm{opt}}|=40$,
+$|\mathcal{K}_{\mathrm{grid}}|=20$, $\lambda=8$, and $G=15$.
+For every method, the same optimization procedure is run once with
+$\overline{\boldsymbol{\theta}}_u$ and once with
+$\boldsymbol{\theta}_u^{\mathrm{true}}$ to obtain the estimated and oracle controllers.
+
+\section*{4. Held-out evaluation}
+
+For analysis only, construct an oracle controller using the true synthetic-user parameter:
+
+\begin{equation}
+k_u^{\mathrm{oracle}}
+= \underset{k\in\mathcal{K}}{\operatorname{arg\,max}}
+\;\frac{1}{M}\sum_{m=1}^{M}
+R_u\!\left(\tau(k,s_m);\boldsymbol{\theta}_u^{\mathrm{true}}\right).
+\end{equation}
+
+Evaluate the selected controller and oracle controller on an independent scenario set:
+
+\begin{equation}
+\mathcal{S}_{\mathrm{eval}}
+=\{s_1^{\mathrm{eval}},\ldots,s_N^{\mathrm{eval}}\}.
+\end{equation}
+
+The held-out regret is
+
+\begin{equation}
+\operatorname{Regret}_u
+= \frac{1}{N}\sum_{n=1}^{N}
+\left[
+R_u\!\left(\tau(k_u^{\mathrm{oracle}},s_n^{\mathrm{eval}})\right)
+-R_u\!\left(\tau(\widehat{k}_u,s_n^{\mathrm{eval}})\right)
+\right].
+\end{equation}
+
+In the current experiment, $N=21$.
+
+\section*{5. Slide-ready interpretation}
+
+\begin{itemize}
+    \item Infer each user's preference distribution and use its posterior mean to compute posterior expected reward.
+    \item Simulate every controller candidate under the same online scenarios and maximize the average predicted reward.
+    \item Grid Search exhaustively compares predefined gains; CMA-ES iteratively concentrates its search on promising regions.
+    \item Report held-out reward regret relative to the controller optimized with the synthetic user's true preference parameter.
+\end{itemize}
+
+\paragraph{Bias term.}
+The bias may remain part of the reward definition. If it is constant across controller candidates for the same user,
+it shifts every candidate score equally and therefore does not change the maximizing controller.
+
+\paragraph{Scope of uncertainty.}
+The current objective is posterior expected reward. It propagates posterior inference through the posterior mean,
+but it is not a risk-sensitive or uncertainty-seeking controller objective.
+
+\end{document}
