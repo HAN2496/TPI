@@ -1,6 +1,6 @@
 import numpy as np
 
-from ..base import ControllableEnv, Trajectory
+from ..base import Trajectory
 from .configs import Search_config
 from .controller import LQRController, MPCController, PController
 from .env import ErideEnv
@@ -18,7 +18,7 @@ def make_controller(params):
     return MPCController(base_q_diag=params["q_diag"], control_dt=0.01, **Search_config().mpc_settings)
 
 
-class VMCEnv(ControllableEnv):
+class VMCEnv:
 
     def rollout(self, params, n, seed):
         env = ErideEnv(make_controller(params), mode="pure", record_inner=True)
@@ -26,6 +26,12 @@ class VMCEnv(ControllableEnv):
         for episode in range(n):
             episode_seed = seed + episode
             env.reset(seed=episode_seed)
+            scenario = {
+                "initial_velocity_mps": float(env.initial_state[4]),
+                "bump_position_m": float(env.bump.bump_specs[0, 0]),
+                "bump_half_width_m": float(env.bump.bump_specs[0, 1]),
+                "bump_height_m": float(env.bump.bump_specs[0, 2]),
+            }
             inners = []
             truncated = False
             while not truncated:
@@ -36,5 +42,6 @@ class VMCEnv(ControllableEnv):
             taus.append(Trajectory(
                 channels=channels, dt=float(env.config.dt_inner),
                 meta={"seed": episode_seed, "params": dict(params),
-                      "horizon": env.observe_step, "terminated": False}))
+                      "scenario": scenario, "horizon": env.observe_step,
+                      "terminated": False}))
         return taus
