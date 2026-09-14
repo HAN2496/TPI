@@ -14,7 +14,11 @@
 | `model_free.py` | Online/offline model-free sequence model 6종 |
 | `run.py` | 데이터 분리, fitting, 평가, 저장을 담당하는 단일 CLI |
 | `bound_sensitivity.py` | Matern 3/2의 $f$, $\lambda$ 상한 확장 sweep (validation 선택, test 보고) |
-| `methods.md` | 수식, 논문 근거, 결과와 한계. §5.6 pitch 비식별성, §10 lag 지표와 인과 필터 지연 |
+| `pitch_staged_reconstruction.py` | 단계적 축소 모델 (a_naive→g_physical), 봉인 hold-out. 목적함수 sup / ml / joint / aug / alt / alts / joint2 / res / pred (Abbeel 2005), `--optimizer coord` (`methods.md` §5.8, §5.9) |
+| `run_em_noise_covariance.py` | 플랜트 고정 + $Q, R$ 만 EM: full / diag / structured ($q_a, q_z$ 만, `methods.md` §5.8-8·10·12, §5.9) |
+| `check_em_identifiability_synthetic.py` | 합성 데이터로 EM 식별성 검증: $Q$·$q_p$ 회복, $r_x, r_z$ 비식별 (`methods.md` §5.8-13) |
+| `plot_pitch_staged_waveforms.py` | 저장된 파라미터로 sup/ml/joint/EM 파형 비교와 필터 일관성 진단 그림 (fit 없음) |
+| `methods.md` | 수식, 논문 근거, 결과와 한계. §5.6 pitch 비식별성, §5.9 목적함수 정리, §10 lag 지표와 인과 필터 지연 |
 | `outputs/` | parameter, metric, figure, reconstructed state |
 
 body는 (f, qc, P)를 만들고 `augment()`가 지정한 가속도 행에 latent 외란 블록(`disturbance()`)을 꽂는다. 이름 → (body, 외란) 매핑은 `LATENT_1DOF`/`PITCH`. 외란 추가는 `disturbance()`에 분기 하나, 모델 추가는 매핑 + `model_spec` start/bounds 등록이면 `run.py`의 fit/평가/plot이 그대로 적용된다. `pitch_hc*`는 wheel speed 2ch + `a_z` 관측, `a_x` 입력의 pitch-plane half-car이며 target이 `Pitch_rate_6D`다.
