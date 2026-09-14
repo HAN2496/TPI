@@ -205,9 +205,9 @@ def model(name, p, fs):
     return onedof(p, fs, LATENT_1DOF[name])
 
 
-def estimate(name, az_g, p, fs, smooth=False, road=False):
+def estimate(name, az_g, p, fs, smooth=False, road=False, innovations=False):
     y = ((az_g - 1) * GRAVITY)[..., None]
-    return model(name, p, fs).filter(y, smooth=smooth, road=road)
+    return model(name, p, fs).filter(y, smooth=smooth, road=road, innovations=innovations)
 
 
 def estimate_half(az_g, lat_g, p, fs, smooth=False, road=False, full=False, chunk=256):
@@ -226,7 +226,7 @@ def estimate_half(az_g, lat_g, p, fs, smooth=False, road=False, full=False, chun
     return (result, np.concatenate(inputs)) if road else result
 
 
-def estimate_pitch(name, x, p, fs, smooth=False):
+def estimate_pitch(name, x, p, fs, smooth=False, innovations=False):
     front, rear = x[:, :, 5:7].mean(2) / 3.6, x[:, :, 7:9].mean(2) / 3.6
     ax_meas = x[:, :, 4] * GRAVITY
     _, _, torque, ax = PITCH[name]
@@ -241,7 +241,7 @@ def estimate_pitch(name, x, p, fs, smooth=False):
     x0 = np.zeros((len(x), len(state_space.A)))
     x0[:, 8] = (front[:, 0] + rear[:, 0]) / 2
     if state_space.E is None:
-        return state_space.filter(y, u, x0, smooth=smooth)
+        return state_space.filter(y, u, x0, smooth=smooth, innovations=innovations)
     distance = np.cumsum(np.maximum((front + rear) / 2, 0), 1) / fs
     wheelbase = FRONT_LENGTH + REAR_LENGTH
     rear_index = np.stack([np.searchsorted(d, d - wheelbase, side="left") for d in distance])
@@ -255,7 +255,7 @@ def estimate_pitch(name, x, p, fs, smooth=False):
         rear_road[valid] = history[rows[valid], index[valid], 9]
         return rear_road[:, None] * state_space.E
 
-    return state_space.filter(y, u, x0, smooth=smooth, extra=replay)
+    return state_space.filter(y, u, x0, smooth=smooth, extra=replay, innovations=innovations)
 
 
 def estimate_kinematic(acceleration, fs, process_var, acceleration_var=1., velocity=None,
@@ -274,8 +274,8 @@ def _pitch(name):
     return lambda x, p, fs, **kw: estimate_pitch(name, x, p, fs, **kw)
 
 
-SPECS = {name: dict(target=0, output=1, run=_az(name)) for name in (*LATENT_1DOF, "qc2")}
-SPECS |= {name: dict(target=2, output=3, run=_pitch(name)) for name in PITCH}
+SPECS = {name: dict(target=0, output=1, gain=None, run=_az(name)) for name in (*LATENT_1DOF, "qc2")}
+SPECS |= {name: dict(target=2, output=3, gain=180 / np.pi, run=_pitch(name)) for name in PITCH}
 
 
 def model_spec(name):

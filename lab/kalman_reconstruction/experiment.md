@@ -303,7 +303,11 @@ $$
 $$
 
 $$
-\dot z=v,\qquad \dot v=-\omega^2z-2\zeta\omega v+w_v
+\dot z=v
+$$
+
+$$
+\dot v=-\omega^2z-2\zeta\omega v+w_v
 $$
 
 $$

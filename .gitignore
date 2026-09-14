@@ -61,3 +61,5 @@ docs/fully_bayesian/my_papers/*
 *.idx
 *.ind
 *.ilg
+# Särkkä & Svensson book PDF: personal use only, not for re-distribution
+lab/kalman_reconstruction/bfs_book_2023_online.pdf

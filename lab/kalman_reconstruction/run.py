@@ -11,7 +11,7 @@ from scipy.optimize import minimize, minimize_scalar
 from loader import Dataset
 from run_reconstruction import Config, load
 
-from .state_space import GRAVITY, bandpass, calibrate, highpass, metrics, waveform_metrics
+from .state_space import GRAVITY, bandpass, calibrate, highpass, innovation_metrics, metrics, waveform_metrics
 from .models import PITCH, ROAD_STATES, SPECS, estimate, estimate_half, estimate_kinematic, estimate_pitch
 from .models import half_car, model, model_spec, quarter_car
 from .iri import spatial_results
@@ -45,15 +45,18 @@ def training_split(ids, test):
     return train, validation, validation_driver
 
 
-def fit_model(name, x, y, fit_index, fs, maxiter=40, warm=None):
+def fit_model(name, x, y, fit_index, fs, maxiter=40, warm=None, likelihood=False):
     spec = SPECS[name]
     target = y[fit_index, :, spec["target"]]
     best = [np.inf, None]
 
     def objective(p):
-        output = spec["run"](x[fit_index], p, fs)[..., spec["output"]]
-        gain, offset = calibrate(output, target)
-        cost = np.sqrt(np.mean((gain * output + offset - target) ** 2)) / target.std()
+        if likelihood:
+            cost = innovation_metrics(*spec["run"](x[fit_index], p, fs, innovations=True)[1:])["energy"]
+        else:
+            output = spec["run"](x[fit_index], p, fs)[..., spec["output"]]
+            gain, offset = calibrate(output, target, spec["gain"])
+            cost = np.sqrt(np.mean((gain * output + offset - target) ** 2)) / target.std()
         cost = cost if np.isfinite(cost) else 1e6
         if cost < best[0]:
             best[:] = cost, p.copy()
@@ -67,8 +70,8 @@ def fit_model(name, x, y, fit_index, fs, maxiter=40, warm=None):
     return fit
 
 
-def evaluate(raw, target, test, fs):
-    gain, offset = calibrate(raw[~test], target[~test])
+def evaluate(raw, target, test, fs, gain=None):
+    gain, offset = calibrate(raw[~test], target[~test], gain)
     pred = gain * raw[test] + offset
     corr, rmse, lag = metrics(target[test], pred, fs)
     return dict(gain=gain, offset=offset, pred=pred, corr=corr, rmse=rmse, lag=lag)
@@ -233,8 +236,10 @@ def run_pitch(loaded=None):
             tail = model_spec(name)[0][14:]
             tail[-1] = -8.0
             warm = np.r_[fits[name.rsplit("_", 1)[0]].x[:14], tail]
+        elif name != names[0]:
+            warm = fits[names[0]].x
         fit = fit_model(name, x, y, fit_index, cfg.fs, maxiter=300, warm=warm)
-        result = evaluate(estimate_pitch(name, x, fit.x, cfg.fs)[..., 3], pitch, test, cfg.fs)
+        result = evaluate(estimate_pitch(name, x, fit.x, cfg.fs)[..., 3], pitch, test, cfg.fs, SPECS[name]["gain"])
         fits[name], results[name] = fit, result
         p = fit.x
         cp, rp = np.percentile(result["corr"], [10, 50, 90]), np.percentile(result["rmse"], [10, 50, 90])
@@ -311,7 +316,8 @@ def run_pitch2(loaded=None):
                          parameters=" ".join(f"{value:.9g}" for value in params[name])))
         print(f"{name:14s} corr={cp[1]:.3f} rmse={rp[1]:.3f} loss={loss:.3f} ({seconds:.0f}s)")
 
-    results[anchor] = evaluate(estimate_pitch(anchor, x, params[anchor], cfg.fs)[..., 3], pitch, test, cfg.fs)
+    results[anchor] = evaluate(estimate_pitch(anchor, x, params[anchor], cfg.fs)[..., 3], pitch, test, cfg.fs,
+                               SPECS[anchor]["gain"])
     report(anchor, np.nan, 0.0)
     for name, parent, extension in (("pitch_tq", anchor, np.zeros(4)),
                                     ("pitch_ax", "pitch_tq", np.r_[np.log(20), .01, np.log(.2), -8., -10., -3.]),
@@ -324,7 +330,7 @@ def run_pitch2(loaded=None):
             warm[9] += np.log(1 / (2 * .01))
         fit = fit_model(name, x, y, fit_index, cfg.fs, maxiter=300, warm=warm)
         params[name] = fit.x
-        results[name] = evaluate(estimate_pitch(name, x, fit.x, cfg.fs)[..., 3], pitch, test, cfg.fs)
+        results[name] = evaluate(estimate_pitch(name, x, fit.x, cfg.fs)[..., 3], pitch, test, cfg.fs, SPECS[name]["gain"])
         report(name, fit.fun, time.perf_counter() - started)
 
     names = tuple(params)
@@ -337,6 +343,44 @@ def run_pitch2(loaded=None):
                      OUTPUT / "pitch2_metric_grid.png")
     write_csv(OUTPUT / "pitch2_metrics.csv", rows)
     np.savez(OUTPUT / "pitch2_parameters.npz", **params)
+    print(f"train={len(train)} test={test.sum()} outputs={OUTPUT}")
+
+
+def run_likelihood(loaded=None):
+    cfg, x, y, ids, test = loaded or data()
+    OUTPUT.mkdir(parents=True, exist_ok=True)
+    train = np.flatnonzero(~test)
+    fit_index = train[np.linspace(0, len(train) - 1, min(300, len(train))).astype(int)]
+    names = ("rw", "ou", "matern32", "matern52", "qc2", "pitch_hc", "pitch_delay")
+    results, rows, params = {}, [], {}
+    for name in names:
+        spec, pitch = SPECS[name], name in PITCH
+        target = y[:, :, spec["target"]]
+        for objective in ("likelihood", "supervised"):
+            started, key = time.perf_counter(), f"{name}_{objective[:3]}"
+            warm = params[f"pitch_hc_{objective[:3]}"] if name == "pitch_delay" else None
+            fit = fit_model(name, x, y, fit_index, cfg.fs, maxiter=300 if pitch else 40, warm=warm,
+                            likelihood=objective == "likelihood")
+            params[key] = fit.x
+            state, nu, cov = spec["run"](x, fit.x, cfg.fs, innovations=True)
+            result = evaluate(state[..., spec["output"]], target, test, cfg.fs, spec["gain"])
+            results[key] = result
+            white = innovation_metrics(nu[test], cov)
+            cp, rp = np.percentile(result["corr"], [10, 50, 90]), np.percentile(result["rmse"], [10, 50, 90])
+            rows.append(dict(model=name, objective=objective, loss=fit.fun, energy_test=white["energy"],
+                             nis=white["nis"], acf1=white["acf1"], acf10=white["acf10"], gain=result["gain"],
+                             offset=result["offset"], corr_p10=cp[0], corr_median=cp[1], corr_p90=cp[2],
+                             rmse_median=rp[1], lag_median_ms=1000 * np.median(result["lag"]),
+                             fit_seconds=time.perf_counter() - started,
+                             parameters=" ".join(f"{value:.9g}" for value in fit.x)))
+            print(f"{key:20s} corr={cp[1]:.3f} energy={white['energy']:.3f} nis={white['nis']:.2f} "
+                  f"acf1={white['acf1']:+.2f} gain={result['gain']:.2f} ({rows[-1]['fit_seconds']:.0f}s)", flush=True)
+            write_csv(OUTPUT / "likelihood_metrics.csv", rows)
+    np.savez(OUTPUT / "likelihood_parameters.npz", **params)
+    for target_index, group in ((0, names[:5]), (2, names[5:])):
+        picked = {key: results[key] for key in results if key.rsplit("_", 1)[0] in group}
+        plot_waveforms(y[test][:, :, target_index], picked, ids[test], cfg.fs,
+                       OUTPUT / f"likelihood_{'bounce' if target_index == 0 else 'pitch'}_models.png", f"{group[-1]}_sup")
     print(f"train={len(train)} test={test.sum()} outputs={OUTPUT}")
 
 
@@ -636,8 +680,9 @@ def run_model_free(args, loaded=None):
 
 def arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument("experiment", choices=("classical", "pitch", "pitch2", "hybrid", "rw-hybrid", "ou-hybrid",
-                                               "oscillator", "calibration-ablation", "lstm-kf", "model-free", "all"))
+    parser.add_argument("experiment", choices=("classical", "pitch", "pitch2", "likelihood", "hybrid", "rw-hybrid",
+                                               "ou-hybrid", "oscillator", "calibration-ablation", "lstm-kf",
+                                               "model-free", "all"))
     parser.add_argument("--epochs", type=int, default=30)
     parser.add_argument("--hidden-size", type=int, default=64)
     parser.add_argument("--batch-size", type=int, default=32)
@@ -655,6 +700,8 @@ def main():
         run_pitch(loaded)
     if args.experiment == "pitch2":
         run_pitch2(loaded)
+    if args.experiment == "likelihood":
+        run_likelihood(loaded)
     if args.experiment in ("hybrid", "all"):
         run_hybrid(args, loaded)
     if args.experiment == "rw-hybrid":
