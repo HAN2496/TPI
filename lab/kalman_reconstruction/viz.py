@@ -46,6 +46,14 @@ LINE_STYLES = {
     "pitch_axou": {"color": "#008000", "linestyle": "-.", "lw": 1.0},
     "pitch_eps": {"color": "#FF0000", "linestyle": "-", "lw": 1.2},
 }
+SUFFIX_STYLES = {  # 단계 실험 곡선: 목적함수 접미사로 스타일 고정 (recorded 는 검정)
+    "_sup": {"color": "#d62728", "linestyle": "-", "lw": 1.3},
+    "_ml": {"color": "#1f77b4", "linestyle": "--", "lw": 1.1},
+    "_joint": {"color": "#2ca02c", "linestyle": "-.", "lw": 1.2},
+    "_aug": {"color": "#7f7f7f", "linestyle": ":", "lw": 1.2},
+    "_em:sup": {"color": "#e377c2", "linestyle": "--", "lw": 1.2},  # sup 플랜트 + EM: 분홍 점선
+    "_em": {"color": "#9467bd", "linestyle": "-", "lw": 1.2},  # 그 외 플랜트 + EM: 보라 실선
+}
 MODEL_FREE_DISPLAY_NAMES = {
     "lstm_online": "LSTM",
     "gru_online": "GRU",
@@ -77,7 +85,7 @@ def plot_waveforms(true, results, ids, fs, path, reference):
     for ax, label, index in zip(axes.flat[:3], ("worst", "median", "best"), picks):
         ax.plot(time, true[index], color="black", lw=1.1, label="recorded")
         for color, (name, result) in zip(colors, results.items()):
-            style = {"color": color, "lw": .9} | LINE_STYLES.get(name, {})
+            style = {"color": color, "lw": .9} | LINE_STYLES.get(name, next((s for k, s in SUFFIX_STYLES.items() if k in name), {}))
             ax.plot(time, result["pred"][index], **style, label=DISPLAY_NAMES.get(name, name))
         ax.set(title=f"{label}: {ids[index]}", xlabel="time [s]")
         ax.grid(alpha=.25)
