@@ -42,7 +42,7 @@ $$
 \text{4-DOF half-car}
 $$
 
-9-state 이후 단계는 회사 제원으로 $k, c$를 고정할 수 있을 때만 진행한다.
+9-state 이후 단계는 회사 제원으로 $k, c$를 고정할 수 있을 때만 진행한다. 보고용 기준 모델은 9-state 에서 pitch 에 기여하지 않는 요소를 재적합으로 확인하며 뺀 §3-2 (5-state: $[v_x, a_x, \theta, q, \gamma_g]$, 관측 휠속 평균·IMU 종가속·휠속 앞뒤 차이, 파라미터 10개, joint 0.916) 이고, bounce 까지 한 필터로 내려면 §3-3 (§3-2 + 물리 bounce 진동자 + 6D 칩 체인 출력, 8-state, pitch 0.916 / bounce 0.923) 이다. §3-1 (구배 상태 제거) 은 검토 후 채택하지 않았다.
 
 ---
 
@@ -413,7 +413,7 @@ $\theta$ DC ↔ $\gamma_g$ 방향 하나만 marginal(둘 다 상수 오프셋, p
 | a_naive | Model 1 원형 — 지연·레버암 없음 | 0.462 | 0.06 | 28 |
 | a_lag | + IMU 1차 지연 $\tau_I$ (실측 60 ms 위상차가 실패 원인인가) | 0.616 | −0.43 | 46 |
 | a_full | + IMU 높이 레버암 $h_I$ ($-h_I\dot q$) | 0.836 | 0.18 | 53 |
-| b_full | + heave·$a_z$ 채널, 전후 레버암 $x_I$ | 0.873 | 0.17 | 55 |
+| b_full | + bounce·$a_z$ 채널, 전후 레버암 $x_I$ | 0.873 | 0.17 | 55 |
 | c_wheel | + $\Delta v_w = \ell q + \kappa a_x$ (휠속 앞뒤 차이) | 0.887 | **0.545** | 54 |
 | **d_torque** | + 토크 입력·slip — **본 §3 모델** | **0.936** | 0.542 | **57.1** |
 | e_fixgeo | $x_I = 0.42$ m 고정 (회사 제원 검증) | 0.900 | 0.535 | 56 |
@@ -433,6 +433,271 @@ d_torque 상세: RMSE 1.48 deg/s, signed lag +10 ms.
 - **결합 목적함수(방법 A)가 sup과 ml을 동시에 이긴다**: μ = 3–10에서 corr 0.921–0.923 (sup 0.899보다 높음) **이면서** NIS 1.08–1.09 (sup 1.21, ml 1.03). 우도 항이 정규화 역할을 해 sup 단독이 갇혔던 나쁜 local minimum($f_p$·$b_a$ 상한)을 벗어났고, $f_p = 1.6$ Hz·$h_I = -0.33$ m(b_full의 −0.355 재현)로 파라미터도 내부값. 남은 경계: $r_x, r_z$ 하한(센서를 무잡음 취급, ml 특성), $f_z$ 하한.
 - **방법 B(학습 시 라벨 관측 채널)는 실패** (corr 0.48–0.60, free gain ~25): 학습 중 필터가 라벨로 q를 알아버려 센서 채널이 pitch를 추출하도록 학습되지 않음 — 학습/배포 필터 불일치의 전형. 이 형태로는 채택 불가.
 - 미해결: 결합 μ의 통계적 의미 부재, $r_x, r_z$ 하한(유색 측정잡음 미모델링), 봉인 hold-out 최종 검증.
+
+---
+
+# 3-1. Sensor-chain bounce-pitch model without grade (8-state) — 검토 후 채택하지 않음
+
+§3 에서 도로 구배 상태 $\gamma_g$ 를 뺀 모델. $\gamma_g$ 는 IMU 종가속의 저주파 오프셋(경사, 센서 바이어스)을 흡수하는 장치였으나, $\theta$ 의 상수 성분과 같은 자리에 같은 계수 $g$ 로만 관측되어 (θ 상수 ↔ γ_g) 방향이 관측 불가능했다. 설명을 단순하게 하려고 제거를 시도했으나 **재적합 결과 채택하지 않는다** (methods.md §5.8-18): $\gamma_g$ 가 없으면 IMU 오프셋 $g\theta_0$ 를 θ 가 떠안고, pitch 식이 θ 를 상수에 붙들어 두는 대가로 $\hat q \approx -\omega_p\theta_0/(2\zeta_p)$ 의 상수 pitch-rate 편향이 생긴다 (1° 경사에 수십 deg/s). 에피소드별 평균을 빼는 corr 은 이 편향을 숨겨 필터 재실행에서 0.884 로 보였지만, RMSE 와 재적합 (joint 0.817, sup 0.694) 은 크게 나빠진다. 보고용 기준 모델은 §3 (γ_g 포함) 이며, 관측 불가능 방향은 pitch rate 와 직교한다는 functional observability 로 설명한다. 아래 정의는 기록용으로 남긴다.
+
+구현: `pitch_staged_reconstruction.py` 의 `h_nograde`. 9-상태 코드에서 $q_g = 0$, $P_0[\gamma_g] = 0$ 으로 두면 $\gamma_g \equiv 0$ 이 되어 (구동 잡음·초기 분산·갱신 이득 모두 0) 아래 8-상태 모델과 수치적으로 동치다.
+
+## Diagram
+
+```text
+(옆에서 본 그림)                                   진행 방향 →
+             z_s ↑   θ (pitch, nose-up +)
+      ┌────────────────────────┐
+      │       sprung body      │    v_x, a_x: 종방향 상태
+      │   z_s, ż_s, θ, q       │    (구배 상태 없음: IMU 오프셋은 θ 와 잡음이 설명)
+      └────────────────────────┘
+                 ↑ b_a a_x (하중이동)
+                 │
+  motor torque u=[T_f,T_r] ──► ȧ_x = −λ_a a_x + b_T ΣT
+
+  wheel speed (빠른 채널, 지연 기준점)
+     ├─ 평균  v̄_w  = v_x
+     └─ 차이  Δv_w = ℓ q + κ a_x + s_f T_f + s_r T_r
+
+  IMU 유닛 ── [1차 지연 τ_I] ── 장착 위치 (h_I 높이, x_I 전후)
+     ├─ a_x_IMU = a_x + g θ − h_I q̇        (지연 상태 a_I 로 관측)
+     └─ a_z_IMU = z̈_s + x_I q̇             (지연 상태 a_Iz 로 관측)
+```
+
+## State / Control input
+
+$$
+x=[v_x,\ a_x,\ \theta,\ q,\ a_I,\ z_s,\ \dot z_s,\ a_{Iz}]^T,
+\qquad
+u=[T_f,\ T_r]^T
+$$
+
+## Dynamics
+
+$$
+\dot v_x=a_x
+$$
+
+$$
+\dot a_x=-\lambda_a a_x+b_T(T_f+T_r)+w_a
+$$
+
+$$
+\dot\theta=q
+$$
+
+$$
+\dot q=-\omega_p^2\theta-2\zeta_p\omega_pq+b_a a_x+w_p
+$$
+
+$$
+\ddot z_s=-\omega_z^2z_s-2\zeta_z\omega_z\dot z_s+w_z
+$$
+
+$$
+\dot a_I=\frac{1}{\tau_I}\big(a_x+g\theta-h_I\dot q-a_I\big)
+$$
+
+$$
+\dot a_{Iz}=\frac{1}{\tau_I}\big(\ddot z_s+x_I\dot q-a_{Iz}\big)
+$$
+
+($\dot q$, $\ddot z_s$ 는 위 식으로 치환하여 선형 유지. $g = 9.81$ 고정. §3 대비 $\dot\gamma_g = w_g$ 한 줄과 $a_I$ 식의 $g\gamma_g$ 항이 빠지고, bounce 식의 pitch 연성 $c_{zp}\theta$ 도 뺀다 — 적합에서 ±15 로 부호가 갈리고 0 으로 두어도 결과가 소수 셋째 자리까지 같아 무관한 파라미터로 판정 (methods.md §5.8-18). 두 진동자는 완전히 독립이다.)
+
+## Measurement
+
+$$
+y=
+\begin{bmatrix}
+\bar v_w\\
+a_{x,\mathrm{IMU}}\\
+a_{z,\mathrm{IMU}}\\
+\Delta v_w
+\end{bmatrix}
+=
+\begin{bmatrix}
+v_x\\
+a_I\\
+a_{Iz}\\
+\ell q+\kappa a_x
+\end{bmatrix}
++
+\begin{bmatrix}
+0&0\\0&0\\0&0\\s_f&s_r
+\end{bmatrix}u
++v
+$$
+
+## Observability / Detectability
+
+§3 의 관측 불가능 방향 (θ 상수 ↔ γ_g) 이 사라져 **fully observable**. θ 의 상수 성분은 이제 진동자의 복원항 $-\omega_p^2\theta$ 를 통해 동역학으로 묶이고, IMU 의 저주파 오프셋(경사·바이어스)은 모델 밖이라 잡음 $w_p$, $v$ 가 흡수한다.
+
+## 실측 결과
+
+`methods.md` §5.8-18 에 기록 (sup / ml / joint / Abbeel Res·Pred / alts / EM full·structured 를 §3 (g_physical) 과 같은 조건으로 재실행). 결과: sup 0.694, joint 0.817, Res 0.806, Pred 0.791 — 전부 §3 보다 나쁨.
+
+---
+
+# 3-2. Minimal pitch model (5-state) — 보고 기준 모델
+
+§3 에서 pitch rate 에 기여하지 않는 요소를 재적합으로 하나씩 확인하며 뺀 결과 (methods.md §5.8-19). 남은 것은 **IMU 종가속의 높이 레버암 $h_I$, 휠속 앞뒤 차이 채널 $\Delta v_w$, 도로 구배 상태 $\gamma_g$** 세 가지이고, 이 셋 중 하나라도 빼면 무너진다. bounce 진동자와 $a_z$ 채널, 모터 토크 입력, 하중이동 $b_a$, pitch–bounce 연성 $c_{zp}$, $a_x$ 감쇠 $\lambda_a$, IMU 1차 지연 상태 $a_I$ 는 빼도 성능이 같거나 오른다 (joint 0.910 → 0.916). 구현: `pitch_staged_reconstruction.py` 의 `m5_nodelay` (`build_m`, delay=0).
+
+## Diagram
+
+```text
+(옆에서 본 그림)                                   진행 방향 →
+                     θ (pitch, nose-up +)
+      ┌────────────────────────┐
+      │       sprung body      │    v_x, a_x: 종방향 상태 (a_x 는 random walk)
+      │          θ, q          │    γ_g: 도로 구배 (random walk)
+      └────────────────────────┘
+
+  wheel speed
+     ├─ 평균  v̄_w  = v_x
+     └─ 차이  Δv_w = ℓ q + κ a_x                 ← q 의 부호·위상을 핀
+
+  IMU 종가속 (무게중심 위 h_I 높이)
+        a_x_IMU = a_x + g θ + g γ_g − h_I q̇     ← −h_I q̇ 가 pitch 를 드러내는 항
+```
+
+## State / Control input
+
+$$
+x=[v_x,\ a_x,\ \theta,\ q,\ \gamma_g]^T, \qquad \text{입력 없음}
+$$
+
+## Dynamics
+
+$$
+\dot v_x=a_x
+$$
+
+$$
+\dot a_x=w_a
+$$
+
+$$
+\dot\theta=q
+$$
+
+$$
+\dot q=-\omega_p^2\theta-2\zeta_p\omega_pq+w_p
+$$
+
+$$
+\dot\gamma_g=w_g
+$$
+
+## Measurement
+
+$$
+y=
+\begin{bmatrix}
+\bar v_w\\
+a_{x,\mathrm{IMU}}\\
+\Delta v_w
+\end{bmatrix}
+=
+\begin{bmatrix}
+v_x\\
+a_x+g\theta+g\gamma_g-h_I\dot q\\
+\ell q+\kappa a_x
+\end{bmatrix}
++v
+$$
+
+($\dot q$ 는 pitch 식으로 치환하여 선형 유지: $-h_I\dot q = h_I\omega_p^2\theta + 2h_I\zeta_p\omega_p q$. $g = 9.81$, $\ell = -0.29$ m 고정.)
+
+## Parameters
+
+차량·센서 4개: $f_p$ (= $\omega_p/2\pi$), $\zeta_p$, $h_I$, $\kappa$. 잡음 6개: $q_a, q_p, q_g$ (구동), $r_w, r_x, r_d$ (측정). 합계 10개.
+
+## Observability / Detectability
+
+(θ 상수 ↔ γ_g) 방향 하나가 관측 불가능하고 그 방향은 적분기라 detectable 하지 않지만, pitch rate $q$ 는 그 방향과 직교하므로 **functionally observable** (Fernando–Trinh–Jennings 2010). §3 과 같은 성질.
+
+## 실측 결과
+
+`methods.md` §5.8-19.
+
+---
+
+# 3-3. Pitch ⊕ bounce model with chip-chain output (8-state) — 두 신호를 한 필터로
+
+§3-2 의 pitch 블록에 **물리 bounce 진동자**와 **6D 칩의 처리 체인** (회사 설명: 수직가속도를 살짝 high-pass 후 적분) 을 상태로 붙인 모델. bounce 블록은 pitch 블록과 동역학적으로 독립이고 (교차항은 식별되지 않고 이득도 없어 제외, methods.md §5.8-20), 관측만 나눠 갖는다. `Bounce_rate_6D` 가 모델의 출력 $b$ 로 나오므로 물리 bounce 상태가 라벨로 검증된다. 구현: `pitch_staged_reconstruction.py` 의 `pb2_basic` (`build_pb`, dist=0, chain=1).
+
+## Diagram
+
+```text
+(옆에서 본 그림)                                   진행 방향 →
+             z_s ↑   θ (pitch, nose-up +)
+      ┌────────────────────────┐
+      │       sprung body      │    v_x, a_x: 종방향 (a_x random walk),  γ_g: 구배 (random walk)
+      │   z_s, ż_s, θ, q       │    bounce 진동자 (ω_b, ζ_b) 와 pitch 진동자 (ω_p, ζ_p) 는 독립
+      └────────────────────────┘
+
+  wheel speed:  v̄_w = v_x,   Δv_w = ℓ q + κ a_x
+  IMU:          a_x_IMU = a_x + g θ + g γ_g − h_I q̇,   a_z_IMU = z̈_s
+  6D 칩 체인:   ḃ = −ω_c b + z̈_s   (ω_c = 2π·0.77 rad/s),   Bounce_rate_6D = K b
+```
+
+## State / Control input
+
+$$
+x=[v_x,\ a_x,\ \theta,\ q,\ \gamma_g,\ z_s,\ \dot z_s,\ b]^T, \qquad \text{입력 없음}
+$$
+
+## Dynamics
+
+$$
+\dot v_x=a_x, \qquad \dot a_x=w_a, \qquad \dot\gamma_g=w_g
+$$
+
+$$
+\dot\theta=q, \qquad \dot q=-\omega_p^2\theta-2\zeta_p\omega_pq+w_p
+$$
+
+$$
+\ddot z_s=-\omega_b^2z_s-2\zeta_b\omega_b\dot z_s+w_z
+$$
+
+$$
+\dot b=-\omega_c\,b+\ddot z_s
+$$
+
+## Measurement
+
+$$
+y=
+\begin{bmatrix}
+\bar v_w\\
+a_{x,\mathrm{IMU}}\\
+\Delta v_w\\
+a_{z,\mathrm{IMU}}
+\end{bmatrix}
+=
+\begin{bmatrix}
+v_x\\
+a_x+g\theta+g\gamma_g-h_I\dot q\\
+\ell q+\kappa a_x\\
+\ddot z_s
+\end{bmatrix}
++v
+$$
+
+($\dot q$, $\ddot z_s$ 는 각 진동자 식으로 치환. 출력: pitch rate $=(180/\pi)\,q$, `Bounce_rate_6D` $=K\,b$ 로 $K$ 는 라벨 단위 미확정이라 자유 이득.)
+
+## Parameters
+
+pitch 블록 4 + 잡음 6 (§3-2 와 동일) + bounce 블록 $f_b, \zeta_b$ + 잡음 $q_z, r_z$ = 14개. $\omega_c$ 는 회귀값 0.77 Hz 고정 (자유로 두어도 0.75 Hz 로 재현).
+
+## Observability / Detectability
+
+§3-2 와 같다. 관측 불가능 방향은 ($\theta$ 상수 ↔ $\gamma_g$) 하나이고 두 출력 ($q$, $b$) 모두 그 방향과 직교하므로 둘 다 functionally observable. bounce 블록은 $a_z$ 로 직접 관측되어 완전 관측 가능·안정.
+
+## 실측 결과
+
+`methods.md` §5.8-20: dev-test pitch 0.916 / bounce 0.923 (기존 1-DOF bounce KF 단독 0.918, 1번 블록 대각 0.905).
 
 ---
 

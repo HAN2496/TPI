@@ -205,7 +205,7 @@ $\gamma$가 상한 20에 도달하므로 wheel-hop parameter를 물리값으로 
      ~~~~┴~~~ r_L ~~~┴~~~ r_R
 ```
 
-Quarter-car를 좌우로 두 개 붙이고 차체에 roll 자유도를 준 4-DOF(heave, roll, 좌·우 바퀴) 모델. 노면은 좌·우 독립 백색 입력 2개. qc2의 5개 파라미터를 그대로 쓰고 roll 관성비 $j$와 $r_{lat}$만 roll 라벨로 추가 fit한다. 출력은 $v_s$ → Bounce, $\dot\phi$ → Roll.
+Quarter-car를 좌우로 두 개 붙이고 차체에 roll 자유도를 준 4-DOF(bounce, roll, 좌·우 바퀴) 모델. 노면은 좌·우 독립 백색 입력 2개. qc2의 5개 파라미터를 그대로 쓰고 roll 관성비 $j$와 $r_{lat}$만 roll 라벨로 추가 fit한다. 출력은 $v_s$ → Bounce, $\dot\phi$ → Roll.
 
 세 회전축의 의미:
 
@@ -245,7 +245,7 @@ $$\dot z_{u,r} = v_{u,r}$$
 
 $$\dot v_{u,r} = \rho a\,\delta_r + \rho b\,\dot\delta_r - \rho\gamma a\,(z_{u,r} - r_r)$$
 
-$j = 2I_x/(m_s t^2)$ (정규화 roll 관성비). 좌우 대칭이라 $(r_l + r_r)/2$는 heave만, $r_l - r_r$은 roll만 구동한다 — lateral signal을 추가해도 Bounce가 QC2와 동일한 것이 구조적으로 정상이다.
+$j = 2I_x/(m_s t^2)$ (정규화 roll 관성비). 좌우 대칭이라 $(r_l + r_r)/2$는 bounce만, $r_l - r_r$은 roll만 구동한다 — lateral signal을 추가해도 Bounce가 QC2와 동일한 것이 구조적으로 정상이다.
 
 **관측.** $a_z = \dot v_s + e_z$, $a_{lat}^{HP} = \ddot\phi + e_{lat}$ (`IMU_LatAccelVal`에 0.5 Hz 인과 HP 적용). $R = \mathrm{diag}(r_z, r_{lat})$. 두 번째 관측식이 틀렸다는 것은 아래에.
 
@@ -311,7 +311,7 @@ Road posterior는 wheel-speed 누적 거리로 0.1 m spatial grid에 보간한�
         ├── l_r ──┤├── l_f ──┤
 ```
 
-HC8과 같은 발상이지만 좌우 대신 앞뒤로 붙여 pitch를 얻는 4-DOF(heave, pitch, 앞·뒤 바퀴) 모델이고, 관측이 완전히 다르다: $a_z$에 더해 **휠속 앞/뒤 평균을 차체 운동의 관측**으로 쓴다. 그래서 종속도 $v$가 상태로 들어온다($\dot v = a_x$). Pitch rate는 CAN IMU에 자이로가 없어 휠속·$a_z$·$a_x$에서 간접적으로 끌어내야 하므로, 이 lab에서 차량 모델이 실제로 필요한 유일한 target이다. 상태에 heave($z_s, v_s$)도 있지만 `SPECS`가 `target=2, output=3`이라 Pitch만 평가한다.
+HC8과 같은 발상이지만 좌우 대신 앞뒤로 붙여 pitch를 얻는 4-DOF(bounce, pitch, 앞·뒤 바퀴) 모델이고, 관측이 완전히 다르다: $a_z$에 더해 **휠속 앞/뒤 평균을 차체 운동의 관측**으로 쓴다. 그래서 종속도 $v$가 상태로 들어온다($\dot v = a_x$). Pitch rate는 CAN IMU에 자이로가 없어 휠속·$a_z$·$a_x$에서 간접적으로 끌어내야 하므로, 이 lab에서 차량 모델이 실제로 필요한 유일한 target이다. 상태에 bounce($z_s, v_s$)도 있지만 `SPECS`가 `target=2, output=3`이라 Pitch만 평가한다.
 
 Target이 `Pitch_rate_6D`인 유일한 모델이다 (`pitch_half_car()`).
 
@@ -319,7 +319,7 @@ Target이 `Pitch_rate_6D`인 유일한 모델이다 (`pitch_half_car()`).
 
 | 상태 | 뜻 | 단위 |
 |---|---|---|
-| $z_s, v_s$ | 차체 heave 변위·속도 | m, m/s |
+| $z_s, v_s$ | 차체 bounce 변위·속도 | m, m/s |
 | $\theta, \dot\theta$ | pitch 각 (nose-up +)·각속도 → Pitch | rad, rad/s |
 | $z_{u,f}, v_{u,f}$ / $z_{u,r}, v_{u,r}$ | 앞/뒤 unsprung 변위·속도 | m, m/s |
 | $v$ | 종속도 | m/s |
@@ -365,7 +365,7 @@ $$\dot v_{u,r} = \rho F_r - \rho\gamma a_r\,(z_{u,r} - r_r)$$
 
 $$\dot v = a_x + w_v$$
 
-$w_b$: intensity $q_{body}$ ($v_s$·$\dot\theta$ 행 공통), $w_v$: $q_{long}$. 정규화: $\omega = 2\pi f$ (heave 고유진동수), $\varepsilon$ (앞뒤 강성 비대칭), $j = I_y/(m_s l_f l_r)$, $\gamma = k_t/k_s$, $\rho = m_s/m_u$. $l_f = 1.45$, $l_r = 1.50$ m, $\rho = 20$ 고정.
+$w_b$: intensity $q_{body}$ ($v_s$·$\dot\theta$ 행 공통), $w_v$: $q_{long}$. 정규화: $\omega = 2\pi f$ (bounce 고유진동수), $\varepsilon$ (앞뒤 강성 비대칭), $j = I_y/(m_s l_f l_r)$, $\gamma = k_t/k_s$, $\rho = m_s/m_u$. $l_f = 1.45$, $l_r = 1.50$ m, $\rho = 20$ 고정.
 
 - [Rajamani, Vehicle Dynamics and Control, ch. 12](https://doi.org/10.1007/978-1-4614-1433-9)
 
@@ -408,7 +408,7 @@ $R = \mathrm{diag}(r_{wheel}, r_{wheel}, r_{az}, (r_{ax}))$. $\beta$는 서스�
 
 | 기호 | 뜻 | index | 취급 | 범위 | 시작 |
 |---|---|---|---|---|---|
-| $f$ | heave 고유진동수 [Hz] | 0 | 추정 | 0.5–4 | 1.5 |
+| $f$ | bounce 고유진동수 [Hz] | 0 | 추정 | 0.5–4 | 1.5 |
 | $\zeta$ | 감쇠비 | 1 | 추정 | 0.05–1.5 | 0.4 |
 | $\varepsilon$ | 앞뒤 강성 비대칭 | 2 | 추정 | −0.9–0.9 | 0 |
 | $j$ | $I_y/(m_s l_f l_r)$ | 3 (log) | 추정 | 0.3–3 | 1 |
@@ -509,7 +509,7 @@ $a_x$ 관측 전환이 겨냥대로 저주파 대역(0.866 → 0.913)을 가장 
 | pitch_tq | $f = 4.0$, $j = 3$, $\gamma = 20$ | $q_{body} = e^{-16}$ |
 | pitch_ax / pitch_axou / pitch_eps | $f = 4.0$, $j = 3$, $\gamma = 20$, $g_v = 0.05$ | $q_{long} = e^{-12}$, $q_{grade} = q_{bias} = e^{-16}$, $r_{a_x} = e^{-8}$; axou $\lambda_{road} = 0.01$; eps $\varepsilon_c = -0.9$ |
 
-$q_{grade} = q_{bias} \to 0$은 구배·bias random walk가 상수로 퇴화했다는 뜻이고, $f = 4$ Hz heave와 $j = 3$은 승용차 물리값(1–1.5 Hz, $j \approx 0.8$–1.0)이 아니다. 이 값들은 §5.6의 평평한 손실 계곡이 경계에서 끝난 자리이지 식별 결과가 아니다.
+$q_{grade} = q_{bias} \to 0$은 구배·bias random walk가 상수로 퇴화했다는 뜻이고, $f = 4$ Hz bounce와 $j = 3$은 승용차 물리값(1–1.5 Hz, $j \approx 0.8$–1.0)이 아니다. 이 값들은 §5.6의 평평한 손실 계곡이 경계에서 끝난 자리이지 식별 결과가 아니다.
 
 ## 5.6 Pitch 파라미터의 비식별성
 
@@ -523,7 +523,7 @@ $$J(p) = \min_{g,c}\ \frac{\big\|\, g\,\hat{\dot\theta}(p) + c - \dot\theta^{6D}
 |---|:---:|---|
 | 휠속 $v_{w,f} = v + \beta(\cdot) + (\beta l_f - \lambda_f)\dot\theta$, $v_{w,r} = \cdots + (-\beta l_r - \lambda_r)\dot\theta$ | ✗ | $\beta, \lambda_f, \lambda_r$ 자유, 부호 무제한 → $\lambda_f' = \beta l_f - (\beta l_f - \lambda_f)/s$ 로 어떤 $s$든 흡수 |
 | 피치 관성 $\ddot\theta = \dfrac{-l_f F_f + l_r F_r}{j\, l_f l_r}$ | ✗ | $j' \approx j/s$ 가 응답 스케일을 조정, 고유진동수 변화는 $\omega, \varepsilon$ 이 보상 |
-| heave–pitch 커플링 $\ddot z_s \ni -\dfrac{\omega^2}{2}\big[\varepsilon(l_f + l_r) + (l_f - l_r)\big]\theta = -\dfrac{\omega^2}{2}(2.95\,\varepsilon - 0.05)\,\theta$ | 거의 ✗ | $\varepsilon \in [-0.9, 0.9]$ 로 크기·부호 모두 조절. $s = -1$ 은 $\varepsilon' = -\varepsilon + 0.034$ |
+| bounce–pitch 커플링 $\ddot z_s \ni -\dfrac{\omega^2}{2}\big[\varepsilon(l_f + l_r) + (l_f - l_r)\big]\theta = -\dfrac{\omega^2}{2}(2.95\,\varepsilon - 0.05)\,\theta$ | 거의 ✗ | $\varepsilon \in [-0.9, 0.9]$ 로 크기·부호 모두 조절. $s = -1$ 은 $\varepsilon' = -\varepsilon + 0.034$ |
 | $g_u$, $g_f$, $g_r$ (하중이동·토크 모멘트) | ✗ | 부호 자유 |
 | 잠재 외란 $d$ (osc2, $\sigma_d^2$ 자유) | ✗ | 남는 $\ddot\theta$ 전부 흡수 |
 | $a_x = a_b + g\,\theta + g\,\gamma + b_x$ | 원리상 ○, 실제 ✗ | 유일한 고정 부호·고정 계수 항. 그러나 $a_b$(OU, 분산 자유)가 같은 채널을 설명하고 $r_{a_x} \to 0$ 이라 $\theta$ 를 못 박지 못함 |
@@ -558,8 +558,8 @@ DOF는 상태 수가 아니라 강체(질량) 자유도 수다. Pitch와 Bounce�
 |---|---|---:|---|---|---|---|
 | 1-DOF (`oscillator`/`rw`/`ou`/`matern*`) | 차체 | 2 (+0–3) | $a_z$ | Bounce | 가장 단순, 빠름 | 물리 해석 없음 |
 | QC2 | 차체 + 바퀴 | 4 | $a_z$ | Bounce (+ 노면 posterior, IRI) | 노면 추정 | $\gamma$ 비식별 |
-| HC8 | 차체(heave+roll) + 바퀴 2 | 8 | $a_z$, $a_{lat}$ | Bounce + Roll | Roll (실패) | 관측식 오류 |
-| Pitch HC (`pitch_*`) | 차체(heave+pitch) + 바퀴 2 + $v$ | 9–17 | 휠속 2, $a_z$, ($a_x$) | Pitch | Pitch | 비식별성(gain 고정으로 해결), 느림 |
+| HC8 | 차체(bounce+roll) + 바퀴 2 | 8 | $a_z$, $a_{lat}$ | Bounce + Roll | Roll (실패) | 관측식 오류 |
+| Pitch HC (`pitch_*`) | 차체(bounce+pitch) + 바퀴 2 + $v$ | 9–17 | 휠속 2, $a_z$, ($a_x$) | Pitch | Pitch | 비식별성(gain 고정으로 해결), 느림 |
 
 차량 모델이 아닌 것: kinematic KF(상수가속 3상태), KF+LSTM hybrid, model-free 6종.
 
@@ -574,7 +574,7 @@ DOF는 상태 수가 아니라 강체(질량) 자유도 수다. Pitch와 Bounce�
 | a_naive | 5 | $[v_x, a_x, \theta, q, \gamma_g]$, $y = [\bar v_w,\ a_x^{IMU} = a_x + g\theta + g\gamma_g]$ | 0.462 | 3.71 | 28 | 0.06 |
 | a_lag | 6 | + IMU 1차 지연 상태 $a_I$ ($\tau_I$) | 0.616 | 3.32 | 46 | −0.43 |
 | a_full | 6 | + IMU 높이 레버암 $h_I$ ($-h_I\dot q$) | 0.836 | 2.26 | 53 | 0.18 |
-| b_full | 9 | + heave $[z_s, \dot z_s]$, $a_z^{IMU} = \ddot z_s + x_I\dot q$ (지연 공유) | 0.873 | 2.03 | 55 | 0.17 |
+| b_full | 9 | + bounce $[z_s, \dot z_s]$, $a_z^{IMU} = \ddot z_s + x_I\dot q$ (지연 공유) | 0.873 | 2.03 | 55 | 0.17 |
 | c_wheel | 9 | + $\Delta v_w = \ell q + \kappa a_x$ | 0.887 | 2.01 | 54 | **0.545** |
 | **d_torque** | 9 | + $u = [T_f, T_r]$: $\dot a_x = -\lambda_a a_x + b_T\Sigma T$, slip $s_f T_f + s_r T_r$ | **0.936** | **1.48** | **57.1** | 0.542 |
 | e_fixgeo | 9 | $x_I = 0.42$ m 고정 (회사 제원: IMU 전방 <0.5 m) | 0.900 | 1.76 | 56 | 0.535 |
@@ -611,10 +611,10 @@ DOF는 상태 수가 아니라 강체(질량) 자유도 수다. Pitch와 Bounce�
    ⚠ 위 표의 EM 값은 **60회 반복에서 멈춘 과도값**이며 수렴값이 아니다 (항목 10). 수렴까지 돌리면 세 플랜트 모두 0.43–0.54 로 내려간다.
 
    읽기: (i) EM 은 이론대로 동작 — `full` 은 세 출처 모두 우도가 매 반복 단조 증가, 60회 9초 (그러나 60회는 수렴이 아니다, 항목 10). `diag` 는 Van Loan 이산화의 비대각을 버리는 다른 모델족이라 첫 스텝에서 우도가 떨어질 수 있고(ml, joint 출처) 최종 우도도 낮다. (ii) **우도 최적 Q,R ≠ 라벨 최적 Q,R 을 정량화**: sup 플랜트의 라벨 fit Q,R(0.899)을 EM 으로 우도 최적으로 되돌리면 0.54 — sup 의 잡음 파라미터는 잡음 통계가 아니라 라벨 맞춤용이었다는 증거. ml 플랜트에서는 EM 이 거의 안 움직임(Powell 이 이미 우도 최적 근처, 이 트랙의 $r_x$ 하한은 경계 인공물이 아니라 우도의 실제 요구). (iii) **플랜트와 잡음의 역할 분리**: joint 플랜트(좋은 동역학·기하) + 라벨-프리 EM 잡음 = 0.745 로, 같은 EM 을 sup 플랜트(0.54)나 ml 플랜트(0.54)에 적용한 것보다 훨씬 좋다. 즉 라벨은 플랜트(진동수·감쇠·레버암)를 잡는 데 필요하고, 잡음은 EM 으로 라벨 없이 채워도 0.74 가 나온다 — "제원으로 플랜트 고정 + Q,R 은 EM" 배포 형태의 예행 결과.
-9. **물리 범위 적합 (2026-09-13, `g_physical`).** info 파일의 `Vehicle: JW`·`JW1_*.dbc` 로 차량이 제네시스 GV60 (개발코드 JW) 임을 확인하고, 공개 제원 (축거 2.90 m, 탑승 포함 약 2.3 t, 감속비 10.65, 타이어 반경 0.36 m) 과 실측 (자유감쇠 pitch 1.8 Hz·ζ 0.22, heave 1.65 Hz·ζ 0.24, Δv_w 회귀 κ = −0.075) 으로 탐색 범위를 좁혔다 (`PHYSICAL`): $f_p$ 1.2–2.0 Hz, $\zeta_p$ 0.15–0.4, $b_a$ 0.1–0.4 ($m h_{cg}/I_{yy} \approx 0.25$), $h_I$ ±0.5 m, $\tau_I$ 15–100 ms, $f_z$ 1.2–1.8 Hz, $\zeta_z$ 0.15–0.4, $c_{zp}$ ±15, $\kappa$ −0.12~−0.04 s, $\lambda_a$ 1–20 s⁻¹, 토크는 $b_T$ 대신 정상 이득 $g_a = b_T/\lambda_a \in [0.009, 0.018]$ m/s² per Nm ($i/(rm) = 0.013$), $\sigma_x \ge 0.02$, $\sigma_z \ge 0.03$ m/s². 결과: sup 0.908 (f 0.899 보다 상승 — 상자가 $f_p$·$b_a$ 상한의 나쁜 local minimum 을 제거), joint μ=3 0.910 (f 0.921 에서 −0.011), ml 0.539 (불변). **물리값 범위 안의 모델을 corr 0.01 의 대가로 얻는다.** 다만 상자 안에서도 경계로 가는 방향은 이전과 같다: $\tau_I \to$ 15 ms 하한 (라벨 없는 ml 포함 셋 다 — 실측 50–60 ms 는 IMU 1차 지연이 아니라 채널 간 위상차의 총합), $\zeta_p \to$ 0.15 하한, $\sigma_x, \sigma_z \to$ 하한, $\kappa \to$ −0.04 (slip 항 $s_f, s_r$ 이 일부 대신), $\lambda_a \to$ 20 상한 (a_x 를 토크에 즉시 응답시키고 $g_a$ 로 보상), $c_{zp} \to$ ±15 (sup −15·joint +15 로 부호가 갈림 = 비식별, 경계가 잘라낼 뿐). sup 은 $q_a$ 상한으로 NIS 0.17 (비일관), joint 는 NIS 1.11 → **채택안은 g_physical · joint μ=3**. 같은 플랜트에 라벨 없는 EM 으로 $Q, R$ 만 채우면 60회에서 0.812 / 0.813 이 나오지만 이것은 수렴값이 아니다 (항목 10: 수렴 시 0.43–0.53). 그림: `pitch_staged_compare_g_physical.png`, `pitch_staged_diagnostics_g_physical.png`.
+9. **물리 범위 적합 (2026-09-13, `g_physical`).** info 파일의 `Vehicle: JW`·`JW1_*.dbc` 로 차량이 제네시스 GV60 (개발코드 JW) 임을 확인하고, 공개 제원 (축거 2.90 m, 탑승 포함 약 2.3 t, 감속비 10.65, 타이어 반경 0.36 m) 과 실측 (자유감쇠 pitch 1.8 Hz·ζ 0.22, bounce 1.65 Hz·ζ 0.24, Δv_w 회귀 κ = −0.075) 으로 탐색 범위를 좁혔다 (`PHYSICAL`): $f_p$ 1.2–2.0 Hz, $\zeta_p$ 0.15–0.4, $b_a$ 0.1–0.4 ($m h_{cg}/I_{yy} \approx 0.25$), $h_I$ ±0.5 m, $\tau_I$ 15–100 ms, $f_z$ 1.2–1.8 Hz, $\zeta_z$ 0.15–0.4, $c_{zp}$ ±15, $\kappa$ −0.12~−0.04 s, $\lambda_a$ 1–20 s⁻¹, 토크는 $b_T$ 대신 정상 이득 $g_a = b_T/\lambda_a \in [0.009, 0.018]$ m/s² per Nm ($i/(rm) = 0.013$), $\sigma_x \ge 0.02$, $\sigma_z \ge 0.03$ m/s². 결과: sup 0.908 (f 0.899 보다 상승 — 상자가 $f_p$·$b_a$ 상한의 나쁜 local minimum 을 제거), joint μ=3 0.910 (f 0.921 에서 −0.011), ml 0.539 (불변). **물리값 범위 안의 모델을 corr 0.01 의 대가로 얻는다.** 다만 상자 안에서도 경계로 가는 방향은 이전과 같다: $\tau_I \to$ 15 ms 하한 (라벨 없는 ml 포함 셋 다 — 실측 50–60 ms 는 IMU 1차 지연이 아니라 채널 간 위상차의 총합), $\zeta_p \to$ 0.15 하한, $\sigma_x, \sigma_z \to$ 하한, $\kappa \to$ −0.04 (slip 항 $s_f, s_r$ 이 일부 대신), $\lambda_a \to$ 20 상한 (a_x 를 토크에 즉시 응답시키고 $g_a$ 로 보상), $c_{zp} \to$ ±15 (sup −15·joint +15 로 부호가 갈림 = 비식별, 경계가 잘라낼 뿐). sup 은 $q_a$ 상한으로 NIS 0.17 (비일관), joint 는 NIS 1.11 → **채택안은 g_physical · joint μ=3**. 같은 플랜트에 라벨 없는 EM 으로 $Q, R$ 만 채우면 60회에서 0.812 / 0.813 이 나오지만 이것은 수렴값이 아니다 (항목 10: 수렴 시 0.43–0.53). 그림: `pitch_staged_compare_g_physical.png`, `pitch_staged_diagnostics_g_physical.png`.
 10. **EM 수렴 확인 (2026-09-13, `outputs/em_long_run_g_physical.{json,png}`).** 항목 8·9 의 EM 수치는 60회에서 멈춘 값이고 그 시점에 우도는 매 반복 오르고 있었다 (`em()` 의 상대 tol 1e-5 는 발동하지 않았고 반복 상한 60 이 먼저 걸림). g_physical 의 sup / joint 플랜트에서 100회 단위로 3,000회까지 이어 돌린 결과 우도 (energy) 는 단조 감소, pitch corr 은 단조 하강한다: sup 플랜트 0.813 (60회) → 0.59 (300) → 0.43 (1,000 이후 수렴, energy −5.29); joint 플랜트 0.812 (60) → 0.72 (300) → 0.55 (1,000) → 0.53 (3,000, 아직 −1e-4/회 하강 중). 수렴점에서 $R$ 은 거의 0 ($\sigma_w$ 0.6 mm/s, $\sigma_x$ 0.007, $\sigma_z$ 0.006 m/s²) 이고 분산이 전부 full $Q$ 로 옮겨간다 — 유색 측정잡음을 모델링하지 않은 모델에서 우도가 선호하는 해이며, ml (Powell) 이 $r_x, r_z$ 하한에 붙던 것과 같은 현상이다. **결론: 플랜트가 무엇이든 수렴한 EM 의 pitch corr 은 ml 과 같은 0.43–0.54 이고, 0.74–0.81 은 sup 잡음 근처에서 일찍 멈춘 과도값이었다.** 정정 대상: 항목 8 의 0.745 / 0.543 / 0.536, 항목 9 의 0.812 / 0.813. 수렴 설정 (`run_em_noise_covariance.py` 3,000회, tol 1e-6) 재계산: f_fixlever 플랜트 sup / ml / joint → 0.555 / 0.515 / 0.573, g_physical 플랜트 → 0.432 / 0.575 / 0.534 (`outputs/em_noise_covariance_*` 는 마지막 실행인 g_physical 것). EM 은 반복당 0.15 s 로 싸지만 능선을 따라 수천 회가 필요하므로 이후 EM 은 `--em-iters 2000` 이상 또는 상대 tol 1e-6 으로 돌린다 (`run_em_noise_covariance.py`, `plot_pitch_staged_waveforms.py`, alt 목적함수 모두 반영).
 11. **교대 최적화 (2026-09-13, 목적함수 `alt:<n>`): 플랜트는 sup, $Q, R$ 은 EM.** 잡음 파라미터를 탐색에서 빼고 [EM (플랜트 고정, 라벨 없음) → 플랜트만 sup] 을 n회 교대, 마지막은 EM 으로 끝내 배포 필터 = "sup 플랜트 + EM 잡음" 을 만든다. g_physical 물리 범위, sup 플랜트 warm start, EM 2,000회. 결과 **0.536** (NRMSE 1.11, free gain 10) 으로 ml (0.539) 과 같다. 각 라운드의 sup 단계는 EM 잡음 아래에서 NRMSE 1.75 → 1.62 → 1.11 로 평균 예측 (1.0) 보다 나은 플랜트를 찾지 못했고, 파라미터는 경계로 흩어졌다 ($h_I$ 부호 반전 +0.32 m, $f_p$ 하한, $\lambda_a$ 하한, $\zeta_p$·$b_a$·$f_z$ 상한). 시작값 플랜트에서 출발한 첫 시도 (warm start 없음, EM 60회) 는 0.298. 해석: 수렴한 EM 의 $Q, R$ ($R \approx 0$, full $Q$) 아래에서는 물리 범위 안의 어떤 플랜트도 pitch 를 복원하지 못한다. pitch 추출의 대역·위상을 정하는 것은 플랜트만이 아니라 $Q, R$ 인데, 우도에는 그 정보가 없기 때문이다 (§5.6, §5.8-3, §5.8-10). **결론: 라벨 정보는 플랜트뿐 아니라 $Q, R$ 에도 들어가야 하고, 그것을 하나의 목적함수로 묶는 joint 가 현재 동작하는 유일한 결합 방식이다.**
-12. **식별되는 항목만 EM (2026-09-14, `run_em_noise_covariance.py --variants structured`, `outputs/em_noise_covariance_structured_*`).** 항목 10–11 의 진단 (우도는 $R$ 과 pitch 관련 $Q$ 항목을 정할 정보가 없다) 에 따라, $R$ 전체와 $q_p$ (pitch 구동), $q_g$ (구배) 는 적합값에 고정하고 **$q_a$ (몸체 가속 구동), $q_z$ (heave 구동) 두 개만** EM 으로 갱신한다. M-step 의 해당 대각 원소 비율로 연속시간 세기를 갱신하고 같은 플랜트로 Van Loan 재이산화하므로 $Q$ 의 구조 (비대각 포함) 가 유지된다 (generalized EM 근사). g_physical, 200 에피소드, tol 1e-6.
+12. **식별되는 항목만 EM (2026-09-14, `run_em_noise_covariance.py --variants structured`, `outputs/em_noise_covariance_structured_*`).** 항목 10–11 의 진단 (우도는 $R$ 과 pitch 관련 $Q$ 항목을 정할 정보가 없다) 에 따라, $R$ 전체와 $q_p$ (pitch 구동), $q_g$ (구배) 는 적합값에 고정하고 **$q_a$ (몸체 가속 구동), $q_z$ (bounce 구동) 두 개만** EM 으로 갱신한다. M-step 의 해당 대각 원소 비율로 연속시간 세기를 갱신하고 같은 플랜트로 Van Loan 재이산화하므로 $Q$ 의 구조 (비대각 포함) 가 유지된다 (generalized EM 근사). g_physical, 200 에피소드, tol 1e-6.
 
    | 플랜트 | $q_a$ | $q_z$ | energy (fit) | pitch corr | NIS | 반복 |
    |---|---:|---:|---:|---:|---:|---:|
@@ -644,7 +644,7 @@ DOF는 상태 수가 아니라 강체(질량) 자유도 수다. Pitch와 Bounce�
    | joint μ=3 | 0.910 | 1.11 | −4.11 | |
 
    읽기: (i) full EM 교대 (0.536) 와 달리 structured EM 교대는 동작한다. sup 단계가 EM 잡음 아래에서 NRMSE 0.50 을 찾고 (alt 는 1.1), 플랜트를 다시 맞춰 structured EM 단독보다 +0.02 를 회복한다. (ii) 그래도 joint 보다 0.017 낮고 NIS 는 0.61 로 joint (1.11) 보다 비일관하다. 이유는 $R$, $q_p$, $q_g$ 가 sup 값 (라벨 맞춤용 성형값, $q_a$ 상한 시절의 짝) 에 묶여 있기 때문이다. joint 는 그 항목까지 우도와 라벨이 함께 정한다. (iii) 정리하면 "sup + EM" 의 올바른 형태 (structured, 교대) 는 0.89 / NIS 0.6, joint 는 0.91 / NIS 1.1 — 분리 절차가 필요한 상황 (플랜트는 한 번 식별하고 잡음만 현장에서 갱신) 이면 alts, 그렇지 않으면 joint.
-15. **bounce 라벨을 목적함수에 추가 (2026-09-14, 목적함수 `joint2:<μ_p>:<μ_b>`).** $J = \varphi + \mu_p\,\mathrm{NRMSE}_{pitch} + \mu_b\,\mathrm{NRMSE}_{bounce}$. bounce 항은 heave 속도 상태 $w_s$ 를 `Bounce_rate_6D` 와 자유 이득·오프셋으로 맞춘 오차 (라벨 단위 미확정). g_physical, $\mu_p = 3$, $\mu_b = 3 / 10$. 이번부터 모든 행에 `bounce_corr` (dev-test, $w_s$ 자유 이득 회귀) 를 기록한다.
+15. **bounce 라벨을 목적함수에 추가 (2026-09-14, 목적함수 `joint2:<μ_p>:<μ_b>`).** $J = \varphi + \mu_p\,\mathrm{NRMSE}_{pitch} + \mu_b\,\mathrm{NRMSE}_{bounce}$. bounce 항은 bounce 속도 상태 $w_s$ 를 `Bounce_rate_6D` 와 자유 이득·오프셋으로 맞춘 오차 (라벨 단위 미확정). g_physical, $\mu_p = 3$, $\mu_b = 3 / 10$. 이번부터 모든 행에 `bounce_corr` (dev-test, $w_s$ 자유 이득 회귀) 를 기록한다.
 
    | g_physical | pitch corr | bounce corr | NIS |
    |---|---:|---:|---:|
@@ -656,7 +656,7 @@ DOF는 상태 수가 아니라 강체(질량) 자유도 수다. Pitch와 Bounce�
    | joint2 μ_p=3, μ_b=10 | 0.909 | 0.305 | 1.11 |
    | 참고: 1-DOF bounce KF (§3) / 표준 3-상태 수직채널 | — | 0.918 / 0.938 | |
 
-   읽기: bounce 라벨 항을 넣어도 bounce corr 은 0.25 → 0.30 에 그치고 ($\mu_b$ 를 3 → 10 으로 올려도 변화 없음), pitch 는 0.910 그대로다. 파라미터도 joint 와 거의 같다 ($f_z$ 1.5 Hz, $\zeta_z$ 0.4 상한, $c_{zp}$ −15). 즉 물리 범위 (1.2–1.8 Hz 진동자) 안의 heave 속도 $w_s$ 로는 라벨 파형을 만들 수 없다. `Bounce_rate_6D` 는 heave 속도가 아니라 칩이 $a_z$ 를 0.77 Hz 고역통과 후 적분한 파생 신호이고, 그것을 맞추는 모델은 사실상 같은 필터인 1-DOF KF (0.918) 나 3-상태 수직채널 (0.938) 이다. **결론: 이 모델은 pitch 전용으로 두고, bounce 는 기존 1-DOF KF 가 담당한다. bounce 추정 불가가 아니라 라벨 정의 불일치다.**
+   읽기: bounce 라벨 항을 넣어도 bounce corr 은 0.25 → 0.30 에 그치고 ($\mu_b$ 를 3 → 10 으로 올려도 변화 없음), pitch 는 0.910 그대로다. 파라미터도 joint 와 거의 같다 ($f_z$ 1.5 Hz, $\zeta_z$ 0.4 상한, $c_{zp}$ −15). 즉 물리 범위 (1.2–1.8 Hz 진동자) 안의 bounce 속도 $w_s$ 로는 라벨 파형을 만들 수 없다. `Bounce_rate_6D` 는 bounce 속도가 아니라 칩이 $a_z$ 를 0.77 Hz 고역통과 후 적분한 파생 신호이고, 그것을 맞추는 모델은 사실상 같은 필터인 1-DOF KF (0.918) 나 3-상태 수직채널 (0.938) 이다. **결론: 이 모델은 pitch 전용으로 두고, bounce 는 기존 1-DOF KF 가 담당한다. bounce 추정 불가가 아니라 라벨 정의 불일치다.**
 16. **Abbeel 외 2005 "Discriminative Training of Kalman Filters" 재현 (2026-09-14, 목적함수 `res:<source>`, `reso:<source>`, `pred:<P>:<source>`, `--optimizer coord`).** 논문 설정 = 플랜트 (f, g) 고정, 잡음 공분산만 부분 라벨 (논문은 GPS 위치, 우리는 pitch rate) 기준으로 학습. 우리 sup 과의 차이는 (i) 플랜트까지 학습하느냐, (ii) 손실 형태 (논문 Res 는 offset 없는 제곱합, 우리는 평균 정렬 NRMSE — 정규화는 상수배라 argmin 동일), (iii) 공분산까지 보는 Pred 기준, (iv) 최적화기 (논문 좌표 상승 vs Powell). 재현: g_physical 의 joint / sup 플랜트 고정, 잡음 세기 8개 ($q_a, q_p, q_g, q_z, r_w, r_x, r_z, r_d$, 물리 범위 유지) 만 학습, 출처 적합값에서 출발.
 
    $$\mathrm{Res}: \ \frac{1}{NT}\sum (q^{6D}_t - 57.3\,\hat q_t)^2 \qquad \mathrm{Pred}: \ \frac{1}{NT}\sum \Big[\log \Omega_t + \frac{(q^{6D}_t - 57.3\,\hat q_t)^2}{\Omega_t}\Big], \quad \Omega_t = 57.3^2\, P_{t|t}[q,q] + P$$
@@ -687,6 +687,70 @@ DOF는 상태 수가 아니라 강체(질량) 자유도 수다. Pitch와 Bounce�
    | → 완전 EM | 485 | **−6.36** | 1.34 | 0.583 | 0.734 | 1.16 |
 
    읽기: (i) 센서 우도는 지금까지 중 압도적 최고 (−6.3; 물리 구조 안의 최고 ml 이 −4.7). 자유 9-상태 선형 모델은 4개 센서를 거의 무잡음 ($R \sim 10^{-5}$) 으로 설명하는 부분공간 모델로 수렴한다. (ii) 플랜트는 출발점의 흔적이 없을 만큼 바뀌고 (\|ΔA\|/\|A\| > 1), 4번째 상태는 더 이상 pitch 가 아니다 (0.48–0.58). (iii) 라벨로 9-상태의 최적 선형 판독을 붙여도 0.70–0.73 이다. 우도가 고른 잠재 상태는 센서 예측용 압축 표현이지 pitch 를 담도록 만들어진 것이 아니고, 물리 모델의 pitch 상태 (0.91) 는 물론 인과 FIR 상한 (0.96) 에도 못 미친다. (iv) 두 출발점이 다른 국소해로 갔지만 (energy −6.32 / −6.36, 판독 0.70 / 0.73) 결론은 같다. **결론: 논문 §2.2 를 글자 그대로 (플랜트 포함) 적용하면 "센서를 가장 잘 설명하는 선형 모델" 을 얻지만 pitch 추정기로는 쓸 수 없다. 우리가 EM 을 $Q, R$ 에 한정하고 플랜트를 물리 구조로 묶은 이유가 여기서 수치로 확인된다.**
+18. **구배 상태 $\gamma_g$ 제거 — 보고용 기준 모델 `h_nograde` (2026-09-15, `methods_gpt.md` §3-1).** 9-상태 모델의 관측 불가능 방향은 (θ 상수 ↔ $\gamma_g$) 하나뿐이고 pitch rate 는 functionally observable (Fernando–Trinh–Jennings 2010: $\mathrm{rank}[\mathcal O; e_q^T] = \mathrm{rank}\,\mathcal O$) 이지만, 설명을 단순하게 하기 위해 $\gamma_g$ 를 뺀 8-상태 (fully observable) 를 보고 기준으로 삼는다. 구현은 $q_g = 0$, $P_0[\gamma_g] = 0$ (γ_g ≡ 0, 8-상태와 동치).
+
+   먼저 g_physical joint 플랜트에서 필터만 다시 돌려 $\gamma_g$ 의 몫을 잰 결과:
+
+   | 설정 | pitch corr | RMSE | NIS | θ 의 에피소드 평균 오프셋 |
+   |---|---:|---:|---:|---:|
+   | 적합값 그대로 ($q_g$ = 1.4e-5) | 0.910 | 1.85 | 1.11 | 0.0009 rad |
+   | $q_g \to 0$ (에피소드마다 상수, 초기값만 추정) | 0.905 | 1.95 | 1.13 | 0.0013 |
+   | $\gamma_g$ 제거 ($q_g = 0$, $P_0 = 0$) | 0.884 | 2.47 | 1.22 | 0.0037 |
+   | $q_g \times 100$ | 0.808 | 2.45 | 1.06 | 0.0011 |
+
+   읽기: $\gamma_g$ 의 역할은 IMU 종가속의 저주파 오프셋 (경사·바이어스) 을 θ 대신 받아 주는 것이다. 없애면 오프셋이 θ 로 가고 (평균 오프셋 4배) 그 변동이 q 로 새어 corr 0.03·RMSE 30 % 를 잃는다. 에피소드당 상수 하나면 거의 손실이 없고, 반대로 $q_g$ 를 키우면 pitch 의 저주파까지 가져간다. 재적합 결과 (sup / ml / joint / Res / Pred / alts / EM) 는 아래에 추가.
+
+   **재적합 시 주의 (cold start 실패).** $\gamma_g$ 를 뺀 모델을 기본 시작값에서 적합하면 sup 0.708 ($r_w$ 상한 1 로 휠속을 꺼 버림), ml −0.248 (부호 반전), joint 0.134 로 전부 무너진다. 같은 모델에서 g_physical 의 파라미터를 그대로 쓰면 0.884 이므로 모델의 한계가 아니라 최적화 지형의 문제다: $\gamma_g$ 가 있으면 IMU 오프셋을 받아 주는 자리가 있어 시작값에서도 옳은 골짜기로 들어가지만, 없으면 초기에 그 오프셋을 어디에 둘지 갈피를 못 잡는다. 따라서 `h_nograde` 는 `--warm g_physical` (같은 목적함수의 g_physical 적합값에서 출발) 로 적합한다. 또 $\gamma_g$ 의 분산을 정확히 0 으로 두면 RTS 스무더 (EM) 의 예측 공분산이 특이해지므로 무시 가능한 ε (초기 분산 1e-10, 구동 잡음 1e-16) 만 남겨 얼린다.
+
+   **재적합 결과: $\gamma_g$ 제거는 채택하지 않는다.** g_physical 적합값에서 warm start 해도 h_nograde 는 sup 0.694 (RMSE 3.05, $r_w \to 1$, NIS 15.5), ml −0.218, joint 0.817 (RMSE 3.05, free gain 36), Res 0.806, Pred 0.791, alts 0.645, EM full 0.52–0.69 로 g_physical (0.908–0.911, RMSE 1.8) 보다 크게 나쁘다. 위 "필터만 재실행" 표의 0.884 가 오해였다: `metrics()` 의 corr 은 에피소드별 평균을 뺀 값이라 **$\hat q$ 의 에피소드별 상수 오프셋을 숨긴다.** $\gamma_g$ 가 없으면 IMU 의 저주파 오프셋 (경사·바이어스) $g\theta_0$ 를 θ 가 떠안아야 하는데, θ 를 상수 $\theta_0$ 에 붙들어 두려면 pitch 식 $\dot q = -\omega_p^2\theta - 2\zeta_p\omega_p q + \dots$ 에서 $\hat q \approx -\omega_p\theta_0/(2\zeta_p)$ 의 **상수 pitch-rate 편향**이 생긴다 (θ₀ = 1° 이면 ω_p = 10, ζ_p = 0.15 에서 33 deg/s). 같은 파라미터에서 fit NRMSE 가 g_physical 0.48 → γ_g 제거 1.41 로 뛰는 것이 그 증거이고, corr 은 이를 못 본다. 최적화기는 이 편향을 줄이려고 휠속 채널을 끄거나 ($r_w \to 1$: a_x 가 오프셋을 대신 흡수) 부호를 뒤집는 나쁜 골짜기로 간다. 결론: **$\gamma_g$ (또는 동치인 IMU 종가속 오프셋 상태) 는 필수**이며, 관측 불가능 방향 (θ 상수 ↔ γ_g) 은 pitch rate 와 직교하므로 functional observability 로 설명하고 유지한다. 최소 모델 실험 (항목 19) 도 γ_g 를 포함한 채 진행한다.
+
+   **$c_{zp}$ (pitch → bounce 연성) 은 무관한 파라미터** (아래 표, 이 결론은 항목 19 의 사다리로 확장됨). g_physical 의 joint / sup 플랜트에서 $c_{zp}$ 를 적합값 (±15, 경계) → 0 → 부호 반전으로 바꿔 필터만 다시 돌리면 corr / RMSE / NIS / energy 가 소수 셋째 자리까지 같다 (joint 0.910 / 1.85 / 1.11 / −4.11 불변). 앞뒤 강성 비대칭 $(k_f l_f - k_r l_r)/m$ 에 해당하는 항이지만 이 데이터에서는 식별도 안 되고 (sup −15, joint +15 로 갈림) 결과에도 영향이 없으므로, 보고용 모델에서는 $c_{zp} = 0$ 으로 두어 두 진동자를 완전히 분리한 형태로 적는다.
+19. **기능 제거 사다리 → 5-상태 최소 모델 (2026-09-15, `build_m`, stage `m`/`n`/`p`, `methods_gpt.md` §3-2).** §3 (g_physical) 의 joint 플랜트에서 요소를 하나씩 끄고 필터만 재실행한 스크리닝 (corr: $c_{zp}$ 0 → 0.910, slip $s_f,s_r$ 0 → 0.910, 토크 입력 제거 → 0.908, $b_a$ 0 → 0.909, $x_I$ 0 → 0.911, $a_z$ 채널 끔 → 0.910, $\tau_I$ → 5 ms → 0.910, $\kappa$ 0 → 0.904, $\Delta v_w$ 끔 → 0.825, $h_I$ 0 → −0.518) 에 따라, bounce 진동자·$a_z$ 채널·토크 입력·$b_a$·$c_{zp}$ 를 한꺼번에 뺀 6-상태 [$v_x, a_x, \theta, q, \gamma_g, a_I$], 관측 [$\bar v_w, a_x^{IMU}, \Delta v_w$] 를 기준형 (m6) 으로 두고 재적합으로 확인했다. 전부 g_physical 적합값에서 warm start, 물리 범위 유지.
+
+   | 모델 | 상태 | 파라미터 | sup corr / RMSE | joint corr / RMSE / NIS | 판정 |
+   |---|---:|---:|---|---|---|
+   | g_physical (§3) | 9 | 21 | 0.908 / 1.78 | 0.910 / 1.85 / 1.11 | 출발점 |
+   | m6 (bounce·$a_z$·토크·$b_a$·$c_{zp}$ 제거) | 6 | 11 | 0.903 / 1.84 | 0.912 / 1.85 / 1.07 | 손실 없음 |
+   | m6 + $b_a$ | 6 | 12 | 0.898 / 1.84 | 0.910 / 1.87 / 1.07 | 불필요 |
+   | m6 + $\lambda_a$ | 6 | 12 | 0.904 / 1.85 | 0.912 / 1.86 / 1.07 | 불필요 |
+   | m6 − $\kappa$ | 6 | 10 | 0.902 (NIS 68) | 0.905 / 1.86 / 1.04 | 소폭 손실, sup 불안정 |
+   | **m5_nodelay = m6 − IMU 지연 상태** | **5** | **10** | **0.908 / 1.76** | **0.916 / 1.80 / 1.08** | **최고, 보고 기준** |
+   | m6 − $\Delta v_w$ 채널 | 6 | 9 | 0.817 / 2.40 | 0.824 / 2.46 / 1.09 | 필수 |
+   | m6 − $\gamma_g$ | 6 | 10 | 0.843 / 2.63 (NIS 11) | 0.471 / 3.50 | 필수 (항목 18) |
+   | m5_nodelay − $\kappa$ | 5 | 9 | 0.899 / 1.85 | 0.912 / 1.82 / 1.05 | 소폭 손실 (−0.004), 유지 권장 |
+   | m5_nodelay − $\gamma_g$ (4-상태) | 4 | 9 | 0.871 / 2.44 | 0.237 / 3.85 | 필수 재확인 (m5 값에서 warm start 해도) |
+
+   읽기: (i) 성능을 만드는 것은 셋뿐이다 — IMU 종가속의 높이 레버암 $h_I$ (pitch 각가속도를 종가속에 드러냄), 휠속 앞뒤 차이 $\Delta v_w$ (q 의 부호·위상), 구배 상태 $\gamma_g$ (IMU 저주파 오프셋의 배출구). (ii) IMU 1차 지연 상태는 $h_I$ 가 있으면 필요 없다. $-h_I\dot q$ 항이 q 보다 90° 앞선 성분을 주어 지연이 만드는 위상을 대신 흡수한다 (사다리 초기의 지연 +0.15 는 $h_I$ 가 없을 때의 값). (iii) bounce·$a_z$·토크·$b_a$·$c_{zp}$·$\lambda_a$ 는 제원 범위 안에서는 기여가 없다. 성능 상승을 위해 붙였던 것들이 사실은 자유 $x_I$ 등이 라벨 위상을 흉내 낼 때만 도움이 됐던 것이다. (iv) 5-상태 모델의 Abbeel Res / Pred (joint 플랜트 고정): 0.912 / 0.915, label_logloss 2.34 / 2.31.
+
+   **5-상태 모델의 방법별 결과 (보고 표, dev-test 128 에피소드):**
+
+   | m5_nodelay | pitch corr | RMSE | NIS | label_logloss | 비고 |
+   |---|---:|---:|---:|---:|---|
+   | sup | 0.908 | 1.76 | 0.17 | 3.50 | 공분산 과대 |
+   | ml (라벨 없음) | 0.574 | 9.71 | 1.03 | 68.8 | free gain 7.6: q̂ 7배 과대 |
+   | joint μ=3 | **0.916** | 1.80 | 1.08 | 2.32 | 채택 |
+   | Abbeel Res / Pred (joint 플랜트, 잡음만) | 0.912 / 0.915 | 1.76 / 1.79 | 1.31 / 1.25 | 2.34 / 2.31 | |
+   | EM full 수렴 (sup / joint 플랜트) | 0.562 / 0.571 | | 1.03 / 1.03 | | 1,590 / 2,084회, R → 0 으로 퇴화 (§3 과 같은 결론) |
+   | 참고: 사다리 변형들의 ml | m6 0.529, m6−κ 0.515, m6−Δv_w −0.151, m6−γ_g −0.071 | | | | Δv_w·γ_g 없으면 라벨-프리는 부호조차 못 잡음 |
+
+   그림: `outputs/pitch_staged_compare_m5_nodelay.png`, `outputs/pitch_staged_diagnostics_m5_nodelay.png`, `outputs/pitch_staged_compare_g_physical_vs_m5_nodelay_joint3.png`.
+20. **pitch ⊕ bounce 결합 (2026-09-15, `build_pb`, `--models pb1_block,pb2_*`, `methods_gpt.md` §3-3).** 5-상태 pitch 모델 (§3-2) 옆에 bounce 블록을 붙이고 관측에 $a_z^{IMU}$ 를 더한다. 목적함수 joint2 (우도 + 3·pitch NRMSE + 3·bounce NRMSE), pitch 파라미터는 m5 적합값에서 출발. bounce 는 자유 이득으로 `Bounce_rate_6D` 와 대조. 두 버전:
+   - **1번 `pb1_block`**: 기존 1-DOF bounce KF 구조 그대로 (진동자 $f_b, \zeta_b$ 넓은 범위 + random-walk 외란 $d_b$ 가 $\ddot z_s$ 구동), 교차항 0 (블록 대각). bounce 출력 = $\dot z_s$. 칩 필터를 파라미터로 흉내 내는 방식.
+   - **2번 `pb2_*`**: 물리 bounce 진동자 ($f_b$ 1.2–1.8 Hz, $\zeta_b$ 0.15–0.4, 백색잡음 구동) 에 **칩 처리 체인을 상태 하나로 붙임**: $\dot b = -\omega_c b + \ddot z_s$, $\omega_c = 2\pi\cdot0.77$ (회귀값 고정). 즉 `Bounce_rate_6D` $\approx K\cdot\mathrm{HP}_{\omega_c}[\int a_z]$ 를 모델 출력 $b$ 로 만들어 라벨과 직접 비교 → 물리 bounce 상태가 라벨로 검증된다. 기본형에서 하나씩 추가하고 뚜렷한 이득이 있는 것만 남긴다.
+
+   | 모델 | 상태 | 파라미터 | pitch corr / RMSE | bounce corr | NIS | 판정 |
+   |---|---:|---:|---|---:|---:|---|
+   | m5_nodelay (pitch 만, 참고) | 5 | 10 | 0.916 / 1.80 | — | 1.08 | |
+   | 기존 1-DOF bounce KF 단독 (참고, §3) | 3 | 5 | — | 0.918 | | |
+   | 1번 pb1_block | 8 | 15 | 0.916 / 1.80 | 0.905 | 1.11 | 두 필터를 따로 돌린 것과 동치. pitch 불변 |
+   | **2번 pb2_basic (물리 진동자 + 칩 체인)** | **8** | **14** | **0.916 / 1.80** | **0.923** | 1.10 | **채택.** $f_b$ 1.8 Hz (상한), $\zeta_b$ 0.4 (상한) |
+   | 2번 + 교차항 $c_{zp}, c_{pz}$ | 8 | 16 | 0.918 / 1.75 | 0.923 | 1.11 | $c_{zp}$ −14.5·$c_{pz}$ +15 로 둘 다 경계, $f_b$ 하한으로 이동. +0.002 는 이득 아님. 제외 |
+   | 2번 + $\omega_c$ 자유 | 8 | 15 | 0.916 / 1.80 | 0.923 | 1.10 | $f_c$ = 0.75 Hz (회귀 0.77 재현), 변화 없음. 고정 유지 |
+   | 2번 + IMU 전방 레버 $x_I$ = 0.42 ($a_z^{IMU}$ 에만) | 8 | 14 | 0.902 / 2.05 | 0.813 | 1.12 | 둘 다 악화 (free gain 70, $h_I$ 하한). 제외 |
+
+   읽기: (i) 물리 bounce 진동자에 칩 체인 출력을 붙이면 `Bounce_rate_6D` 를 0.923 으로 재현한다 — 칩 필터를 흉내 내던 1-DOF KF (0.905–0.918) 와 같거나 낫고, 이제 bounce 상태 $z_s, \dot z_s$ 는 물리량이다. 라벨 = "차체 bounce 가속도를 0.77 Hz 고역통과 후 적분" 이라는 회사 설명이 모델 안에서 그대로 성립한다. (ii) 동역학적 결합 (교차항) 은 식별되지 않고 (경계로 감) 이득도 없다. 승용차의 분리 조건 ($k_f l_f \approx k_r l_r$) 과 일치. 최종 모델은 pitch 블록과 bounce 블록이 동역학적으로 독립이고, 관측만 나눠 갖는다. (iii) IMU 전방 레버 $x_I \dot q$ 를 $a_z^{IMU}$ 에 넣으면 나빠진다. 라벨에 레버 흔적이 없었던 것과 같은 방향의 사실이며, IMU 의 $a_z$ 가 pitch 각가속도에 우리 모델대로 반응하지 않거나 (부호·크기) 다른 처리가 있다는 뜻. 제원 확인 항목. (iv) $\omega_c$ 는 자유로 두어도 0.75 Hz 로 회귀값을 재현하므로 고정한다. (v) bounce 진동자의 $f_b$, $\zeta_b$ 가 물리 범위 상한 (1.8 Hz, 0.4) 에 붙는다. 실측 자유감쇠 (1.65 Hz, 0.24) 보다 조금 높은 쪽을 원하며, 범위를 넓히면 더 움직일 수 있다 — 물리 해석의 한계로 기록.
+
+   **결론.** 보고용 결합 모델 = `pb2_basic`: 상태 8개 $[v_x, a_x, \theta, q, \gamma_g, z_s, \dot z_s, b]$, 관측 4개 $[\bar v_w, a_x^{IMU}, \Delta v_w, a_z^{IMU}]$, 파라미터 14개, 출력 pitch rate $= (180/\pi) q$, `Bounce_rate_6D` $= K b$. dev-test pitch 0.916 / bounce 0.923. 관측 가능성은 §3-2 와 같고 ($\theta$ 상수 ↔ $\gamma_g$ 만 marginal, 두 출력 모두 그 방향과 직교), 식별은 pitch 블록 (§3-2) 과 bounce 블록 (3개 + 잡음 2개) 이 관측을 나눠 가져 서로 독립이다.
 
 결과: `outputs/pitch_staged_metrics.csv`, `outputs/pitch_staged_models_*.png`.
 
