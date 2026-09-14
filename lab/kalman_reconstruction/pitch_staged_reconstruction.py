@@ -4,7 +4,7 @@ Stage a — Model A' (reduced longitudinal-pitch), 변형 3개로 요소를 분�
   a_naive  IMU 지연·레버암 없음 (methods_gpt.md Model 1 원형)
   a_lag    + IMU 1차 지연 상태 a_I (실측: 휠 파생 a_x가 IMU보다 60 ms 선행)
   a_full   + IMU 높이 레버암 h_I (a_x_IMU에 -h_I*qdot)
-Stage b — Model B' (+ heave z_s, a_z 레버암 x_I*qdot, IMU 지연 공유)
+Stage b — Model B' (+ bounce z_s, a_z 레버암 x_I*qdot, IMU 지연 공유)
 
 공통 원칙: 중력 g = 9.81 고정, 출력 gain = 180/pi 고정(offset만 train), ML은 innovation 우도(Sarkka Thm 16.9),
 Powell은 best-visited 재시작으로 조기 종료를 우회, 평가는 dev-test 3명(SEALED 2명은 최종 검증까지 봉인).
@@ -36,6 +36,10 @@ PARAMS = {  # name: (start, bounds)
     "sf": (8e-5, (-5e-3, 5e-3)), "sr": (5e-4, (-5e-3, 5e-3)),
     "log_rl": (0.0, (-6.0, 6.0)),  # 방법 B: 학습용 기준 센서(6D pitch rate) 채널의 잡음 분산 [(deg/s)^2]
     "log_ga": (np.log(0.013), (np.log(0.009), np.log(0.018))),  # 토크 정상 이득 a_x/ΣT = i/(r m) [m/s² per Nm], b_T = ga·λ_a
+    # pitch ⊕ bounce 결합 모델 (build_pb). 1번: 기존 1-DOF bounce KF 블록 (칩 필터 근사, 넓은 범위). 2번: 물리 bounce + 칩 체인 출력
+    "fb": (3.0, (0.3, 8.0)), "zb": (0.3, (0.05, 5.0)), "log_qv": (np.log(1e-3), (-12.0, 3.0)), "log_qd": (5.0, (-12.0, 8.0)),
+    "log_wc": (np.log(2 * np.pi * 0.77), (np.log(2 * np.pi * 0.2), np.log(2 * np.pi * 3.0))),  # 칩 체인 고역통과 모서리 [rad/s]
+    "cpz": (0.0, (-15.0, 15.0)),  # bounce 변위 → pitch 각가속도 연성 [rad/s² per m] (half-car 의 (k_f l_f − k_r l_r)/I_yy)
 }
 # GV60 제원(축거 2.90 m, 약 2.3 t, 감속비 10.65, 타이어 반경 0.36 m)과 실측(자유감쇠, IMU 지연, Δv_w 회귀)으로 좁힌 물리 범위
 PHYSICAL = {
@@ -117,12 +121,83 @@ def build_b(d, fs):
         D = np.zeros((len(h), 2))
         D[3, 0], D[3, 1] = d["sf"], d["sr"]
     P = np.eye(n)
-    P[4, 4] = 0.01
+    if d["qg"] > 0:
+        P[4, 4] = 0.01
+    else:  # 구배 상태 제거 (h_nograde): γ_g ≈ 0 으로 얼림. 정확히 0 이면 RTS 스무더의 predicted covariance 가 특이해지므로 무시 가능한 ε 만 남긴다
+        P[4, 4], qc[4, 4] = 1e-10, 1e-16
     A, Q = discretize(f, qc, 1 / fs)
     return StateSpace(A, h, Q, np.diag(noise), P, B=B, D=D)
 
 
+def build_m(d, fs):
+    """최소 pitch 모델 (기능 제거 실험용): x = [v_x, a_x, θ, q, γ_g, (a_I)], y = [v̄_w, a_x^IMU, (Δv_w)]. 토크·bounce 없음.
+    d["delay"] > 0 이면 IMU 1차 지연 상태 a_I 를 두고, 아니면 a_x^IMU = a_x + gθ + gγ_g − h_I q̇ 를 직접 관측. d["dvw"] > 0 이면 휠속 차이 채널.
+    lam_a = 0 이면 a_x 는 순수 random walk, ba = 0 이면 하중이동 없음. qg = 0 이면 구배 상태를 ε 로 얼림 (h_nograde 와 같은 방식)."""
+    wp, delay, dvw = 2 * np.pi * d["fp"], d["delay"] > 0, d["dvw"] > 0
+    n = 5 + delay
+    f, qc = np.zeros((n, n)), np.zeros((n, n))
+    f[0, 1] = f[2, 3] = 1.0
+    f[1, 1] = -d["lam_a"]
+    f[3, 1], f[3, 2], f[3, 3] = d["ba"], -wp * wp, -2 * d["zp"] * wp
+    qc[1, 1], qc[3, 3], qc[4, 4] = d["qa"], d["qp"], d["qg"] if d["qg"] > 0 else 1e-16
+    imu = np.zeros(n)
+    imu[1], imu[2], imu[4] = 1.0, GRAVITY, GRAVITY
+    imu[1:4] -= d["hi"] * f[3, 1:4]  # -h_I * qdot (w_p feedthrough 무시)
+    h, noise = [np.eye(n)[0]], [d["rw"], d["rx"]]
+    if delay:
+        f[5], f[5, 5] = imu / d["tau"], -1 / d["tau"]
+        h.append(np.eye(n)[5])
+    else:
+        h.append(imu)
+    if dvw:
+        row = np.zeros(n)
+        row[3], row[1] = d["ell"], d["kappa"]
+        h.append(row)
+        noise.append(d["rd"])
+    P = np.eye(n)
+    P[4, 4] = 0.01 if d["qg"] > 0 else 1e-10
+    A, Q = discretize(f, qc, 1 / fs)
+    return StateSpace(A, np.array(h), Q, np.diag(noise), P)
+
+
 B_NAMES = ["fp", "zp", "ba", "hi", "log_tau", "fz", "zz", "czp", "xi"] + A_NOISE + ["log_qz", "log_rz"]
+M_FIXED = {"ell": -0.29, "ba": 0.0, "lam_a": 0.0, "delay": 1.0, "dvw": 1.0}  # 최소형의 기본: 하중이동 없음, a_x random walk, 지연·Δv_w·구배 있음
+M_NAMES = ["fp", "zp", "hi", "log_tau", "kappa", "log_qa", "log_qp", "log_qg", "log_rw", "log_rx", "log_rd"]
+
+
+def build_pb(d, fs):
+    """pitch (§3-2, 5-상태) ⊕ bounce 결합 모델. 상태 = [v_x, a_x, θ, q, γ_g, z_s, ż_s, (d_b), (b)], 관측 = [v̄_w, a_x^IMU, Δv_w, a_z^IMU].
+    bounce 블록 두 종류 (d["dist"]):  1 → 기존 1-DOF bounce KF 그대로 (random-walk 외란 d_b 가 z̈_s 를 구동, f_b·ζ_b 는 넓은 범위 = 칩 필터 근사)
+                                       0 → 물리 진동자 (백색잡음 w_z 만, f_b·ζ_b 는 물리 범위)
+    d["chain"] > 0: 칩 처리 체인 출력 상태 b 추가, ḃ = −ω_c b + z̈_s  (Bounce_rate_6D ≈ K·HP_ωc[∫a_z] 의 상태 표현, K 는 평가 시 자유 이득)
+    교차항 d["czp"] (θ → z̈_s), d["cpz"] (z_s → q̇). x_I q̇ 는 IMU 위치 레버 (a_z^IMU 에만, 칩 출력에는 없음: 라벨에 레버 흔적 없음)."""
+    wp, wb, dist, chain = 2 * np.pi * d["fp"], 2 * np.pi * d["fb"], d["dist"] > 0, d["chain"] > 0
+    n = 7 + dist + chain
+    f, qc = np.zeros((n, n)), np.zeros((n, n))
+    f[0, 1] = f[2, 3] = f[5, 6] = 1.0
+    f[3, 2], f[3, 3], f[3, 5] = -wp * wp, -2 * d["zp"] * wp, d["cpz"]
+    f[6, 5], f[6, 6], f[6, 2] = -wb * wb, -2 * d["zb"] * wb, d["czp"]
+    qc[1, 1], qc[3, 3], qc[4, 4], qc[6, 6] = d["qa"], d["qp"], d["qg"], d["qv"]
+    P = np.eye(n)
+    P[4, 4] = 0.01
+    if dist:  # random-walk 외란 d_b (index 7) → z̈_s
+        f[6, 7], qc[7, 7], P[7, 7] = 1.0, d["qd"], 10.0
+    zdd = f[6].copy()  # z̈_s 의 상태 표현 (w_z feedthrough 무시)
+    if chain:  # 칩 체인 상태 b (마지막 index): ḃ = −ω_c b + z̈_s
+        f[n - 1] = zdd
+        f[n - 1, n - 1] = -d["wc"]
+    imu = np.zeros(n)
+    imu[1], imu[2], imu[4] = 1.0, GRAVITY, GRAVITY
+    imu[2:4] -= d["hi"] * f[3, 2:4]
+    dvw = np.zeros(n)
+    dvw[3], dvw[1] = d["ell"], d["kappa"]
+    az = zdd + d["xi"] * f[3]  # a_z^IMU = z̈_s + x_I q̇
+    A, Q = discretize(f, qc, 1 / fs)
+    return StateSpace(A, np.array([np.eye(n)[0], imu, dvw, az]), Q, np.diag([d["rw"], d["rx"], d["rd"], d["rz"]]), P)
+
+
+PB_PITCH = ["fp", "zp", "hi", "kappa", "log_qa", "log_qp", "log_qg", "log_rw", "log_rx", "log_rd"]  # = m5_nodelay 의 10개
+PB_FIXED = {"ell": -0.29, "czp": 0.0, "cpz": 0.0, "xi": 0.0, "wc": 2 * np.pi * 0.77}
 VARIANTS = {
     "a_naive": dict(build=build_a, channels=("vbar", "ax"), names=["fp", "zp", "ba"] + A_NOISE,
                     fixed={"hi": 0.0}),
@@ -144,9 +219,46 @@ VARIANTS = {
     "g_physical": dict(build=build_b, channels=("vbar", "ax", "az", "dvw"),  # f + 물리 범위(PHYSICAL) + 토크 이득을 제원 정상 이득으로
                        names=[n for n in B_NAMES if n != "xi"] + ["kappa", "log_rd", "log_lam_a", "log_ga", "sf", "sr"],
                        fixed={"xi": 0.42, "ell": -0.29}, params=PHYSICAL),
+    "h_nograde": dict(build=build_b, channels=("vbar", "ax", "az", "dvw"),  # g 에서 구배 상태 γ_g 제거 (qg=0, P0=0 → γ_g ≡ 0): 8-상태 동치
+                      names=[n for n in B_NAMES if n not in ("xi", "log_qg")] + ["kappa", "log_rd", "log_lam_a", "log_ga", "sf", "sr"],
+                      fixed={"xi": 0.42, "ell": -0.29, "qg": 0.0}, params=PHYSICAL),
+    # 기능 제거 사다리 (아래로): m6 = 6-상태 최소형 [v_x, a_x, θ, q, γ_g, a_I] → 하중이동/κ/λ_a 재도입 또는 지연·Δv_w·구배 제거 시험
+    "m6": dict(build=build_m, channels=("vbar", "ax", "dvw"), names=M_NAMES, fixed=M_FIXED, params=PHYSICAL),
+    "m6_ba": dict(build=build_m, channels=("vbar", "ax", "dvw"), names=M_NAMES + ["ba"], fixed=M_FIXED, params=PHYSICAL),
+    "m6_lam": dict(build=build_m, channels=("vbar", "ax", "dvw"), names=M_NAMES + ["log_lam_a"], fixed=M_FIXED, params=PHYSICAL),
+    "m6_nokappa": dict(build=build_m, channels=("vbar", "ax", "dvw"), names=[n for n in M_NAMES if n != "kappa"],
+                       fixed=M_FIXED | {"kappa": 0.0}, params=PHYSICAL),
+    "m5_nodelay": dict(build=build_m, channels=("vbar", "ax", "dvw"), names=[n for n in M_NAMES if n != "log_tau"],
+                       fixed=M_FIXED | {"delay": 0.0, "tau": 0.0}, params=PHYSICAL),
+    "m6_nodvw": dict(build=build_m, channels=("vbar", "ax"), names=[n for n in M_NAMES if n not in ("kappa", "log_rd")],
+                     fixed=M_FIXED | {"dvw": 0.0}, params=PHYSICAL),
+    "m6_nograde": dict(build=build_m, channels=("vbar", "ax", "dvw"), names=[n for n in M_NAMES if n != "log_qg"],
+                       fixed=M_FIXED | {"qg": 0.0}, params=PHYSICAL),
+    "m5_nodelay_nokappa": dict(build=build_m, channels=("vbar", "ax", "dvw"), names=[n for n in M_NAMES if n not in ("log_tau", "kappa")],
+                              fixed=M_FIXED | {"delay": 0.0, "tau": 0.0, "kappa": 0.0}, params=PHYSICAL),
+    "m4_nodelay_nograde": dict(build=build_m, channels=("vbar", "ax", "dvw"), names=[n for n in M_NAMES if n not in ("log_tau", "log_qg")],
+                              fixed=M_FIXED | {"delay": 0.0, "tau": 0.0, "qg": 0.0}, params=PHYSICAL),  # 최고 성능 5-상태에서 γ_g 제거 (사실상 4-상태)
+    # ── pitch ⊕ bounce 결합 (methods.md §5.8-20). 1번 = 블록 대각 + 기존 1-DOF bounce KF, 2번 = 물리 bounce 를 기본형에서 단계적으로
+    "pb1_block": dict(build=build_pb, channels=("vbar", "ax", "dvw", "az"),  # 1번: 1-DOF 블록 (random-walk 외란), bounce 출력 = ż_s (index 6)
+                      names=PB_PITCH + ["fb", "zb", "log_qv", "log_qd", "log_rz"], fixed=PB_FIXED | {"dist": 1.0, "chain": 0.0},
+                      params=PHYSICAL | {"log_rz": PARAMS["log_rz"]}, bounce_index=6),
+    "pb2_basic": dict(build=build_pb, channels=("vbar", "ax", "dvw", "az"),  # 2번 기본형: 물리 진동자 + 칩 체인 출력 b (index 7), 연성·레버 없음
+                      names=PB_PITCH + ["fb", "zb", "log_qv", "log_rz"], fixed=PB_FIXED | {"dist": 0.0, "chain": 1.0},
+                      params=PHYSICAL | {"fb": PHYSICAL["fz"], "zb": PHYSICAL["zz"], "log_qv": PARAMS["log_qz"]}, bounce_index=7),
+    "pb2_couple": dict(build=build_pb, channels=("vbar", "ax", "dvw", "az"),  # + 교차항 c_zp, c_pz
+                       names=PB_PITCH + ["fb", "zb", "log_qv", "log_rz", "czp", "cpz"], fixed=PB_FIXED | {"dist": 0.0, "chain": 1.0},
+                       params=PHYSICAL | {"fb": PHYSICAL["fz"], "zb": PHYSICAL["zz"], "log_qv": PARAMS["log_qz"]}, bounce_index=7),
+    "pb2_wc": dict(build=build_pb, channels=("vbar", "ax", "dvw", "az"),  # + 칩 체인 모서리 ω_c 자유
+                   names=PB_PITCH + ["fb", "zb", "log_qv", "log_rz", "log_wc"], fixed=PB_FIXED | {"dist": 0.0, "chain": 1.0},
+                   params=PHYSICAL | {"fb": PHYSICAL["fz"], "zb": PHYSICAL["zz"], "log_qv": PARAMS["log_qz"]}, bounce_index=7),
+    "pb2_lever": dict(build=build_pb, channels=("vbar", "ax", "dvw", "az"),  # + IMU 전방 레버 x_I = 0.42 (a_z^IMU 에만)
+                      names=PB_PITCH + ["fb", "zb", "log_qv", "log_rz"], fixed=PB_FIXED | {"dist": 0.0, "chain": 1.0, "xi": 0.42},
+                      params=PHYSICAL | {"fb": PHYSICAL["fz"], "zb": PHYSICAL["zz"], "log_qv": PARAMS["log_qz"]}, bounce_index=7),
 }
 STAGES = {"a": ("a_naive", "a_lag", "a_full"), "b": ("b_full",), "c": ("c_wheel",), "d": ("d_torque",),
-          "e": ("e_fixgeo",), "f": ("f_fixlever",), "g": ("g_physical",)}
+          "e": ("e_fixgeo",), "f": ("f_fixlever",), "g": ("g_physical",), "h": ("h_nograde",),
+          "m": ("m6", "m6_ba", "m6_lam", "m6_nokappa", "m5_nodelay", "m6_nodvw", "m6_nograde"), "n": ("m5_nodelay_nokappa",),
+          "p": ("m5_nodelay",), "q": ("m4_nodelay_nograde",)}
 
 
 def observations(x):
@@ -241,7 +353,7 @@ def merge_csv(path, rows):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("stage", choices=("a", "b", "c", "d", "e", "f", "g", "all"))
+    parser.add_argument("stage", choices=("a", "b", "c", "d", "e", "f", "g", "h", "m", "n", "p", "q", "all"))
     parser.add_argument("--objectives", default="ml,sup",
                         help="쉼표 구분: ml, sup, joint:<mu>, aug, aug:<r_label>, alt:<n> (플랜트 sup ↔ Q,R full EM 교대 n회), "
                              "alts:<n> (플랜트 sup ↔ q_a,q_z 만 structured EM 교대 n회), joint2:<mu_p>:<mu_b> (우도 + pitch + bounce 라벨), "
@@ -252,6 +364,8 @@ def main():
     parser.add_argument("--em-iters", type=int, default=2000, help="alt 의 EM 반복 수 (60회로는 미수렴: 우도가 계속 오르며 corr 이 내려감)")
     parser.add_argument("--optimizer", default="powell", choices=("powell", "coord"),
                         help="coord = Abbeel 2005 식 좌표 상승 (objective 이름에 @coord 접미)")
+    parser.add_argument("--warm", default="", help="이 모델의 같은 목적함수 적합값을 시작점으로 (예: h_nograde 를 g_physical 에서)")
+    parser.add_argument("--models", default="", help="stage 대신 변형 이름을 쉼표로 직접 지정 (예: pb1_block,pb2_basic)")
     args = parser.parse_args()
     cfg, x, y, ids, test = data()
     OUTPUT.mkdir(parents=True, exist_ok=True)
@@ -262,7 +376,7 @@ def main():
     label, bounce = y[:, :, 2], y[:, :, 0]  # Pitch_rate_6D (deg/s), Bounce_rate_6D (단위 미확정)
     obs = observations(x)
     obs["label"] = label - label[train].mean()
-    names = sum(STAGES.values(), ()) if args.stage == "all" else STAGES[args.stage]
+    names = tuple(args.models.split(",")) if args.models else sum(STAGES.values(), ()) if args.stage == "all" else STAGES[args.stage]
     objectives = tuple(value.strip() for value in args.objectives.split(","))
     print(f"train={len(train)} fit={len(fit_index)} dev-test={dev.sum()} "
           f"(sealed {', '.join(SEALED)}: {(test & np.isin(drivers, SEALED)).sum()} ep) "
@@ -274,6 +388,7 @@ def main():
     for name in names:
         spec = VARIANTS[name]
         target, target_b = label[fit_index], bounce[fit_index]
+        bidx = spec["bounce_index"] if "bounce_index" in spec else 7  # bounce 출력 상태의 index (9-상태 모델은 ż_s = 7)
         for objective in objectives:
             # objective: ml | sup | joint:<mu> (방법 A, 우도 + mu*NRMSE) | aug (방법 B, 라벨 채널 + r_label fit) | aug:<r_label>
             kind, _, value = objective.partition(":")
@@ -301,6 +416,10 @@ def main():
             bounds = [table[key][1] for key in train_spec["names"]]
             if kind in ("res", "reso", "pred"):
                 start = [np.log(d0[n]) for n in train_spec["names"]]  # 출처 적합의 잡음값에서 출발 (논문의 '초기 추정치')
+            elif args.warm and (args.warm, objective) in previous:  # 다른 모델의 같은 목적함수 적합값에서 출발 (없는 파라미터는 시작값 유지)
+                dw = {i.split("=")[0]: float(i.split("=")[1]) for i in previous[args.warm, objective].split()}
+                start = [(np.log(dw[n]) if n.startswith("log_") else dw[n]) if n in dw else s for n, s in zip(train_spec["names"], start)]
+                print(f"  warm start from {args.warm}_{objective}", flush=True)
             tag = "@coord" if args.optimizer == "coord" else ""
             started, key = time.perf_counter(), f"{name}_{objective}{tag}"
 
@@ -315,10 +434,10 @@ def main():
                     ss = spec["build"](unpack(train_spec["names"], p, train_spec["fixed"]), cfg.fs)
                     omega = DEG ** 2 * posterior_variance(ss, target.shape[1]) + P_label
                     return np.mean(np.log(omega) + (pred - target) ** 2 / omega)
-                if kind == "joint2":  # 우도 + mu_p·pitch NRMSE + mu_b·bounce NRMSE (bounce 는 heave 속도 w_s, 라벨 단위 미확정이라 자유 이득)
+                if kind == "joint2":  # 우도 + mu_p·pitch NRMSE + mu_b·bounce NRMSE (bounce 는 bounce 속도 w_s, 라벨 단위 미확정이라 자유 이득)
                     mu_p, mu_b = (float(v) for v in value.split(":"))
-                    gain_b, offset_b = calibrate(state[..., 7], target_b)
-                    nrmse_b = np.sqrt(np.mean((gain_b * state[..., 7] + offset_b - target_b) ** 2)) / target_b.std()
+                    gain_b, offset_b = calibrate(state[..., bidx], target_b)
+                    nrmse_b = np.sqrt(np.mean((gain_b * state[..., bidx] + offset_b - target_b) ** 2)) / target_b.std()
                     return energy + mu_p * nrmse + mu_b * nrmse_b
                 return {"ml": energy, "aug": energy, "sup": nrmse, "alt": nrmse, "alts": nrmse}[kind] if kind != "joint" else energy + float(value) * nrmse
 
@@ -375,8 +494,10 @@ def main():
             corr, rmse, _ = metrics(label[dev], pred[dev], cfg.fs)
             lag = signed_lag_ms(label[dev], pred[dev], cfg.fs)
             free_gain = calibrate(q_hat[train], label[train])[0]
-            gain_b, offset_b = calibrate(state[train][..., 7], bounce[train])  # bounce 는 모든 목적함수에서 보고 (자유 이득)
-            bounce_corr = np.median(metrics(bounce[dev], gain_b * state[dev][..., 7] + offset_b, cfg.fs)[0])
+            bounce_corr = np.nan
+            if state.shape[-1] > bidx:  # bounce 출력 상태가 있는 모델만 bounce 를 보고 (자유 이득)
+                gain_b, offset_b = calibrate(state[train][..., bidx], bounce[train])
+                bounce_corr = np.median(metrics(bounce[dev], gain_b * state[dev][..., bidx] + offset_b, cfg.fs)[0])
             white = innovation_metrics(nu[dev], cov)
             d = unpack(eval_spec["names"], p, eval_spec["fixed"])  # alt: 잡음 열은 빌드용 시작값 (실제 Q,R 은 EM, em:alt 로 재현)
             ss_eval = spec["build"](d, cfg.fs)

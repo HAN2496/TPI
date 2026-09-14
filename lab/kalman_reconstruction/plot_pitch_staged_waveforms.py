@@ -46,8 +46,6 @@ def main():
     for model in models:
         spec = VARIANTS[model]
         yv = np.stack([obs[channel] for channel in spec["channels"]], -1)
-        x0 = np.zeros((len(yv), 9))
-        x0[:, 0] = yv[:, 0, 0]
         for objective in objectives:
             source = objective.split(":", 1)[1] if objective.startswith("em:") else objective
             if (model, source) not in fits:
@@ -56,6 +54,8 @@ def main():
             d = {(key[4:] if key.startswith("log_") else key): value for key, value in d.items()}
             ss = spec["build"](d, fs)
             u = obs["torque"] if ss.B is not None else None
+            x0 = np.zeros((len(yv), len(ss.A)))  # 상태 수는 모델마다 다름 (9 / 6 / 5)
+            x0[:, 0] = yv[:, 0, 0]
             if objective.startswith("em:"):
                 ss = em(ss, yv[fit_index], None if u is None else u[fit_index], x0[fit_index], args.em_iters, 1e-6, False)[0]
             state, nu, cov = ss.filter(yv, u, x0, innovations=True)

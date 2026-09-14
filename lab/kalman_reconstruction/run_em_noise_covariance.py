@@ -38,7 +38,7 @@ def smoother_moments(ss, T):  # 데이터와 무관한 공분산 재귀: P_{t|T}
 
 def em(ss, y, u, x0, iters, tol, diag, rebuild=None, system=False):
     """diag=False: full Q, R.  diag=True: 대각만.  rebuild 가 주어지면 structured: R 과 q_p, q_g 는 고정하고
-    연속시간 세기 q_a (a_x 구동, 상태 1), q_z (heave 구동, 상태 7) 만 M-step 대각 비율로 갱신해 Van Loan 으로 Q 를 다시 만든다
+    연속시간 세기 q_a (a_x 구동, 상태 1), q_z (bounce 구동, 상태 7) 만 M-step 대각 비율로 갱신해 Van Loan 으로 Q 를 다시 만든다
     (generalized EM 근사; 식별되는 항목만 EM 에 맡기는 방법 1, methods.md §5.8-12).
     system=True: 논문 (arXiv 2105.00250) 식 (27)–(28) 의 완전 EM — [A B], [H D] 도 스무더 모멘트의 최소제곱 해로 갱신
     (모든 원소 자유, 물리 구조 없음). m0 (에피소드별 x0) 와 P0 는 고정. 상태는 닮음변환까지만 정해지므로 평가는 라벨 선형 판독으로."""
@@ -103,16 +103,16 @@ def main():
     with (OUTPUT / "pitch_staged_metrics.csv").open(encoding="utf-8-sig") as stream:
         fits = {row["objective"]: row["parameters"] for row in csv.DictReader(stream) if row["model"] == args.model}
 
-    def arrays(index):
+    def arrays(index, n):
         yv = np.stack([obs[channel][index] for channel in spec["channels"]], -1)
-        x0 = np.zeros((len(index), 9))
+        x0 = np.zeros((len(index), n))
         x0[:, 0] = yv[:, 0, 0]
         return yv, obs["torque"][index], x0
 
     rows, histories = [], {}
 
     def report(source, method, ss, iterations, seconds, ss0=None):
-        yv, uv, x0 = arrays(np.arange(len(label)))
+        yv, uv, x0 = arrays(np.arange(len(label)), len(ss.A))
         state, nu, cov = ss.filter(yv, uv if ss.B is not None else None, x0, innovations=True)
         q_hat = state[..., 3]
         pred = DEG * q_hat + label[train].mean() - DEG * q_hat[train].mean()
@@ -141,9 +141,9 @@ def main():
         d = {(key[4:] if key.startswith("log_") else key): value for key, value in d.items()}
         ss0 = spec["build"](d, fs)
         report(source, "source", ss0, 0, 0.0)
-        yv, uv, x0 = arrays(fit_index)
+        yv, uv, x0 = arrays(fit_index, len(ss0.A))
         for variant in args.variants.split(","):
-            started, current = time.perf_counter(), {"qa": d["qa"], "qz": d["qz"]}
+            started, current = time.perf_counter(), {k: d[k] for k in ("qa", "qz") if k in d}  # structured 용 (bounce 없는 모델은 qa 만)
 
             def rebuild(scale):  # structured: q_a, q_z 를 비율로 갱신해 같은 플랜트로 Q 를 다시 이산화
                 current["qa"], current["qz"] = current["qa"] * scale[0], current["qz"] * scale[1]
