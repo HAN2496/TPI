@@ -23,7 +23,10 @@ $$
 | **1. Reduced longitudinal-pitch** | $[v_x,a_x,\theta,q]^T$ | $[T_f,T_r]^T$ 선택적 | Wheel speed, Long. IMU | **Fully observable / detectable** |
 | **2. Reduced bounce-pitch** | $[v_x,a_x,z_s,\dot z_s,\theta,q]^T$ | $[T_f,T_r]^T$ 선택적 | Wheel speed, Long./Vertical IMU | **Fully observable / detectable** |
 | **3. Sensor-chain bounce-pitch (9-state, 구현·검증 완료)** | $[v_x,a_x,\theta,q,\gamma_g,a_I,z_s,\dot z_s,a_{Iz}]^T$ | $[T_f,T_r]^T$ | Wheel speed **평균+앞뒤 차이**, Long./Vertical IMU (**1차 지연·장착 레버암 모델링**) | Fully observable ($\theta$ DC ↔ 구배만 marginal, rate 무관). **실측 dev-test corr 0.936, free gain 57.1 ≈ 180/π** |
+| **3-2. Minimal pitch (5-state, 보고 기준)** | $[v_x,a_x,\theta,q,\gamma_g]^T$ | 없음 | Wheel speed 평균+차이, Long. IMU (높이 레버암) | $\theta$ 상수 ↔ $\gamma_g$ 만 marginal, pitch rate 는 functionally observable. **dev-test 0.916** |
+| **3-3. Pitch ⊕ bounce + 칩 체인 (8-state, 보고 기준)** | $[v_x,a_x,\theta,q,\gamma_g,z_s,\dot z_s,b]^T$ | 없음 | + Vertical IMU | 위와 같음. **pitch 0.916 / bounce 0.923** |
 | **4. 2-DOF physical half-car** | $[v_x,a_x,z_s,\dot z_s,\theta,q]^T$ | $[T_f,T_r]^T$ | Wheel speed, Long./Vertical IMU | Road known: parameter별 rank 확인. Road unknown: unknown-input observability 문제 |
+| **4-1. Half-car + 센서 체인 + 칩 체인 (8-state, 기하 고정, 구현·검증)** | 3-3 과 동일 | 없음 | 3-3 과 동일 | 3-3 과 동일. $k_f, k_r, c_f, c_r$ 자유 → 합만 식별. **pitch 0.917 / bounce 0.923** |
 | **5. 4-DOF half-car** | $[v_x,a_x,z_s,\dot z_s,\theta,q,z_{uf},\dot z_{uf},z_{ur},\dot z_{ur}]^T$ | $[T_f,T_r]^T$ | Wheel speed, Long./Vertical IMU | Full observability는 parameter-dependent. Detectability 별도 확인 필요 |
 
 ---
@@ -42,7 +45,7 @@ $$
 \text{4-DOF half-car}
 $$
 
-9-state 이후 단계는 회사 제원으로 $k, c$를 고정할 수 있을 때만 진행한다. 보고용 기준 모델은 9-state 에서 pitch 에 기여하지 않는 요소를 재적합으로 확인하며 뺀 §3-2 (5-state: $[v_x, a_x, \theta, q, \gamma_g]$, 관측 휠속 평균·IMU 종가속·휠속 앞뒤 차이, 파라미터 10개, joint 0.916) 이고, bounce 까지 한 필터로 내려면 §3-3 (§3-2 + 물리 bounce 진동자 + 6D 칩 체인 출력, 8-state, pitch 0.916 / bounce 0.923) 이다. §3-1 (구배 상태 제거) 은 검토 후 채택하지 않았다.
+9-state 이후 단계는 회사 제원으로 $k, c$를 고정할 수 있을 때만 진행한다. 보고용 기준 모델은 9-state 에서 pitch 에 기여하지 않는 요소를 재적합으로 확인하며 뺀 §3-2 (5-state: $[v_x, a_x, \theta, q, \gamma_g]$, 관측 휠속 평균·IMU 종가속·휠속 앞뒤 차이, 파라미터 10개, joint 0.916) 이고, bounce 까지 한 필터로 내려면 §3-3 (§3-2 + 물리 bounce 진동자 + 6D 칩 체인 출력, 8-state, pitch 0.916 / bounce 0.923) 이고, 같은 것을 half-car 동역학 (기하 고정, $k_f, k_r, c_f, c_r$ 자유) 으로 쓴 것이 §4-1 (0.917 / 0.923, 합만 식별) 이다. §3-1 (구배 상태 제거) 은 검토 후 채택하지 않았다.
 
 ---
 
@@ -697,7 +700,7 @@ pitch 블록 4 + 잡음 6 (§3-2 와 동일) + bounce 블록 $f_b, \zeta_b$ + �
 
 ## 실측 결과
 
-`methods.md` §5.8-20: dev-test pitch 0.916 / bounce 0.923 (기존 1-DOF bounce KF 단독 0.918, 1번 블록 대각 0.905). 기하 고정 half-car (§4 파라미터화, `pb2_halfcar`) 로 결합해도 0.917 / 0.923 으로 같고, 데이터는 $k_f + k_r$, $c_f + c_r$ 만 정한다 (앞뒤 분배 비식별, methods.md §5.8-21) → 독립 진동자 유지.
+`methods.md` §5.8-20: dev-test pitch 0.916 / bounce 0.923 (기존 1-DOF bounce KF 단독 0.918, 1번 블록 대각 0.905). 같은 센서 체인·칩 체인에 half-car 동역학을 넣은 버전은 §4-1 (별도 절).
 
 ---
 
@@ -873,6 +876,109 @@ $$
 
 - **Full state/road observability:** 일반적으로 보장되지 않음
 - **Detectability:** suspension parameter와 measurement configuration에 따라 확인 필요
+
+---
+
+# 4-1. Pitch-plane half-car with sensor chain and chip-chain output (8-state, 기하 고정) — 구현·검증
+
+§4 의 2-자유도 pitch-plane half-car (sprung mass) 를 실제로 적합한 버전. §4 와 다른 점은 (i) 노면을 상태가 아니라 구동 잡음 $w_z, w_p$ 로 두고, (ii) 기하·질량 $l_f, l_r, m, I_{yy}$ 를 GV60 제원으로 고정해 §4 의 파라미터 식별 문제를 없애며, (iii) §3-2 의 센서 체인 (높이 레버암 $h_I$, 휠속 앞뒤 차이, 구배 $\gamma_g$) 과 §3-3 의 칩 체인 출력 $b$ 를 붙인 것. 자유 파라미터는 축별 휠레이트 $k_f, k_r$ 과 댐핑 $c_f, c_r$ 넷뿐이고 bounce·pitch 진동수, 감쇠, 교차항 (강성·댐핑) 이 전부 여기서 유도된다. 구현: `pitch_staged_reconstruction.py` 의 `pb2_halfcar` (`build_pb`, `"kf" in d` 분기). 결과: methods.md §5.8-21.
+
+## Diagram
+
+```text
+(옆에서 본 그림)                                   진행 방향 →
+             z_s ↑   θ (pitch, nose-up +)
+      ┌────────────────────────────────┐
+      │           sprung body  m, I_yy │        v_x, a_x: 종방향 (random walk),  γ_g: 구배 (random walk)
+      │      z_s, ż_s, θ, q            │
+      └───┬────────────────────────┬───┘
+   front  │ k_f, c_f      k_r, c_r │  rear        앞 서스펜션 변위 z_s + l_f θ, 뒤 z_s − l_r θ
+          │← l_f →│CG│← l_r →│                   (k_f l_f ≠ k_r l_r 이면 bounce 와 pitch 가 얽힘)
+        ──┴──── road (백색잡음 w_z, w_p 로 대체) ────┴──
+
+  wheel speed:  v̄_w = v_x,   Δv_w = ℓ q + κ a_x
+  IMU:          a_x_IMU = a_x + g θ + g γ_g − h_I q̇,   a_z_IMU = z̈_s
+  6D 칩 체인:   ḃ = −ω_c b + z̈_s,   Bounce_rate_6D = K b
+```
+
+## State / Control input
+
+$$
+x=[v_x,\ a_x,\ \theta,\ q,\ \gamma_g,\ z_s,\ \dot z_s,\ b]^T, \qquad \text{입력 없음}
+$$
+
+## Dynamics
+
+$$
+\dot v_x=a_x, \qquad \dot a_x=w_a, \qquad \dot\gamma_g=w_g, \qquad \dot\theta=q, \qquad \dot z_s = \dot z_s
+$$
+
+$$
+m\,\ddot z_s = -(k_f+k_r)\,z_s-(k_f l_f-k_r l_r)\,\theta-(c_f+c_r)\,\dot z_s-(c_f l_f-c_r l_r)\,q + m\,w_z
+$$
+
+$$
+I_{yy}\,\dot q = -(k_f l_f-k_r l_r)\,z_s-(k_f l_f^2+k_r l_r^2)\,\theta-(c_f l_f-c_r l_r)\,\dot z_s-(c_f l_f^2+c_r l_r^2)\,q + I_{yy}\,w_p
+$$
+
+$$
+\dot b=-\omega_c\,b+\ddot z_s
+$$
+
+(z 위 +, θ nose-up +. 앞 서스펜션 변위 $z_s + l_f\theta$, 뒤 $z_s - l_r\theta$. 교차항 $(k_f l_f - k_r l_r)$, $(c_f l_f - c_r l_r)$ 은 독립 파라미터가 아니라 $k, c$ 의 앞뒤 차이에서 나온다. 분리 조건 $k_f l_f = k_r l_r$ 이면 §3-3 으로 환원.)
+
+## Measurement
+
+$$
+y=
+\begin{bmatrix}
+\bar v_w\\
+a_{x,\mathrm{IMU}}\\
+\Delta v_w\\
+a_{z,\mathrm{IMU}}
+\end{bmatrix}
+=
+\begin{bmatrix}
+v_x\\
+a_x+g\theta+g\gamma_g-h_I\dot q\\
+\ell q+\kappa a_x\\
+\ddot z_s
+\end{bmatrix}
++v
+$$
+
+($\dot q$, $\ddot z_s$ 는 위 운동방정식으로 치환하여 선형 유지. §3-3 과 관측식은 같고 동역학만 다르다.)
+
+## Parameters
+
+| 구분 | 기호 | 값 |
+|---|---|---|
+| 고정 (GV60 제원) | $l_f, l_r$ | 1.45, 1.45 m (축거 2.90 m, 50:50 가정) |
+| | $m$ | 2,300 kg (공차 2,095 + 탑승) |
+| | $I_{yy}$ | $m\,l_f l_r$ ≈ 4,840 kg·m² (dynamic index 1 가정) |
+| | $\ell$, $\omega_c$, $g$ | −0.29 m, 2π·0.77 rad/s, 9.81 |
+| 자유 (차량) | $k_f, k_r$ | 축별 휠레이트 [N/m], 범위 10–400 kN/m |
+| | $c_f, c_r$ | 축별 댐핑 [N·s/m], 범위 0.3–30 kN·s/m |
+| 자유 (센서) | $h_I, \kappa$ | §3-2 와 동일 |
+| 자유 (잡음) | $q_a, q_p, q_g, q_z, r_w, r_x, r_d, r_z$ | 8개 |
+
+합계 14개 (§3-3 과 같은 수: $f_p, \zeta_p, f_b, \zeta_b$ 넷이 $k_f, k_r, c_f, c_r$ 넷으로 바뀜).
+
+## Observability / Detectability / Identifiability
+
+- 관측 가능성: §3-2 와 같다. ($\theta$ 상수 ↔ $\gamma_g$) 방향 하나만 marginal 이고 두 출력 $q$, $b$ 는 그 방향과 직교 (functionally observable). 교차항은 A 에 원소를 더할 뿐 관측 가능성을 바꾸지 않는다. 노면을 상태로 두지 않았으므로 §4 의 unknown-input 문제도 없다.
+- 식별 가능성: 기하·질량 고정으로 **구조적으로는 식별 가능** ($k_f, k_r$ 두 미지수에 조합 세 개, 댐핑도 같음). 실용적으로는 합만 식별된다 (아래).
+
+## 실측 결과 (methods.md §5.8-21)
+
+| | pitch corr / RMSE | bounce corr | NIS | label_logloss |
+|---|---|---:|---:|---:|
+| §3-3 독립 진동자 (pb2_basic) | 0.916 / 1.80 | 0.923 | 1.10 | 2.32 |
+| **§4-1 half-car (pb2_halfcar)** | **0.917 / 1.75** | **0.923** | 1.10 | 2.31 |
+
+적합값: $k_f$ 85, $k_r$ 113 kN/m; $c_f$ 7.4 kN·s/m, $c_r$ 0.3 kN·s/m (하한). 유도값: $f_b = f_p$ = 1.48 Hz ($I_{yy} = m l_f l_r$, $l_f = l_r$ 이면 두 진동수가 같아짐), $\zeta$ 0.18, 강성 교차항 $-(k_f l_f - k_r l_r)/m$ = +17.9 m/s² per rad, 댐핑 교차항 +4.5.
+
+읽기: (i) 성능은 독립 진동자 (§3-3) 와 같다. (ii) 데이터가 정하는 것은 합 $k_f + k_r$ (1.48 Hz), $c_f + c_r$ ($\zeta$ 0.18) 이고 앞뒤 분배는 약하게만 정해진다 — $c_r$ 이 하한으로 가고, $k_f/k_r$ = 0.75 는 교차항이 결과에 영향이 없는 것 (§3-3 시험) 을 고려하면 신뢰 구간이 넓다. (iii) 그래서 half-car 로 보고할 때는 "합은 식별, 분배는 비식별" 을 단서로 달아야 하고, 분리 모델 (§3-3) 로 보고할 때는 "half-car 로 결합해도 같았다" 를 근거로 쓴다. 둘 중 무엇을 기준으로 삼든 수치는 같다.
 
 ---
 
