@@ -65,7 +65,7 @@ $$\hat g(c) = \frac{1}{M}\sum_{m=1}^{M} z(c, s_m), \qquad S_{\mathrm{opt}} = \{s
 
 핵심은 $z$의 변동 대부분이 gain이 아니라 **시나리오에서** 온다는 사실이다 (큰 범프면 gain이 뭐든 discomfort가 크다). 그래서 $z$를 gain만의 함수로 보고 국소 평균하는 대신, **(gain, 시나리오 공변량) 둘 다의 함수로 회귀**한다:
 
-$$\hat f(c, s) \approx \mathbb{E}[z \mid c, s] \qquad \text{(정규화 입력에 3차 다항 + ridge)}$$
+$$\hat f(c, s) \approx \mathbb{E}[z \mid c, s] \qquad \text{(정규화 입력에 완전 2차 반응표면 + OLS)}$$
 
 이러면 시나리오가 만들던 큰 변동이 "노이즈"가 아니라 공변량으로 설명되는 변동이 되어 잔차가 급감하고, gain 효과는 국소 이웃이 아니라 1000개 전체로 추정된다. 기대 feature는 이 모델을 **로그에 있던 시나리오 목록 전체에 평균**해서 만든다:
 
@@ -201,7 +201,7 @@ $$
 | 1 | Kallus & Zhou, "Policy Evaluation and Optimization with Continuous Treatments" (AISTATS 2018) | 커널/회귀 기반 OPE + 정책 최적화 | 로그된 (context, **연속 action**, outcome)에서 새 action 규칙을 평가·최적화 — (시나리오, gain, feature) 구조와 수학이 거의 1:1 | IPS/DR 추정기가 주인공, 회귀(DM)는 베이스라인; 개인화·선호 없음 |
 | 2 | Dudík, Langford & Li, "Doubly Robust Policy Evaluation and Learning" (ICML 2011) | 보상 회귀 = **Direct Method**의 정식 정의 | "로그로 결과 모델을 적합하고, 로그된 context들에 평균해 정책을 채점" — 우리 offline의 교과서 원형 | action이 이산; DM의 모형 편향을 보완하는 DR이 본론 |
 | 3 | Robins (1986), g-computation (+ Hirano & Imbens 2004, 연속 처치) | outcome 회귀 후 공변량 분포에 평균 | $\hat g(c) = \frac{1}{n}\sum_j \hat f(c, s_j)$ 공식 그 자체; 무작위 배정 시 무편향 논리 동일 | 인과추론 언어; argmax가 아니라 효과 추정이 목적 |
-| 4 | Box & Wilson (1951), Response Surface Methodology (현대판: Myers, Montgomery & Anderson-Cook 교과서) | **저차 다항 회귀 표면** + 최적점 탐색 | 현재 쓰는 3차 다항 surrogate → argmax가 문자 그대로 RSM | 데이터를 로그가 아니라 실험 설계로 뽑음; 시나리오 공변량 개념 없음 |
+| 4 | Box & Wilson (1951), Response Surface Methodology (현대판: Myers, Montgomery & Anderson-Cook 교과서) | **저차 다항 회귀 표면** + 최적점 탐색 | 현재 쓰는 완전 2차 OLS surrogate → argmax가 문자 그대로 RSM | 데이터를 로그가 아니라 실험 설계로 뽑음; 시나리오 공변량 개념 없음 |
 | 5 | Trabucco et al., "Conservative Objective Models" (ICML 2021) + Design-Bench (2022) | **NN surrogate**로 offline 설계 최적화 | "로그된 (x, y)만으로 surrogate 적합 → x 최적화" = offline model-based optimization; surrogate 외삽 오차를 optimizer가 파고드는 문제가 주제 | context 축 없음; 고차원 설계 대상이라 보수적 규제가 본론 |
 | 6 | Ankenman, Nelson & Staum, "Stochastic Kriging for Simulation Metamodeling" (2010) | **GP** surrogate로 확률적 시뮬레이션 응답면 근사 | 시나리오 노이즈 있는 응답을 GP로 요약 — surrogate를 GP로 바꿀 때의 참조점 | 데이터를 시뮬레이터에서 능동 수집 (로그 아님) |
 | 7 | Swaminathan & Joachims, "Counterfactual Risk Minimization" (ICML 2015) | 회귀 대신 **importance weighting(IPS)** | 같은 "로그만으로 정책 개선" 문제의 반대편 해법 — DM과 IPS 두 가족의 대비 | 모델 대신 로깅 정책의 propensity 필요 (우리는 kp 균일분포라 적용 가능 — DR ablation 카드) |

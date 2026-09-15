@@ -1,0 +1,88 @@
+name: linear_gaits_release
+seed: 137
+data_root: data/runs
+environment:
+  horizon: 1000
+  feature_version: 3
+profiles:
+  upright:
+    target_feature: upright_walk
+    reference: straight
+    pretrained_model: data/runs/linear_gaits_refine/policies/upright/step_000196608.zip
+    checkpoint_steps: [0]
+    weights: {survival: 1.0, progress: 1.0, upright_walk: 8.0, smooth: 0.2}
+    effects:
+      - {metric: torso_abs_angle, direction: lower, minimum: 0.025}
+  running:
+    target_feature: run
+    reference: upright
+    pretrained_model: data/runs/linear_gaits_refine/policies/straight/step_000098304.zip
+    checkpoint_steps: [65536, 196608, 393216, 786432]
+    weights: {survival: 12.0, progress: 2.0, run: 6.0, smooth: 0.2}
+    effects:
+      - {metric: speed, direction: higher, minimum: 0.50}
+      - {metric: airborne, direction: higher, minimum: 0.02}
+  crouched:
+    target_feature: crouch
+    reference: upright
+    pretrained_model: data/runs/linear_gaits_final/policies/crouched/step_000065536.zip
+    checkpoint_steps: [0]
+    weights: {survival: 1.0, progress: 1.0, crouch: 6.0}
+    effects:
+      - {metric: height, direction: lower, minimum: 0.06}
+  straight:
+    target_feature: straight_legs
+    reference: upright
+    pretrained_model: data/runs/linear_gaits_refine/policies/straight/step_000098304.zip
+    checkpoint_steps: [0]
+    weights: {survival: 1.0, progress: 1.0, straight_legs: 8.0}
+    effects:
+      - {metric: knee_abs_angle, direction: lower, minimum: 0.008}
+      - {metric: knee_abs_speed, direction: lower, minimum: 0.20}
+training:
+  pretrained_model: data/runs/linear_gaits_refine/policies/straight/step_000098304.zip
+  checkpoint_steps: [65536, 196608, 393216]
+  n_envs: 8
+  workers: 4
+  learning_rate: 0.00010
+  gamma: 0.999
+  initial_action_std: 0.12
+  n_steps: 1024
+  batch_size: 256
+  n_epochs: 5
+  ent_coef: 0.0
+  target_kl: 0.02
+  evaluation_seed: 111000
+  evaluation_episodes: 12
+competence:
+  min_completion_rate: 0.90
+  min_mean_length_fraction: 0.95
+  min_speed: 0.7
+selection:
+  seed: 211000
+  episodes: 40
+collection:
+  calibration_seed: 311000
+  context_seed: 411000
+  test_seed: 511000
+  calibration_episodes: 30
+  context_episodes: 60
+  test_episodes: 100
+  diagnostic_episodes: 20
+users:
+  n_train: 5000
+  n_test: 1000
+  labels_per_user: 120
+  seed: 611000
+  beta: 2.0
+  threshold_sd: 0.3
+  # Calibrated once on the calibration split so the four oracle policy choices
+  # are comparably represented. Context and test episodes are not inspected.
+  mean: {survival: 8.0, progress: 6.0, upright_walk: -3.0, run: -1.0, crouch: 9.0, straight_legs: 3.0, smooth: 0.4}
+  sd: {survival: 0.6, progress: 0.5, upright_walk: 3.0, run: 3.0, crouch: 3.0, straight_legs: 3.0, smooth: 1.0}
+validation:
+  n_train: 128
+  n_test: 64
+  n_burnin: 150
+  n_samples: 300
+  newuser_n_iters: 12

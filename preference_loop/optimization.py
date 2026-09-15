@@ -3,7 +3,7 @@ from itertools import product
 
 import numpy as np
 from cmaes import CMA
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import LinearRegression
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import PolynomialFeatures
 
@@ -86,7 +86,8 @@ def feature_source(cfg, env, data):
     lower = inputs.min(axis=0)
     span = np.ptp(inputs, axis=0)
     surrogate = make_pipeline(
-        PolynomialFeatures(cfg.surrogate_degree), Ridge(alpha=1e-3),
+        PolynomialFeatures(cfg.surrogate_degree, include_bias=False),
+        LinearRegression(),
     )
     surrogate.fit((inputs - lower) / span, Z)
     return "offline", (surrogate, scenarios, lower, span)
