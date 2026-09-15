@@ -697,7 +697,7 @@ pitch 블록 4 + 잡음 6 (§3-2 와 동일) + bounce 블록 $f_b, \zeta_b$ + �
 
 ## 실측 결과
 
-`methods.md` §5.8-20: dev-test pitch 0.916 / bounce 0.923 (기존 1-DOF bounce KF 단독 0.918, 1번 블록 대각 0.905).
+`methods.md` §5.8-20: dev-test pitch 0.916 / bounce 0.923 (기존 1-DOF bounce KF 단독 0.918, 1번 블록 대각 0.905). 기하 고정 half-car (§4 파라미터화, `pb2_halfcar`) 로 결합해도 0.917 / 0.923 으로 같고, 데이터는 $k_f + k_r$, $c_f + c_r$ 만 정한다 (앞뒤 분배 비식별, methods.md §5.8-21) → 독립 진동자 유지.
 
 ---
 

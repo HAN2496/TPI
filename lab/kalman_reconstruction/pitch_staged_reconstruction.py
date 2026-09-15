@@ -40,6 +40,9 @@ PARAMS = {  # name: (start, bounds)
     "fb": (3.0, (0.3, 8.0)), "zb": (0.3, (0.05, 5.0)), "log_qv": (np.log(1e-3), (-12.0, 3.0)), "log_qd": (5.0, (-12.0, 8.0)),
     "log_wc": (np.log(2 * np.pi * 0.77), (np.log(2 * np.pi * 0.2), np.log(2 * np.pi * 3.0))),  # 칩 체인 고역통과 모서리 [rad/s]
     "cpz": (0.0, (-15.0, 15.0)),  # bounce 변위 → pitch 각가속도 연성 [rad/s² per m] (half-car 의 (k_f l_f − k_r l_r)/I_yy)
+    # half-car 파라미터화: 축별 (두 바퀴 합) 휠레이트 k [N/m] 와 댐핑 c [N·s/m]. 기하·질량은 GV60 제원으로 고정
+    "log_kf": (np.log(1.2e5), (np.log(1e4), np.log(4e5))), "log_kr": (np.log(1.2e5), (np.log(1e4), np.log(4e5))),
+    "log_cf": (np.log(6e3), (np.log(3e2), np.log(3e4))), "log_cr": (np.log(6e3), (np.log(3e2), np.log(3e4))),
 }
 # GV60 제원(축거 2.90 m, 약 2.3 t, 감속비 10.65, 타이어 반경 0.36 m)과 실측(자유감쇠, IMU 지연, Δv_w 회귀)으로 좁힌 물리 범위
 PHYSICAL = {
@@ -171,12 +174,21 @@ def build_pb(d, fs):
                                        0 → 물리 진동자 (백색잡음 w_z 만, f_b·ζ_b 는 물리 범위)
     d["chain"] > 0: 칩 처리 체인 출력 상태 b 추가, ḃ = −ω_c b + z̈_s  (Bounce_rate_6D ≈ K·HP_ωc[∫a_z] 의 상태 표현, K 는 평가 시 자유 이득)
     교차항 d["czp"] (θ → z̈_s), d["cpz"] (z_s → q̇). x_I q̇ 는 IMU 위치 레버 (a_z^IMU 에만, 칩 출력에는 없음: 라벨에 레버 흔적 없음)."""
-    wp, wb, dist, chain = 2 * np.pi * d["fp"], 2 * np.pi * d["fb"], d["dist"] > 0, d["chain"] > 0
+    dist, chain = d["dist"] > 0, d["chain"] > 0
     n = 7 + dist + chain
     f, qc = np.zeros((n, n)), np.zeros((n, n))
     f[0, 1] = f[2, 3] = f[5, 6] = 1.0
-    f[3, 2], f[3, 3], f[3, 5] = -wp * wp, -2 * d["zp"] * wp, d["cpz"]
-    f[6, 5], f[6, 6], f[6, 2] = -wb * wb, -2 * d["zb"] * wb, d["czp"]
+    if "kf" in d:  # 2-자유도 pitch-plane half-car (sprung mass): 기하 l_f, l_r, m, I_yy 고정, k_f, k_r, c_f, c_r 만 자유 (§4, methods.md §5.8-21)
+        kf, kr, cf, cr, lf, lr, m, iyy = d["kf"], d["kr"], d["cf"], d["cr"], d["lf"], d["lr"], d["m"], d["iyy"]
+        # z̈ = −(k_f+k_r)/m z − (k_f l_f − k_r l_r)/m θ − (c_f+c_r)/m ż − (c_f l_f − c_r l_r)/m q      (z 위 +, θ nose-up +)
+        # q̇ = −(k_f l_f − k_r l_r)/I z − (k_f l_f² + k_r l_r²)/I θ − (c_f l_f − c_r l_r)/I ż − (c_f l_f² + c_r l_r²)/I q
+        f[6, 5], f[6, 2], f[6, 6], f[6, 3] = -(kf + kr) / m, -(kf * lf - kr * lr) / m, -(cf + cr) / m, -(cf * lf - cr * lr) / m
+        f[3, 5], f[3, 2], f[3, 6], f[3, 3] = (-(kf * lf - kr * lr) / iyy, -(kf * lf**2 + kr * lr**2) / iyy,
+                                              -(cf * lf - cr * lr) / iyy, -(cf * lf**2 + cr * lr**2) / iyy)
+    else:  # 독립 진동자 두 개 + 임의 교차항 (§3-3)
+        wp, wb = 2 * np.pi * d["fp"], 2 * np.pi * d["fb"]
+        f[3, 2], f[3, 3], f[3, 5] = -wp * wp, -2 * d["zp"] * wp, d["cpz"]
+        f[6, 5], f[6, 6], f[6, 2] = -wb * wb, -2 * d["zb"] * wb, d["czp"]
     qc[1, 1], qc[3, 3], qc[4, 4], qc[6, 6] = d["qa"], d["qp"], d["qg"], d["qv"]
     P = np.eye(n)
     P[4, 4] = 0.01
@@ -254,6 +266,11 @@ VARIANTS = {
     "pb2_lever": dict(build=build_pb, channels=("vbar", "ax", "dvw", "az"),  # + IMU 전방 레버 x_I = 0.42 (a_z^IMU 에만)
                       names=PB_PITCH + ["fb", "zb", "log_qv", "log_rz"], fixed=PB_FIXED | {"dist": 0.0, "chain": 1.0, "xi": 0.42},
                       params=PHYSICAL | {"fb": PHYSICAL["fz"], "zb": PHYSICAL["zz"], "log_qv": PARAMS["log_qz"]}, bounce_index=7),
+    # 2-자유도 pitch-plane half-car (§4) + 센서 체인 + 칩 체인: 기하 l_f = l_r = 1.45 m (축거 2.90, 50:50), m = 2,300 kg, I_yy = m l_f l_r (dynamic index 1)
+    "pb2_halfcar": dict(build=build_pb, channels=("vbar", "ax", "dvw", "az"),
+                        names=[n for n in PB_PITCH if n not in ("fp", "zp")] + ["log_kf", "log_kr", "log_cf", "log_cr", "log_qv", "log_rz"],
+                        fixed=PB_FIXED | {"dist": 0.0, "chain": 1.0, "lf": 1.45, "lr": 1.45, "m": 2300.0, "iyy": 2300.0 * 1.45 * 1.45},
+                        params=PHYSICAL | {"log_qv": PARAMS["log_qz"]}, bounce_index=7),
 }
 STAGES = {"a": ("a_naive", "a_lag", "a_full"), "b": ("b_full",), "c": ("c_wheel",), "d": ("d_torque",),
           "e": ("e_fixgeo",), "f": ("f_fixlever",), "g": ("g_physical",), "h": ("h_nograde",),
