@@ -1,196 +1,758 @@
 \documentclass[lettersize,journal]{IEEEtran}
-\usepackage{amsmath,amsfonts}
+
+\usepackage{amsmath,amsfonts,amssymb,bm}
 \usepackage{algorithmic}
 \usepackage{algorithm}
 \usepackage{array}
-\usepackage[caption=false,font=normalsize,labelfont=sf,textfont=sf]{subfig}
+\usepackage{booktabs}
+\usepackage{multirow}
 \usepackage{textcomp}
 \usepackage{stfloats}
 \usepackage{url}
-\usepackage{verbatim}
 \usepackage{graphicx}
 \usepackage{cite}
+\usepackage{xcolor}
+
 \hyphenation{op-tical net-works semi-conduc-tor IEEE-Xplore}
-% updated with editorial comments 8/9/2021
 
-\usepackage{bm}
-\usepackage{todonotes}
-\usepackage{kotex}
+% -----------------------------------------------------------------------------
+% Draft controls. Set \draftnotesfalse before submission and resolve every note.
+% Numerical results are intentionally left blank (\tbd) until the frozen
+% confirmatory experiments in Section VI have been run. Do not paste values
+% from the exploratory August runs; their protocol differs from Section VI-B.
+% -----------------------------------------------------------------------------
+\newif\ifdraftnotes
+\draftnotestrue
+\newcommand{\draftnote}[1]{\ifdraftnotes\textcolor{red}{\textbf{[TODO: #1]}}\fi}
+\newcommand{\tbd}{\textcolor{gray}{--}}
+
 \newcommand{\R}{\mathbb{R}}
-\newcommand{\N}{\mathcal{N}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\operatorname{Var}}
+\newcommand{\Normal}{\mathcal{N}}
+\newcommand{\Bern}{\operatorname{Bernoulli}}
+\newcommand{\Beta}{\operatorname{Beta}}
+\newcommand{\IW}{\operatorname{IW}}
+\newcommand{\NIW}{\operatorname{NIW}}
+\newcommand{\PG}{\operatorname{PG}}
+\newcommand{\KL}{D_{\mathrm{KL}}}
 \newcommand{\sigmoid}{\sigma}
-
-\newcommand{\zui}{\vect{z}_{ui}}
-\newcommand{\thetau}{\vect{\theta}_{u}}
-\newcommand{\tauui}{\tau_{ui}}
-\newcommand{\yui}{y_{ui}}
-\newcommand{\rui}{r_{ui}}
+\newcommand{\diag}{\operatorname{diag}}
+\newcommand{\T}{\mathsf{T}}
+\newcommand{\D}{\mathcal{D}}
+\newcommand{\Hh}{\mathcal{H}}
+\newcommand{\newuser}{\star}
+\newcommand{\thetatil}{\widetilde{\bm\theta}}
 
 \begin{document}
 
-\title{Fully Bayesian Personalized Preference Estimation from Binary Feedback}
+\title{Hierarchical Bayesian Personalization of Ride Preference from Sparse Binary Feedback with Predictive Uncertainty}
 
-\author{Jaewoong Han, Sheengil Kang, Jongeun Choi,~\IEEEmembership{Staff,~IEEE,}
-        % <-this % stops a space
-\thanks{This paper was produced by the IEEE Publication Technology Group. They are in Piscataway, NJ.}% <-this % stops a space
-\thanks{Manuscript received April 19, 2021; revised August 16, 2021.}}
+\author{Jaewoong~Han,
+        Sheengil~Kang,
+        and~Jongeun~Choi%
+\thanks{\draftnote{Affiliations, corresponding author, funding, and manuscript dates.}}}
 
-% The paper headers
-\markboth{Journal of \LaTeX\ Class Files,~Vol.~14, No.~8, August~2021}%
-{Shell \MakeLowercase{\textit{et al.}}: A Sample Article Using IEEEtran.cls for IEEE Journals}
-
-\IEEEpubid{0000--0000/00\$00.00~\copyright~2021 IEEE}
-% Remember, if you use this you must call \IEEEpubidadjcol in the second
-% column for its text to clear the IEEEpubid mark.
+\markboth{IEEE Transactions on Intelligent Vehicles}%
+{Han \MakeLowercase{\textit{et al.}}: Hierarchical Bayesian Personalization of Ride Preference}
 
 \maketitle
 
 \begin{abstract}
-최근에는 다수 사용자 피드백 데이터로부터 개별 사용자의 선호도를 LLM, control system에 반영하려고 한다.
-그런데 다수의 사용자들의 good, bad feedback 만으로 그 사용자의 선호도, 특히 보상함수를 추정하는 것은 어렵다.
-이를 위해 최근에는 피드백 데이터를 기반으로 딥러닝 학습을 하여 사용자 선호도를 보다 정확하게 추정하고자 한다.
-그러나 이러한 point estimation 방식은 사용자 보상함수의 불확실성을 고려하기 어렵다.
-한편, Bayesian inference는 이러한 장점이 있다.
-우리는 hierarachical fully Bayesian inference를 이용해 posterior의 불확실성, 그리고 해당 사용자의 불확실성을 동시에 추정하려고 한다.
-[이런 환경]에 적용해보았으며, [이런 결과]가 나왔다.
+Ride quality is judged differently by different occupants, yet most data-driven ride evaluators return a single population-level score. We study the problem of predicting whether a particular occupant will judge the vehicle response to a road bump as good or bad, when the occupant has supplied only a handful of binary feedback labels. We propose a hierarchical Bayesian preference model in which each occupant owns a logistic coefficient vector over interpretable ride-response features, and all coefficient vectors share a population distribution learned from the good/bad feedback of previous occupants. The population posterior provides a principled cold start for a new occupant, and P\'{o}lya--Gamma Gibbs updates personalize the posterior sequentially as feedback arrives. Because the full posterior is retained, every prediction is accompanied by a decomposition of its uncertainty into an epistemic part, which shrinks with personal feedback, and an aleatoric part, which reflects irreducible ambiguity in the judgment. A shared group spike-and-slab prior and projection-predictive search over a cleaned bank of ISO-inspired transient and frequency-weighted features identify which features and which sensors are required, and separate population-common effects from occupant-specific effects. On real-vehicle bump episodes from [$U$] evaluators, evaluated with a leave-one-evaluator-out protocol under context budgets of [\tbd] labels, the proposed model [summary of cold-start and personalization gains, calibration, and uncertainty behavior]. \draftnote{Fill in from the confirmatory runs; keep every number traceable to a frozen artifact.}
 \end{abstract}
 
 \begin{IEEEkeywords}
-[TODO]
+Bayesian learning, human factors, intelligent vehicles, personalization, preference learning, ride comfort, uncertainty quantification.
 \end{IEEEkeywords}
 
 \section{Introduction}
-\IEEEPARstart{T}{he}
+\label{sec:introduction}
 
+\IEEEPARstart{R}{ide} quality is both a vehicle-dynamics property and a human judgment. Objective descriptors such as acceleration peaks, vibration dose values, and frequency-weighted root-mean-square (RMS) accelerations summarize how a vehicle body responds to a road input~\cite{iso2631,guastadisegni2024ride}, but they do not determine whether a given occupant likes that response. As chassis and suspension settings of intelligent vehicles become software-defined and adjustable, it becomes attractive to tune them to the current occupant rather than to an average customer. Doing so requires an occupant-specific evaluator: a model that, given the measured response to an event, predicts how this particular person will judge it.
+
+Learning such an evaluator from in-vehicle interaction faces three statistical difficulties. First, preferences differ across people, so a single pooled classifier trained on many occupants averages away the heterogeneity that personalization is meant to exploit. Second, a new occupant supplies only a few labels, typically a good/bad judgment after an event, so fitting an independent model per occupant is unstable at exactly the moment when a prediction is most needed. Third, a vehicle that adapts its settings to a prediction must know how much to trust it. A point estimate cannot distinguish between a prediction that is uncertain because too little has been observed about this occupant and a prediction that is uncertain because the event is intrinsically ambiguous.
+
+This paper addresses the three difficulties jointly with a hierarchical Bayesian preference model. Each evaluator has an individual logistic coefficient vector over a set of interpretable ride-response features, and all coefficient vectors share a multivariate normal population distribution with unknown mean and covariance. The population posterior, learned from the good/bad feedback of previous evaluators, is the prior for a new evaluator; personal feedback then updates that prior sequentially. Because inference is fully Bayesian, the posterior predictive distribution for every future episode is available, and its variance can be decomposed into an epistemic part, which contracts as personal feedback accumulates, and an aleatoric part, which does not. A shared exact-zero spike-and-slab prior over feature groups, combined with projection-predictive search, identifies which features, and therefore which sensors, the population actually uses and separates population-common effects from evaluator-specific ones.
+
+The central claim of the paper is the following. Starting from a population posterior learned from the good/bad feedback of many evaluators, the preference of a new evaluator can be personalized sequentially from a small number of labels, and the posterior itself reports how far the resulting predictions can be trusted. The contributions are:
+
+\begin{enumerate}
+  \item \emph{Problem formulation and cold start.} We formulate occupant-specific ride preference from pointwise good/bad feedback as a hierarchical Bayesian logistic model and show how the population posterior serves as a cold-start prior that is refined by sequential P\'{o}lya--Gamma updates (Sections~\ref{sec:problem} and~\ref{sec:model}).
+  \item \emph{Quantified trust.} We decompose the posterior predictive variance of each judgment into epistemic and aleatoric components, track both along the personalization trajectory, and derive an evaluator-level reliability interval for discrimination that combines posterior and finite-sample variation (Section~\ref{sec:uncertainty}).
+  \item \emph{Required features and sensors.} We define a cleaned candidate bank of ISO-inspired ride-response features and use a shared group spike-and-slab prior together with projection-predictive selection to classify each feature as population-common, evaluator-specific, or inactive, and to identify the minimal sensor set that preserves predictive quality (Section~\ref{sec:features}).
+\end{enumerate}
+
+The method is evaluated on real-vehicle bump episodes with a leave-one-evaluator-out protocol under explicit feedback budgets (Section~\ref{sec:experiments}). Coupling the learned evaluator to a suspension or chassis controller is outside the scope of this paper and is discussed as future work in Section~\ref{sec:discussion}.
 
 \section{Related Work}
+\label{sec:related}
 
+\subsection{Objective and Subjective Ride Evaluation}
+
+Whole-body vibration standards define frequency-weighted quantities for assessing human exposure~\cite{iso2631}, and vehicle studies commonly summarize ride events by acceleration, jerk, peak, and vibration-dose descriptors~\cite{elbanhawi2015passenger}. The review by Guastadisegni \emph{et al.}~\cite{guastadisegni2024ride} catalogs which objective metrics correlate with which subjective attributes, and stresses that the pairing depends on the maneuver, the road profile, and the measurement location. Machine-learning studies have related acceleration measurements and participant characteristics to subjective ride comfort~\cite{cieslak2020ride}, and a neural evaluator has been trained specifically for speed-bump responses~\cite{kim2019evaluator}. These evaluators are pooled: they estimate a population judgment and do not adapt to an individual from sparse interaction. Sensory-driven personalization has been approached by grouping occupants according to their vibration perception~\cite{kikuchi2025personalizing}; we instead maintain a continuous posterior over each individual's coefficient vector.
+
+\subsection{Preference Learning from Human Feedback}
+
+Learning a reward or utility function from human feedback is well established in robotics and machine learning, where feedback is usually a pairwise comparison~\cite{christiano2017deep,sadigh2017active}. Hierarchical and multi-task Bayesian treatments allow the preferences of several people to be learned jointly, so that a person with little data borrows strength from the others~\cite{birlutiu2013efficiently}. Recent work on personalizing language-model reward functions infers a latent user embedding from a few comparisons~\cite{poddar2024vpl}, typically with amortized point estimates rather than a full posterior. In intelligent vehicles, preference-aware planning has been proposed to keep automated driving within occupant-specific acceleration and jerk limits~\cite{bae2020robocar}, and Bayesian pairwise queries have been used to learn preferred lane-centering trajectories online~\cite{ran2023online}. Our setting differs in the feedback type and the output: feedback is a single good/bad label per episode, obtained once per event as in once-per-episode reinforcement learning~\cite{chatterji2021once}, and the output is a posterior over an evaluator-specific reward whose uncertainty is itself a required deliverable.
+
+\subsection{Bayesian Computation and Feature Selection}
+
+P\'{o}lya--Gamma augmentation renders the logistic likelihood conditionally Gaussian and enables exact Gibbs sampling for hierarchical logistic models~\cite{polson2013pg}. Spike-and-slab priors attach posterior inclusion probabilities to candidate variables~\cite{george1993spike}, but inclusion alone is unstable when candidates are correlated. Projection-predictive selection avoids this by seeking the smallest submodel whose predictions match those of a reference model~\cite{piironen2020projective}. Information-theoretic selection criteria distinguish relevance from redundancy through conditional mutual information~\cite{brown2012conditional}. Predictive evaluation follows the leave-one-out and expected log predictive density framework of Vehtari \emph{et al.}~\cite{vehtari2017loo}. The decomposition of predictive uncertainty into epistemic and aleatoric parts has been formalized for Bayesian neural networks~\cite{kendall2017uncertainties,depeweg2018decomposition}; we apply the same law-of-total-variance argument to the Bernoulli predictive of a hierarchical logistic model.
 
 \section{Problem Formulation}
+\label{sec:problem}
 
-\subsection{TODO}
-user $u$ 는 $\mathcal{D}_u=\{(\tau_{ui}, y_{ui}\}_{i=1}^{N_u}$ 피드백을 줌.
-Let $\tau_{ui} \in \R^{}$ 는 sensor data로 이루어진 trajectory 이다. \todo{$\tau_{ui}$ 용어 선택}
-$\tau_{ui}$ 는 feature화 해주는 함수 $\phi$ 를 통해 feature vector $\bm{z}_{ui}$가 된다.
-\begin{equation*}
-    \bm{z}_{ui}=\phi(\tau_{ui})\in\mathbb{R}^{d}.
-\end{equation*}
+\subsection{Feedback Data and Feature Map}
 
-For user $u$, we define the latent personalized reward function as
-\begin{equation*}
-    r_{ui} = r_u(\tau_{ui})
-    = \bm\theta_u^\top \bm z_{ui}
-    = \bm\theta_u^\top \phi(\tau_{ui}).
-\end{equation*}
+Let $u\in\{1,\ldots,U\}$ index the evaluators in a population data set and let $i\in\{1,\ldots,N_u\}$ index the bump episodes of evaluator $u$. Each episode consists of a synchronized multichannel sensor window $\bm\tau_{ui}\in\R^{T\times C}$ around a detected bump event and a binary judgment
+\begin{equation}
+ y_{ui}=\begin{cases}
+ 1, & \text{the evaluator reports a good response},\\
+ 0, & \text{the evaluator reports a bad response},
+ \end{cases}
+\end{equation}
+so that $\D_u=\{(\bm\tau_{ui},y_{ui})\}_{i=1}^{N_u}$. The label is an operational preference judgment, not a rating on a standardized comfort scale. A fixed feature map $\phi$ converts the window into a vector
+\begin{equation}
+ \bm z_{ui}=\phi(\bm\tau_{ui})\in\R^{d},
+ \label{eq:feature-map}
+\end{equation}
+whose first element is the constant one (intercept) and whose remaining elements are standardized ride-response statistics defined in Section~\ref{sec:features}.
 
-The binary multi-user feedback $y_{ui} \in \{0, 1\}$ is labeled based on this personal reward. To express this observation process using an explicit equality form while maintaining the logistic choice structure, we introduce a latent variable formulation:
-\todo[inline]{아예 personal reward 말고, 자신만의 $\theta_u$가 있다고 쓰는게 나으려나}
-\todo[inline]{To expres.. 부분 제거, 우리가 제안하는게 아님. 아예 indicator 뺄까 싶기도 하고}
-\begin{equation*}
-    y_{ui} = \mathbb{I}(r_{ui} + \eta_{ui} > 0), \qquad
-    \eta_{ui}\sim \mathrm{Logistic}(0,1).
-\end{equation*}
+\subsection{Personalized Preference Model}
 
-where $\mathbb{I}(\cdot)$ is the indicator function, and $\eta_{ui}$ represents the random observation noise following a standard logistic distribution. By integrating out the latent logistic noise $\eta_{ui}$, this formulation can be equivalently expressed as an explicit choice probability form:
-\begin{equation*}
-P(y_{ui} = 1 \mid \bm{\theta} _u, \bm{z}_{ui}) = \sigmoid \! \left( \bm{\theta}_u^{\top } \bm{z}_{ui} \right) .
-\end{equation*}
+Evaluator $u$ is assumed to judge an episode through a latent linear reward
+\begin{equation}
+ r_u(\bm\tau)=\bm\theta_u^{\T}\phi(\bm\tau)=\bm\theta_u^{\T}\bm z,
+ \label{eq:reward}
+\end{equation}
+with an evaluator-specific coefficient vector $\bm\theta_u\in\R^d$, and the judgment follows a logistic choice model
+\begin{equation}
+ p(y_{ui}=1\mid\bm\theta_u,\bm z_{ui})=\sigmoid(\bm\theta_u^{\T}\bm z_{ui}),
+ \qquad
+ \sigmoid(x)=\frac{1}{1+e^{-x}}.
+ \label{eq:logistic}
+\end{equation}
+Equation~\eqref{eq:logistic} is equivalent to $y_{ui}=\mathbb{I}(r_{ui}+\eta_{ui}>0)$ with standard logistic noise $\eta_{ui}$, so the model can be read either as a noisy threshold on a personal reward or as a Bernoulli likelihood. Individual preferences are heterogeneous but not arbitrary: across a population, the coefficient vectors exhibit a common tendency and a structured spread. We therefore model them as exchangeable draws
+\begin{equation}
+ \bm\theta_u\mid\bm\mu,\bm\Sigma\sim\Normal(\bm\mu,\bm\Sigma),
+ \label{eq:population}
+\end{equation}
+where $\bm\mu$ is the population-average preference and $\bm\Sigma$ captures the between-evaluator variation and the correlations among preference dimensions.
 
-우리 목표는 parameter $\theta_u$의 posterior를 inference 하는 것.
+\subsection{Cold Start and Sequential Personalization}
 
-각 사용자들은 본인의 선호를 갖고 있지만, 그걸 다수로 모아두고 보면 어떤 경향성을 가진다. 우리는 다수 사용자가 어떤 공통적인 분포를 띈다고 가정한다,
-\begin{equation*}
-    \bm\theta_u \mid \mu, \Sigma \sim \N(\mu, \Sigma)
-\end{equation*}
-여기서 $\mu$는 poulation-average preference vector, $\Sigma$는 variation, correlation in preference dimensions across users 이다.
+At deployment a new evaluator, denoted $\newuser$, enters the vehicle with no personal labels. After the evaluator has judged $t$ episodes, the personal context is
+\begin{equation}
+ \D_{\newuser,t}=\{(\bm z_{\newuser i},y_{\newuser i})\}_{i=1}^{t},
+\end{equation}
+which grows in recorded order. For every future episode $j$ the system must return the posterior predictive probability
+\begin{equation}
+ p_{\newuser j,t}=p\big(y_{\newuser j}=1\mid\bm z_{\newuser j},\D_{\newuser,t},\D_{1:U}\big),
+ \label{eq:target}
+\end{equation}
+together with a measure of how much that probability can be trusted. The case $t=0$ is the cold start, in which the prediction relies entirely on the population data $\D_{1:U}$. The problem is thus to (i) learn a population representation from $\D_{1:U}$ that transfers to an unseen evaluator, (ii) update it from a small $t$, and (iii) quantify the uncertainty of \eqref{eq:target} at every $t$.
 
+\section{Hierarchical Bayesian Preference Model}
+\label{sec:model}
 
-Bayesian 추정
-\begin{equation*}
-    \begin{aligned}
-        \bm{\theta}_u \mid \mu, \Sigma &\sim \N \\
-        \Sigma &\sim \text{IW}(\nu_0, \Lambda_0) \\
-        \mu \mid \Sigma &\sim \N \left( m_0, \frac{1}{\kappa_0}\Sigma \right) \\
-        \bm\theta_u \mid \bm y_u, \omega_u, \mu, \Sigma &\sim \N(m_u, V_u)
-    \end{aligned}
-\end{equation*}
+\subsection{Population Prior and Group Spike-and-Slab}
+\label{sec:prior}
 
+We place a conjugate normal--inverse-Wishart (NIW) prior on the population parameters,
+\begin{align}
+ \bm\Sigma&\sim\IW(\nu_0,\bm\Lambda_0), &
+ \bm\mu\mid\bm\Sigma&\sim\Normal\!\big(\bm m_0,\bm\Sigma/\kappa_0\big),
+ \label{eq:niw}
+\end{align}
+which we write compactly as $(\bm\mu,\bm\Sigma)\sim\NIW(\bm m_0,\kappa_0,\nu_0,\bm\Lambda_0)$. Because the features are standardized on the population data, we use the weakly informative choices $\bm m_0=\bm 0$, $\kappa_0=1$, $\nu_0=d+2$, and $\bm\Lambda_0=\lambda_0\bm I_d$ with $\lambda_0=1$; their influence is examined in the sensitivity study of Section~\ref{sec:implementation}.
 
+Not every candidate feature need be relevant to anyone. To allow exact exclusion we separate the coefficient vector into a dense latent (slab) vector $\thetatil_u$ and a shared binary inclusion vector $\bm\gamma\in\{0,1\}^d$,
+\begin{equation}
+ \bm\theta_u=\bm\gamma\odot\thetatil_u,\qquad
+ \thetatil_u\mid\bm\mu,\bm\Sigma\sim\Normal(\bm\mu,\bm\Sigma).
+ \label{eq:slab}
+\end{equation}
+The inclusion vector is organized in $G$ groups, where group $g$ has the column set $\mathcal{C}_g$ and either one column (feature-level selection) or all columns derived from one sensor channel (sensor-level selection). All columns in a group share one indicator,
+\begin{align}
+ \gamma_j=\gamma_g\ \ \forall j\in\mathcal{C}_g,\qquad
+ \gamma_g\mid\pi\sim\Bern(\pi),\qquad
+ \pi\sim\Beta(a,b),
+ \label{eq:spikeslab}
+\end{align}
+with $a=b=1$, and the intercept is always included. Because $\bm\gamma$ is shared across evaluators, $\gamma_g=0$ means that no evaluator in the population uses group $g$, which is precisely the statement needed to declare a feature or a sensor unnecessary. Evaluator-specific relevance is instead expressed through $\bm\Sigma$: a feature with $\gamma_j=1$, small $|\mu_j|$, and large $\Sigma_{jj}$ is used by evaluators in different directions. Section~\ref{sec:decomposition} turns this observation into a classification of features. Fig.~\ref{fig:graphical-model} summarizes the model.
 
-\subsection{Binary-Feedback Preference Model}
-\subsection{Population and Individual Preference Estimation}
+\begin{figure}[t]
+\centering
+\draftnote{Plate diagram: NIW hyperparameters $\to(\bm\mu,\bm\Sigma)\to\thetatil_u$; $\pi\to\gamma_g$; $\bm\theta_u=\bm\gamma\odot\thetatil_u$ and $\bm z_{ui}\to y_{ui}$ inside the episode plate; new-evaluator plate sharing $(\bm\mu,\bm\Sigma,\bm\gamma)$.}
+\caption{Graphical representation of the hierarchical preference model. Evaluator-specific coefficients share a population distribution with unknown mean and covariance, and a population-shared inclusion vector selects feature groups. A new evaluator is a further draw from the same population.}
+\label{fig:graphical-model}
+\end{figure}
 
+\subsection{Posterior Inference by P\'{o}lya--Gamma Gibbs Sampling}
+\label{sec:gibbs}
 
+Let $\bm Z_u\in\R^{N_u\times d}$ stack the feature vectors of evaluator $u$, let $\bm X_u=\bm Z_u\diag(\bm\gamma)$ be the masked design, and let $\kappa_{ui}=y_{ui}-\tfrac12$. Following~\cite{polson2013pg}, we introduce a P\'{o}lya--Gamma variable for each observation,
+\begin{equation}
+ \omega_{ui}\mid\thetatil_u,\bm\gamma\sim\PG\!\big(1,\bm x_{ui}^{\T}\thetatil_u\big),
+ \label{eq:pg}
+\end{equation}
+where $\bm x_{ui}$ is the $i$th row of $\bm X_u$. Conditionally on $\bm\omega_u=(\omega_{u1},\ldots,\omega_{uN_u})$ the logistic likelihood is proportional to a Gaussian in the linear predictor, so that with $\bm\Omega_u=\diag(\bm\omega_u)$ the coefficient update is
+\begin{align}
+ \bm A_u&=\bm X_u^{\T}\bm\Omega_u\bm X_u+\bm\Sigma^{-1},\label{eq:pg-prec}\\
+ \bm m_u&=\bm A_u^{-1}\big(\bm X_u^{\T}\bm\kappa_u+\bm\Sigma^{-1}\bm\mu\big),\label{eq:pg-mean}\\
+ \thetatil_u\mid\bm\omega_u,\bm\gamma,\bm\mu,\bm\Sigma,\D_u&\sim\Normal(\bm m_u,\bm A_u^{-1}).\label{eq:pg-cond}
+\end{align}
+The slab vectors of the $U$ evaluators are conditionally independent given $(\bm\mu,\bm\Sigma,\bm\gamma)$, so \eqref{eq:pg-cond} is applied to each evaluator in turn.
 
-\section{Fully Bayesian Preference Estimation}
-\subsection{Hierarchical Bayesian Model}
+The NIW update uses the slab vectors directly. With $\bar{\bm\theta}=U^{-1}\sum_u\thetatil_u$ and $\bm S=\sum_u(\thetatil_u-\bar{\bm\theta})(\thetatil_u-\bar{\bm\theta})^{\T}$,
+\begin{align}
+ \kappa_n&=\kappa_0+U,\qquad \nu_n=\nu_0+U,\nonumber\\
+ \bm m_n&=\frac{\kappa_0\bm m_0+U\bar{\bm\theta}}{\kappa_n},\nonumber\\
+ \bm\Lambda_n&=\bm\Lambda_0+\bm S+\frac{\kappa_0U}{\kappa_n}(\bar{\bm\theta}-\bm m_0)(\bar{\bm\theta}-\bm m_0)^{\T},\nonumber\\
+ (\bm\mu,\bm\Sigma)\mid\thetatil_{1:U}&\sim\NIW(\bm m_n,\kappa_n,\nu_n,\bm\Lambda_n).
+ \label{eq:niw-post}
+\end{align}
 
-\subsection{Posterior Inference}
+The group indicators are updated one group at a time with the P\'{o}lya--Gamma augmented likelihood, which makes the update a closed-form Bernoulli draw. For group $g$ let $c_{ui}=\sum_{j\in\mathcal{C}_g}z_{uij}\widetilde\theta_{uj}$ be the contribution of the group to the linear predictor and let $h_{ui}$ be the linear predictor with group $g$ removed. The log Bayes factor for inclusion is
+\begin{equation}
+ \ell_g=\sum_{u=1}^{U}\sum_{i=1}^{N_u}\Big[\kappa_{ui}c_{ui}-\tfrac12\omega_{ui}\big((h_{ui}+c_{ui})^2-h_{ui}^2\big)\Big],
+ \label{eq:gamma-bf}
+\end{equation}
+and
+\begin{align}
+ p(\gamma_g=1\mid-)&=\sigmoid\!\Big(\log\frac{\pi}{1-\pi}+\ell_g\Big),\label{eq:gamma-cond}\\
+ \pi\mid\bm\gamma&\sim\Beta\Big(a+\textstyle\sum_g\gamma_g,\;b+G-\sum_g\gamma_g\Big).\label{eq:pi-cond}
+\end{align}
+Algorithm~\ref{alg:gibbs} lists one sweep. After a burn-in of $B$ sweeps we retain $M$ draws $\{(\bm\mu^{(m)},\bm\Sigma^{(m)},\bm\gamma^{(m)},\thetatil^{(m)}_{1:U})\}_{m=1}^{M}$. The effective population parameters used for reporting are $\bm\mu^{(m)}\odot\bm\gamma^{(m)}$ and $\bm\Sigma^{(m)}\odot(\bm\gamma^{(m)}\bm\gamma^{(m)\T})$, and the posterior inclusion probability (PIP) of group $g$ is $\widehat{\Pr}(\gamma_g=1\mid\D_{1:U})=M^{-1}\sum_m\gamma_g^{(m)}$.
 
+\begin{algorithm}[t]
+\caption{One sweep of the population Gibbs sampler}
+\label{alg:gibbs}
+\begin{algorithmic}[1]
+\REQUIRE Current $(\thetatil_{1:U},\bm\gamma,\pi,\bm\mu,\bm\Sigma)$; data $\{(\bm Z_u,\bm y_u)\}_{u=1}^{U}$
+\FOR{$u=1,\ldots,U$}
+  \STATE Draw $\omega_{ui}\sim\PG(1,\bm x_{ui}^{\T}\thetatil_u)$ for all $i$ \hfill\eqref{eq:pg}
+\ENDFOR
+\FOR{each group $g$ in random order}
+  \STATE Draw $\gamma_g$ from \eqref{eq:gamma-cond} and update the masked designs
+\ENDFOR
+\STATE Draw $\pi$ from \eqref{eq:pi-cond}
+\FOR{$u=1,\ldots,U$}
+  \STATE Draw $\thetatil_u\sim\Normal(\bm m_u,\bm A_u^{-1})$ \hfill\eqref{eq:pg-prec}--\eqref{eq:pg-cond}
+\ENDFOR
+\STATE Draw $(\bm\mu,\bm\Sigma)$ from the NIW posterior \hfill\eqref{eq:niw-post}
+\end{algorithmic}
+\end{algorithm}
 
+\subsection{Cold Start from the Population Posterior}
+\label{sec:coldstart}
 
+A new evaluator is, by \eqref{eq:population}, another draw from the population. The cold-start posterior over its coefficients is therefore the posterior predictive of the hierarchy: for each retained population draw $m$,
+\begin{align}
+ \thetatil_{\newuser}^{(m)}&\sim\Normal\!\big(\bm\mu^{(m)},\bm\Sigma^{(m)}\big),\qquad
+ \bm\theta_{\newuser}^{(m)}=\bm\gamma^{(m)}\odot\thetatil_{\newuser}^{(m)}.
+ \label{eq:coldstart}
+\end{align}
+The resulting set $\{\bm\theta_{\newuser}^{(m)}\}_{m=1}^{M}$ integrates over both the uncertainty in the population parameters and the spread of individuals around the population mean. It is wider than the posterior of any training evaluator, and the width itself is informative: it states how much a typical individual can deviate from the average before any personal feedback is observed.
 
+\subsection{Sequential Personalization}
+\label{sec:personalization}
 
-\section{Bayesian Feature Selection}
+When the context $\D_{\newuser,t}$ is available, each cold-start particle is updated by the same P\'{o}lya--Gamma conditional that the population sampler uses, with the population parameters of that particle held fixed:
+\begin{equation}
+ \thetatil_{\newuser}^{(m)}\ \leftarrow\ \text{$n_{\mathrm{it}}$ sweeps of \eqref{eq:pg}--\eqref{eq:pg-cond} with }
+ (\bm\mu^{(m)},\bm\Sigma^{(m)},\bm\gamma^{(m)})\text{ and }\D_{\newuser,t}.
+ \label{eq:personalize}
+\end{equation}
+Holding $\bm\gamma^{(m)}$ fixed keeps the feature set at the population level, which is the correct choice under \eqref{eq:spikeslab}: the indicators are shared, and a few personal labels should not be able to switch on a feature that the whole population found unnecessary. Holding $(\bm\mu^{(m)},\bm\Sigma^{(m)})$ fixed ignores the negligible information that one new evaluator carries about the population. Both choices make the update embarrassingly parallel over $m$ and cheap enough for in-vehicle use: each sweep costs one $d\times d$ Cholesky factorization per particle. The update is warm-started from the previous context size, so that moving from $\D_{\newuser,t}$ to $\D_{\newuser,t'}$ with $t'>t$ requires only a few sweeps.
 
+The posterior predictive probability for a future episode $j$ is the Monte Carlo average
+\begin{equation}
+ \widehat p_{\newuser j,t}=\frac{1}{M}\sum_{m=1}^{M}p^{(m)}_{\newuser j,t},\qquad
+ p^{(m)}_{\newuser j,t}=\sigmoid\!\big(\bm z_{\newuser j}^{\T}\bm\theta^{(m)}_{\newuser,t}\big).
+ \label{eq:prediction}
+\end{equation}
+Algorithm~\ref{alg:personalization} summarizes the procedure over a schedule of context sizes.
 
-\subsection{Sensor?Feature? Reconstruction}
+\begin{algorithm}[t]
+\caption{Cold start and sequential personalization}
+\label{alg:personalization}
+\begin{algorithmic}[1]
+\REQUIRE Population draws $\{(\bm\mu^{(m)},\bm\Sigma^{(m)},\bm\gamma^{(m)})\}_{m=1}^{M}$; personal stream $(\bm z_{\newuser i},y_{\newuser i})_{i\ge1}$; schedule $t_1<t_2<\cdots$
+\STATE Draw $\thetatil_{\newuser}^{(m)}$ from \eqref{eq:coldstart} for all $m$ \hfill (cold start, $t=0$)
+\STATE Report $\widehat p_{\newuser j,0}$ and the uncertainty terms of \eqref{eq:decomposition} for pending episodes $j$
+\FOR{$t\in\{t_1,t_2,\ldots\}$}
+  \STATE Update every $\thetatil_{\newuser}^{(m)}$ with $\D_{\newuser,t}$ by \eqref{eq:personalize}, warm-started
+  \STATE Report $\widehat p_{\newuser j,t}$, the uncertainty terms, and the reliability interval of Section~\ref{sec:uncertainty}
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
 
-실제 실험을 위해 측정된 센서들 중에, 실제로 
+\section{Predictive Uncertainty and Trust}
+\label{sec:uncertainty}
 
+\subsection{Epistemic and Aleatoric Decomposition}
 
-\section{Experiments and Results}
+The particle representation \eqref{eq:prediction} yields, for every episode, the full distribution of $p^{(m)}_{\newuser j,t}$ over $m$ rather than only its mean. By the law of total variance, the variance of the Bernoulli outcome under the posterior predictive separates exactly into two terms,
+\begin{equation}
+ \underbrace{\widehat p_{j}(1-\widehat p_{j})}_{\text{total}}
+ =\underbrace{\E_m\!\big[p^{(m)}_{j}(1-p^{(m)}_{j})\big]}_{U^{\mathrm{ale}}_{j}}
+ +\underbrace{\Var_m\!\big(p^{(m)}_{j}\big)}_{U^{\mathrm{epi}}_{j}},
+ \label{eq:decomposition}
+\end{equation}
+where the subscripts $\newuser$ and $t$ are suppressed. The aleatoric term $U^{\mathrm{ale}}_{j}$ is the expected Bernoulli variance under the model: it is large when the evaluator's own judgment of episode $j$ is intrinsically close to a coin flip, and no amount of feedback removes it. The epistemic term $U^{\mathrm{epi}}_{j}$ is the disagreement among posterior particles about the probability itself: it is large when the population posterior admits many individuals who would judge $j$ differently, and it contracts as $\D_{\newuser,t}$ pins down where this evaluator lies. The two terms are reported per episode and averaged over a set of pending episodes to form personalization curves $\bar U^{\mathrm{epi}}(t)$ and $\bar U^{\mathrm{ale}}(t)$.
 
+The decomposition has an operational reading for an adaptive vehicle. A high epistemic term indicates that asking for one more judgment is worthwhile, because the answer would move the posterior. A high aleatoric term with a low epistemic term indicates that the model already knows this evaluator and that the episode is simply borderline; further feedback about this episode type is unlikely to change the decision, and any downstream controller should treat the two classes as nearly equally acceptable.
 
+\subsection{Coefficient-Level Uncertainty}
+
+The same particles give the marginal posterior of every coefficient, $\{\theta^{(m)}_{\newuser j,t}\}_m$. Comparing the personalized marginals with the population marginals of $\mu_j$ shows which preference dimensions the personal feedback has moved and which remain at their population value. Projecting the trajectory of the posterior mean $\bar{\bm\theta}_{\newuser,t}$ onto the leading principal directions of the population coefficient cloud $\{\bar{\bm\theta}_u\}_{u=1}^{U}$ visualizes how a new evaluator migrates from the population center toward its own position as $t$ grows (Section~\ref{sec:results-uncertainty}).
+
+\subsection{Reliability Interval for Discrimination}
+\label{sec:trust}
+
+Per-episode uncertainty answers whether an individual prediction can be trusted. A vehicle must also decide whether the evaluator model as a whole is reliable enough to act on. For a set of $n$ pending episodes with known labels (in evaluation) we compute an interval for the area under the receiver operating characteristic curve (AUROC) that combines posterior and finite-sample variation: each of $K$ replicates draws one particle $m$ uniformly and one bootstrap resample of the $n$ episodes, and evaluates the AUROC of $p^{(m)}$ on that resample. The 2.5th and 97.5th percentiles of the $K$ values form the interval $[\mathrm{AUROC}_{\mathrm{lo}},\mathrm{AUROC}_{\mathrm{hi}}]$. We call the evaluator model \emph{reliable} at context size $t$ if
+\begin{equation}
+ \mathrm{AUROC}_{\mathrm{lo}}(t)>\tfrac12
+ \quad\text{and}\quad
+ \mathrm{AUROC}_{\mathrm{hi}}(t)-\mathrm{AUROC}_{\mathrm{lo}}(t)<w_{\max},
+ \label{eq:reliable}
+\end{equation}
+that is, if the posterior is confident that discrimination is better than chance and the confidence is tight. The interval does not correct for dependence among episodes of the same evaluator; it is a summary of what the posterior and the available episodes jointly support, not a frequentist coverage guarantee. In deployment, where labels of pending episodes are unknown, the first condition can be replaced by the posterior probability that the evaluator's coefficient vector lies in the population half-space that agrees with $\bm\mu$ on the dominant features, and the second by the mean epistemic term.
+
+\section{Ride-Response Features and Bayesian Feature Selection}
+\label{sec:features}
+
+The preference model is linear in the features, so the choice of $\phi$ determines both what can be learned and what can be interpreted. We construct a broad but redundancy-controlled candidate bank of physically motivated statistics and let the Bayesian model decide which are needed. The section defines the sensor channels and windows, the candidate bank and its cleaning, the two selection procedures used in the main text, and the classification of features into population-common, evaluator-specific, and inactive.
+
+\subsection{Sensor Channels and Event Windows}
+\label{sec:channels}
+
+Table~\ref{tab:channels} lists the motion channels available in the test vehicle. The production inertial measurement unit (IMU) near the vehicle center of gravity provides longitudinal, lateral, and vertical body acceleration and roll and yaw rates. A six-degree-of-freedom body-motion sensor (denoted 6D) provides bounce (heave) rate, pitch rate, and roll rate. Wheel speeds, steering, motor torque, and brake signals are logged as context but are not used as preference features. The 6D channels are the ones whose necessity is in question: they are not available in every production vehicle, so knowing whether the population preference can be predicted from the IMU alone has direct value for deployment.
 
 \begin{table}[t]
-\caption{TODO}
-\label{tab:something}
+\caption{Motion Channels Considered as Feature Sources}
+\label{tab:channels}
 \centering
-\begin{tabular}{lll}
-\hline
-\textbf{Sensor} & \textbf{Description} & \textbf{Unit} \\
-\hline
-Something & Something & $m/s$ \\
-Something & Something & $m/s$ \\
-\hline
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llll}
+\toprule
+Source & Channel & Symbol & Unit \\
+\midrule
+IMU & Longitudinal acceleration & $a_x$ & m/s$^2$ \\
+IMU & Lateral acceleration & $a_y$ & m/s$^2$ \\
+IMU & Vertical acceleration & $a_z$ & m/s$^2$ \\
+IMU & Roll rate & $\dot\phi$ & deg/s \\
+IMU & Yaw rate & $\dot\psi$ & deg/s \\
+6D & Bounce (heave) rate & $\dot z$ & m/s \\
+6D & Pitch rate & $\dot\theta$ & deg/s \\
+6D & Roll rate & $\dot\phi_{6\mathrm{D}}$ & deg/s \\
+\bottomrule
+\end{tabular}
+\\[2pt]
+\draftnote{Confirm which of these channels enter the final bank (the current configuration loads $a_x$, $a_y$, $a_z$, $\dot z$, and $\dot\theta$) and state the sensor models and mounting locations.}
+\end{table}
+
+Each episode is logged at $f_0=100$~Hz for a nominal 10~s centered on the detected bump. The feature window spans from 2~s before to 2~s after the event, which contains the impact and the dominant body-mode response while excluding unrelated maneuvers. A second-order low-pass filter with a 10~Hz cutoff is applied before downsampling by two, yielding $f_s=50$~Hz and $T=200$ samples per channel. The cutoff removes much of the 10--25~Hz secondary-ride band; its effect is part of the sensitivity study.
+
+\subsection{Candidate Feature Bank}
+\label{sec:bank}
+
+For a windowed channel $x_1,\ldots,x_T$ the bank contains statistics from five families, listed in Table~\ref{tab:bank}. Amplitude statistics (absolute peak, peak-to-peak, 95th percentile of $|x|$) and energy statistics (RMS, standard deviation, absolute impulse $f_s^{-1}\sum_t|x_t|$) describe the size of the transient. Shape statistics describe its peakiness: the crest factor $\max_t|x_t|/\mathrm{RMS}$, the fourth-power dose $(f_s^{-1}\sum_t x_t^4)^{1/4}$, and the maximum running one-second RMS. For rate channels, the same statistics are also computed on the numerical time derivative, which converts pitch rate to pitch angular acceleration and bounce rate to heave acceleration, the quantities that the ride literature relates to body control~\cite{guastadisegni2024ride}. Frequency-weighted RMS statistics multiply the discrete Fourier transform of the window by the magnitude of the ISO~2631-1 weighting $W_k$ (vertical), $W_d$ (horizontal), or $W_e$ (rotational, applied to the differentiated rate) before inverse transformation~\cite{iso2631}. Because the IMU is not at a seat or foot contact point and the window is short, these are ISO-inspired vehicle-response features, not standards-compliant exposure values. Finally, band statistics report the RMS in the 0.5--5~Hz primary-ride band and the relative spectral energy in the 1--2~Hz and 4--8~Hz bands.
+
+\begin{table}[t]
+\caption{Statistic Families in the Candidate Bank}
+\label{tab:bank}
+\centering
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{p{0.19\columnwidth}p{0.44\columnwidth}p{0.27\columnwidth}}
+\toprule
+Family & Statistics & Applied to \\
+\midrule
+Amplitude & absolute peak, peak-to-peak, 95th percentile of $|x|$ & all channels; derivative of rate channels \\
+Energy & RMS, standard deviation, absolute impulse & all channels; derivative of rate channels \\
+Shape & crest factor, fourth-power dose, maximum running RMS & all channels; dose also on derivative \\
+ISO-weighted & $W_k$ RMS ($a_z$, $\ddot z$), $W_d$ RMS ($a_x$, $a_y$), $W_e$ RMS (angular acceleration) & by direction \\
+Spectral & 0.5--5~Hz band RMS, relative energy in 1--2~Hz and 4--8~Hz & all channels \\
+\bottomrule
 \end{tabular}
 \end{table}
 
+\subsection{Redundancy Pruning}
+\label{sec:cleaning}
+
+Many bank statistics are near-duplicates of one another (for example RMS and standard deviation of a zero-mean transient), and near-duplicate columns make feature-level inclusion ill-defined and the projected Hessians of Section~\ref{sec:projpred} singular. The bank is therefore pruned before modeling with a rule that uses only the population evaluators' episodes. All candidate statistics are computed on the population episodes and standardized. For every pair of columns from the same channel with absolute Pearson correlation at least $\rho_{\max}=0.95$, the column that appears later in a fixed priority order is removed; the order places the event-oriented candidates that the ride literature pairs directly with bump attributes (peak-to-peak, absolute peak, RMS, and their derivative counterparts) first and the exploratory band statistics last. The procedure is applied greedily until no pair exceeds the threshold. It leaves about ten statistics per channel and about fifty in total, so that $d\approx 51$ including the intercept. The retained columns and the standardization constants are frozen before any held-out evaluator is touched. \draftnote{Replace ``about'' with the exact retained counts per channel from the frozen bank and list the retained statistics in Appendix~\ref{app:bank}.}
+
+\subsection{Spike-and-Slab Inclusion}
+\label{sec:pip}
+
+The hierarchical model of Section~\ref{sec:model} fitted to the cleaned bank is the \emph{reference model}. Its posterior inclusion probabilities answer the population-level question directly: $\widehat{\Pr}(\gamma_g=1\mid\D_{1:U})$ close to zero means that, once the other features are present, no evaluator's judgments require group $g$. We run the sampler twice, once with feature-level groups and once with sensor-level groups. The sensor-level run answers the deployment question of Section~\ref{sec:channels}: a low PIP for the 6D bounce-rate channel, for instance, would state that all of its statistics can be removed together without loss. Inclusion probabilities of correlated features are interpreted jointly, because two correlated features may share a high PIP while either one alone would suffice; the projection procedure below resolves this.
+
+\subsection{Projection-Predictive Selection}
+\label{sec:projpred}
+
+Projection-predictive selection~\cite{piironen2020projective} asks for the smallest submodel whose predictions reproduce those of the reference model, which is the appropriate criterion when the goal is a compact feature set rather than a list of individually significant coefficients. For posterior draw $m$, evaluator $u$, and candidate column set $S$ (always containing the intercept), the reference predictions $p^{(m)}_{ui}=\sigmoid(\bm z_{ui}^{\T}\bm\theta_u^{(m)})$ are projected onto the submodel by
+\begin{equation}
+ \widehat{\bm b}^{(m,u)}_S=\arg\min_{\bm b}\sum_{i=1}^{N_u}
+ \KL\!\Big[\Bern\big(p^{(m)}_{ui}\big)\,\Big\|\,\Bern\big(\sigmoid(\bm z_{ui,S}^{\T}\bm b)\big)\Big],
+ \label{eq:projection}
+\end{equation}
+which is a logistic regression with soft targets and is solved by a damped Newton method. The projection loss of $S$ is the mean KL divergence over episodes, evaluators, and $M'$ evenly spaced posterior draws,
+\begin{equation}
+ L(S)=\frac{1}{M'\sum_u N_u}\sum_{m}\sum_{u}\sum_{i}
+ \KL\!\Big[\Bern\big(p^{(m)}_{ui}\big)\,\Big\|\,\Bern\big(\sigmoid(\bm z_{ui,S}^{\T}\widehat{\bm b}^{(m,u)}_S)\big)\Big].
+ \label{eq:projloss}
+\end{equation}
+Starting from the intercept-only set, forward search adds at each step the group (feature or sensor) that most reduces $L(S)$ and stops at the first set that recovers a fraction $\alpha=0.95$ of the reduction from the intercept-only loss to the full-model loss $L(\{1,\ldots,d\})$. The search is run at the feature level and at the sensor level. The projected submodel is not refitted by Gibbs sampling; its purpose is to rank and to stop, and the predictive quality of the selected set is then verified on held-out evaluators by refitting the hierarchical model on the selected columns only (Section~\ref{sec:results-features}).
+
+A third criterion, cross-fitted conditional mutual information, is used as a check that relevance judged by predictive gain agrees with relevance judged by the model; it is described in Appendix~\ref{app:cmi}.
+
+\subsection{Common, Evaluator-Specific, and Inactive Features}
+\label{sec:decomposition}
+
+The hierarchy separates three roles that a single pooled classifier cannot distinguish. Feature $j$ is \emph{inactive} if its PIP is below $\tfrac12$: the population does not need it. For an included feature, the population mean $\mu_j$ and the between-evaluator standard deviation $\sqrt{\Sigma_{jj}}$ jointly describe how evaluators use it. We define the sign-agreement probability
+\begin{equation}
+ q_j=\E_m\!\left[\Phi\!\left(\frac{|\mu^{(m)}_j|}{\sqrt{\Sigma^{(m)}_{jj}}}\right)\right],
+ \label{eq:sign-agreement}
+\end{equation}
+where $\Phi$ is the standard normal distribution function; $q_j$ is the posterior probability that a randomly drawn evaluator weights feature $j$ with the same sign as the population average. Feature $j$ is \emph{population-common} if $q_j\ge q_{\min}$ and \emph{evaluator-specific} otherwise, with $q_{\min}=0.9$. Common features are those on which a chassis setting can be tuned for everyone; evaluator-specific features are those on which personalization has leverage; inactive features and, at the sensor level, inactive channels can be dropped. A complementary continuous score, the expected squared standardized effect of a random evaluator,
+\begin{equation}
+ S_j=\E_m\big[(\mu^{(m)}_j)^2+\Sigma^{(m)}_{jj}\big],\qquad
+ S_g=\frac{1}{|\mathcal{C}_g|}\sum_{j\in\mathcal{C}_g}S_j,
+ \label{eq:effect-score}
+\end{equation}
+ranks features and sensors by total (common plus specific) influence. \draftnote{Confirm the thresholds $\tfrac12$ and $q_{\min}=0.9$ against the plan; report sensitivity of the classification to both.}
+
+\section{Experiments}
+\label{sec:experiments}
+
+\subsection{Data}
+\label{sec:data}
+
+Episodes were collected in a [vehicle model] driven over speed bumps and similar discrete road inputs on [road description]. Each time the onboard event detector triggered on a bump, the logger stored a 10~s window of all channels in Table~\ref{tab:channels} together with vehicle context signals, and the evaluator was asked immediately afterwards whether the response was good or bad. The full catalog contains [\tbd] episodes from [\tbd] evaluators, of which [\tbd] carry a binary label. Evaluators with fewer than [\tbd] labeled episodes or without both label classes are excluded from the held-out roles but may remain in the population set; Table~\ref{tab:data} lists the eligible evaluators with protocol-local identifiers. No name or identifier is used as a model input.
+
+\begin{table}[t]
+\caption{Eligible Evaluators and Episode Counts}
+\label{tab:data}
+\centering
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{lrrrl}
+\toprule
+Evaluator & Episodes & Good & Bad & Role \\
+\midrule
+E1 & \tbd & \tbd & \tbd & \tbd \\
+E2 & \tbd & \tbd & \tbd & \tbd \\
+$\vdots$ & & & & \\
+E$U$ & \tbd & \tbd & \tbd & \tbd \\
+\midrule
+Total & \tbd & \tbd & \tbd & \\
+\bottomrule
+\end{tabular}
+\\[2pt]
+\draftnote{Fill from the frozen catalog. State recruitment, demographics, vehicle settings, road protocol, feedback interface and timing, consent, and the ethics determination with its identifier.}
+\end{table}
+
+\subsection{Evaluation Protocol}
+\label{sec:protocol}
+
+The protocol is leave-one-evaluator-out (LOEO). For each eligible evaluator $\newuser$ in turn, the remaining evaluators form the population set. Everything that depends on data is fitted on the population set only: the redundancy pruning and standardization of Section~\ref{sec:cleaning}, the reference model and its selection procedures of Sections~\ref{sec:pip}--\ref{sec:projpred}, and any baseline. The held-out evaluator's episodes are split in recorded order into a \emph{context} half, which is revealed sequentially, and a \emph{holdout} half, which is never used for fitting and on which all metrics are computed. Context budgets follow the schedule $t\in\{0,t_1,\ldots,n_{\mathrm{ctx}}\}$ with step $\Delta t$ and the final size always included; $t=0$ is the cold start. \draftnote{Fix $\Delta t$ and the small-budget points (the plan discussed 0, 2, 5, 10, 20 labels); the current code uses a step of 10.} Because the feedback stream is short for some evaluators, the small-budget results are additionally averaged over $R$ chronological starting offsets of the context window to reduce dependence on the first few episodes.
+
+Reported quantities are macro-averaged over held-out evaluators, and evaluator-level standard errors are reported rather than episode-level ones, since the unit of replication for a personalization claim is the evaluator. Each LOEO fold is repeated over $n_{\mathrm{seed}}$ seeds of the Gibbs sampler and of the cold-start draw; the seed variation is reported separately from the evaluator variation. In addition to the sequential holdout evaluation, we report a $K$-fold refit estimate of the expected log predictive density on all of the held-out evaluator's episodes, with its standard error and its paired difference from the cold-start density following~\cite{vehtari2017loo}.
+
+\subsection{Baselines}
+\label{sec:baselines}
+
+The baselines are chosen to isolate the three ingredients of the proposed model: partial pooling, sequential personalization, and full posterior uncertainty. All baselines use the identical cleaned bank, standardization, LOEO split, and context schedule.
+
+\begin{itemize}
+  \item \textbf{Pooled logistic regression (Pooled).} One L2-regularized logistic model on all population labels; at budget $t$ the model is refitted with the context labels appended. It represents the standard population evaluator and has no notion of an individual.
+  \item \textbf{Independent logistic regression (Indep).} An L2-regularized logistic model fitted only on the context of the held-out evaluator, undefined at $t=0$ and fitted with a class prior when only one class is present. It represents personalization without transfer.
+  \item \textbf{Empirical-Bayes partial pooling (EB-MAP).} The hierarchy of \eqref{eq:population} with point estimates of $(\bm\mu,\bm\Sigma)$ obtained from the population evaluators' penalized-likelihood coefficients and a Laplace approximation for the held-out evaluator. It represents partial pooling without a full posterior and isolates the value of integrating over $(\bm\mu,\bm\Sigma)$ and $\bm\gamma$.
+  \item \textbf{Proposed without selection (HB-full).} The proposed model with $\bm\gamma\equiv\bm 1$, to measure what the spike-and-slab prior contributes.
+  \item \textbf{Nonlinear pooled model (GBT).} A gradient-boosted tree classifier on population episodes with the evaluator identifier as a categorical input, refitted with context labels at each budget. It tests whether the linear reward is limiting.
+\end{itemize}
+\draftnote{Reconcile this list with the baseline section of the experiment plan, and fix regularization strengths by inner cross-validation on the population set only.}
+
+\subsection{Metrics}
+\label{sec:metrics}
+
+Discrimination is measured by the AUROC and the area under the precision--recall curve (AUPRC). Probability quality is measured by the Brier score~\cite{brier1950verification} and by the mean log predictive density (MLPD),
+\begin{equation}
+ \mathrm{MLPD}=\frac{1}{n}\sum_{j=1}^{n}\log\big[y_j\widehat p_j+(1-y_j)(1-\widehat p_j)\big],
+\end{equation}
+together with reliability diagrams and the expected calibration error on the pooled holdout episodes of all held-out evaluators. Uncertainty behavior is measured by the mean epistemic and aleatoric terms of \eqref{eq:decomposition} over holdout episodes as functions of $t$, by the reliability interval of Section~\ref{sec:trust} with $K=600$ replicates and $w_{\max}=0.15$, and by the fraction of held-out evaluators declared reliable at each budget. Feature and sensor selection is evaluated by the held-out predictive quality of the hierarchical model refitted on the selected columns, relative to the full cleaned bank.
+
+\subsection{Implementation Details}
+\label{sec:implementation}
+
+The population sampler is run for $B=500$ burn-in sweeps followed by $M=1500$ retained sweeps without thinning, for [\tbd] independent chains; convergence is monitored by the trace of the log-likelihood, the number of included groups, and rank-normalized $\widehat R$ on $\bm\mu$ and $\log\operatorname{tr}\bm\Sigma$ (Appendix~\ref{app:convergence}). Personalization uses $n_{\mathrm{it}}=8$ P\'{o}lya--Gamma sweeps per particle and per context size, warm-started. Projection-predictive search uses $M'=12$ evenly spaced draws and $\alpha=0.95$. The NIW hyperparameters are those of Section~\ref{sec:prior}. Table~\ref{tab:grid} lists the hyperparameter grid used for the sensitivity study; all grid decisions are made on inner LOEO folds within the population set, never on the held-out evaluator. Software, hardware, wall-clock cost per fold, and run identifiers are recorded in Appendix~\ref{app:repro}.
+
+\begin{table}[t]
+\caption{Hyperparameter Grid for the Sensitivity Study}
+\label{tab:grid}
+\centering
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{lll}
+\toprule
+Quantity & Default & Grid \\
+\midrule
+$\kappa_0$ & 1 & $\{0.1, 1, 10\}$ \\
+$\nu_0$ & $d+2$ & $\{d+2, d+10, 2d\}$ \\
+$\lambda_0$ (scale of $\bm\Lambda_0$) & 1 & $\{0.1, 1, 10\}$ \\
+$(a,b)$ of $\Beta(a,b)$ & $(1,1)$ & $\{(1,1),(1,4),(4,1)\}$ \\
+Selection unit & feature & $\{\text{feature},\text{sensor}\}$ \\
+$n_{\mathrm{it}}$ & 8 & $\{4, 8, 16\}$ \\
+Low-pass cutoff (Hz) & 10 & $\{5, 10, 20\}$ \\
+Window (s) & $[-2, 2]$ & $\{[-1,2],[-2,2],[-2,4]\}$ \\
+$\rho_{\max}$ & 0.95 & $\{0.90, 0.95, 0.99\}$ \\
+\bottomrule
+\end{tabular}
+\\[2pt]
+\draftnote{Align with the grid in the experiment plan and prune to what is actually run.}
+\end{table}
+
+\subsection{Cold Start and Personalization}
+\label{sec:results-personalization}
+
+Table~\ref{tab:main} reports the macro-averaged holdout metrics of the proposed model and the baselines at the cold start, at a small budget $t_{\mathrm{s}}$, and at the full context, and Fig.~\ref{fig:sequential} shows the complete personalization curves. \draftnote{Write the narrative after the runs. Structure: (i) cold-start transfer versus Pooled and EB-MAP; (ii) the budget at which the proposed model overtakes Indep and how far it stays ahead; (iii) whether the gains appear in ranking (AUROC) or in probability quality (Brier, MLPD); (iv) evaluator-level spread, including any evaluator for whom personalization hurts; (v) the $K$-fold refit ELPD and its paired difference from the cold start.}
+
+\begin{table*}[t]
+\caption{Held-Out Evaluator Performance Under the Leave-One-Evaluator-Out Protocol (Macro Mean $\pm$ Evaluator-Level Standard Error)}
+\label{tab:main}
+\centering
+\setlength{\tabcolsep}{4.5pt}
+\begin{tabular}{llcccccc}
+\toprule
+Budget & Method & AUROC & AUPRC & Brier & MLPD & ECE & Reliable (\%) \\
+\midrule
+\multirow{4}{*}{$t=0$}
+ & Pooled  & \tbd & \tbd & \tbd & \tbd & \tbd & -- \\
+ & EB-MAP  & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+ & HB-full & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+ & Proposed & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+\midrule
+\multirow{6}{*}{$t=t_{\mathrm{s}}$}
+ & Pooled  & \tbd & \tbd & \tbd & \tbd & \tbd & -- \\
+ & Indep   & \tbd & \tbd & \tbd & \tbd & \tbd & -- \\
+ & GBT     & \tbd & \tbd & \tbd & \tbd & \tbd & -- \\
+ & EB-MAP  & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+ & HB-full & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+ & Proposed & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+\midrule
+\multirow{6}{*}{$t=n_{\mathrm{ctx}}$}
+ & Pooled  & \tbd & \tbd & \tbd & \tbd & \tbd & -- \\
+ & Indep   & \tbd & \tbd & \tbd & \tbd & \tbd & -- \\
+ & GBT     & \tbd & \tbd & \tbd & \tbd & \tbd & -- \\
+ & EB-MAP  & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+ & HB-full & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+ & Proposed & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{figure*}[t]
+\centering
+\draftnote{Two panels: (a) macro AUROC and (b) macro MLPD versus context size $t$ for all methods, with evaluator-level standard-error bands; vertical marker at $t_{\mathrm{s}}$. Source: sequential AUROC and log predictive density traces of the LOEO folds.}
+\caption{Sequential personalization of held-out evaluators. (a) Discrimination and (b) probability quality on the fixed holdout as the context grows from the cold start. Bands are evaluator-level standard errors over the leave-one-evaluator-out folds.}
+\label{fig:sequential}
+\end{figure*}
+
+\begin{table}[t]
+\caption{Per-Evaluator Change From Cold Start to Full Context (Proposed Model)}
+\label{tab:per-evaluator}
+\centering
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lrrcccc}
+\toprule
+Evaluator & $n_{\mathrm{ctx}}$ & $n_{\mathrm{hold}}$ & $\Delta$AUROC & $\Delta$Brier & $\Delta$ELPD $\pm$ SE & Reliable at \\
+\midrule
+E1 & \tbd & \tbd & \tbd & \tbd & \tbd & $t=$\tbd \\
+E2 & \tbd & \tbd & \tbd & \tbd & \tbd & $t=$\tbd \\
+$\vdots$ & & & & & & \\
+\bottomrule
+\end{tabular}
+\\[2pt]
+\draftnote{$\Delta$ELPD is the paired $K$-fold refit difference from the cold-start density; ``Reliable at'' is the first budget satisfying \eqref{eq:reliable}, or ``never''.}
+\end{table}
+
+\subsection{Predictive Uncertainty}
+\label{sec:results-uncertainty}
+
+Fig.~\ref{fig:uncertainty} shows the mean epistemic and aleatoric terms of \eqref{eq:decomposition} over holdout episodes as functions of $t$ for every held-out evaluator, Fig.~\ref{fig:predictive-panel} shows the full posterior predictive distribution of individual episodes before and after personalization, and Fig.~\ref{fig:trajectory} shows the migration of the personalized coefficient posterior in the population coefficient space. Table~\ref{tab:reliability} lists the reliability intervals at the cold start and at the full context. \draftnote{Narrative after the runs: (i) does the epistemic term decay monotonically and at what budget does it fall below the aleatoric term; (ii) is the aleatoric term approximately constant in $t$, as the decomposition predicts for a well-specified model; (iii) do the evaluators for whom personalization hurt in Table~\ref{tab:per-evaluator} show a distinct uncertainty signature (for example, epistemic term not decaying, or reliability never reached); (iv) calibration: reliability diagram at $t=0$ versus $t=n_{\mathrm{ctx}}$; (v) how the reliability fraction in Table~\ref{tab:main} grows with $t$.}
+
+\begin{figure}[t]
+\centering
+\draftnote{Overlay plot: mean epistemic (solid) and aleatoric (dashed) uncertainty versus context size for each held-out evaluator, with the cold-start values at $t=0$. Source: uncertainty-decay overlay of the LOEO folds.}
+\caption{Decomposition of predictive uncertainty during personalization. The epistemic term measures disagreement among posterior particles about the judgment probability and is expected to contract with personal feedback; the aleatoric term measures the intrinsic ambiguity of the judgments and is expected to remain approximately constant.}
+\label{fig:uncertainty}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\draftnote{Predictive panel for one representative held-out evaluator at $t=0$ and $t=n_{\mathrm{ctx}}$: holdout episodes sorted by posterior mean probability, with the posterior interval of $p^{(m)}$ per episode and the true label color-coded. Source: predictive panel plots.}
+\caption{Posterior predictive distribution for the holdout episodes of one held-out evaluator (a) at the cold start and (b) after the full context. Each vertical segment is the central 95\% interval of the judgment probability across posterior particles; colors indicate the recorded label.}
+\label{fig:predictive-panel}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\draftnote{Population coefficient posterior means projected onto the first two principal directions, with the trajectory of the held-out evaluator's posterior mean from $t=0$ to $t=n_{\mathrm{ctx}}$ and an ellipse for the cold-start spread. Source: theta-trajectory and theta-PCA plots.}
+\caption{Trajectory of a held-out evaluator's coefficient posterior in the leading principal directions of the population coefficient space. The cold-start posterior is centered on the population mean; personal feedback moves it toward the evaluator's own position.}
+\label{fig:trajectory}
+\end{figure}
+
+\begin{table}[t]
+\caption{Reliability Intervals for Holdout Discrimination}
+\label{tab:reliability}
+\centering
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lcccc}
+\toprule
+Evaluator & $[\mathrm{lo},\mathrm{hi}]$ at $t=0$ & Reliable & $[\mathrm{lo},\mathrm{hi}]$ at $t=n_{\mathrm{ctx}}$ & Reliable \\
+\midrule
+E1 & [\tbd, \tbd] & \tbd & [\tbd, \tbd] & \tbd \\
+E2 & [\tbd, \tbd] & \tbd & [\tbd, \tbd] & \tbd \\
+$\vdots$ & & & & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Required Features and Sensors}
+\label{sec:results-features}
+
+Fig.~\ref{fig:pip} shows the feature-level and sensor-level posterior inclusion probabilities of the reference model together with the population coefficient posteriors, Fig.~\ref{fig:projpred} shows the projection-predictive search paths, Table~\ref{tab:feature-classes} classifies the retained features by \eqref{eq:sign-agreement}, and Table~\ref{tab:sensors} reports the held-out predictive quality of the hierarchical model refitted on the selected feature sets and on the IMU-only sensor set. \draftnote{Narrative after the runs: (i) which channels have sensor-level PIP near one and which near zero, and specifically whether the 6D bounce and pitch channels are needed beyond the IMU; (ii) the size of the projected subset reaching $\alpha$ and its agreement with the high-PIP set; (iii) the common versus evaluator-specific split, in particular whether amplitude features are common and shape or frequency features are specific; (iv) the held-out cost of dropping the 6D channels; (v) agreement with the conditional-MI ranking of Appendix~\ref{app:cmi}.}
+
+\begin{figure*}[t]
+\centering
+\draftnote{(a) Feature-level PIP bar chart grouped by channel with the population coefficient posterior (mean and 95\% interval) beside each bar; (b) sensor-level PIP. Source: spike-and-slab inclusion and population weight-forest plots from a reference-model fit on the full population set.}
+\caption{Posterior inclusion of ride-response features in the reference model. (a) Feature-level inclusion probabilities with population coefficient posteriors, grouped by channel. (b) Sensor-level inclusion probabilities, where all statistics of a channel share one indicator.}
+\label{fig:pip}
+\end{figure*}
+
+\begin{figure}[t]
+\centering
+\draftnote{Projection loss $L(S)$ versus forward-search step for (a) sensor-level and (b) feature-level search, with the $\alpha=0.95$ selection marked. Source: projection-predictive plots.}
+\caption{Projection-predictive forward search. Each step adds the group that most reduces the mean KL divergence from the reference predictions; the marked set is the first to recover 95\% of the full-model reduction.}
+\label{fig:projpred}
+\end{figure}
+
+\begin{table*}[t]
+\caption{Classification of Retained Features by Population Role}
+\label{tab:feature-classes}
+\centering
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{llcccccl}
+\toprule
+Channel & Statistic & PIP & $\mu_j$ (95\% interval) & $\sqrt{\Sigma_{jj}}$ & $q_j$ & $S_j$ & Role \\
+\midrule
+\tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & common / specific / inactive \\
+\tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+$\vdots$ & & & & & & & \\
+\bottomrule
+\end{tabular}
+\\[2pt]
+\draftnote{Sort by $S_j$; report only features with PIP above $\tfrac12$ in the main text and the full list in Appendix~\ref{app:bank}.}
+\end{table*}
+
+\begin{table}[t]
+\caption{Held-Out Predictive Quality of Selected Feature and Sensor Sets}
+\label{tab:sensors}
+\centering
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lrccc}
+\toprule
+Feature set & $d$ & AUROC & Brier & MLPD \\
+\midrule
+Full cleaned bank & \tbd & \tbd & \tbd & \tbd \\
+Projection-selected (feature) & \tbd & \tbd & \tbd & \tbd \\
+PIP $>\tfrac12$ (feature) & \tbd & \tbd & \tbd & \tbd \\
+Projection-selected (sensor) & \tbd & \tbd & \tbd & \tbd \\
+IMU channels only & \tbd & \tbd & \tbd & \tbd \\
+6D channels only & \tbd & \tbd & \tbd & \tbd \\
+\bottomrule
+\end{tabular}
+\\[2pt]
+\draftnote{All rows are macro means at $t=n_{\mathrm{ctx}}$ under LOEO with selection redone inside each fold; add the $t=0$ columns if space permits.}
+\end{table}
+
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{What the Population Posterior Buys}
+
+\draftnote{Rewrite around the observed results.} The cold-start posterior is the posterior predictive of the hierarchy, so its quality measures how representative the population is of a new evaluator, and its width measures how heterogeneous the population is. If the cold start already discriminates well and personalization mainly improves the Brier score and log density, then the population determines the ranking of episodes while personal feedback sharpens the probabilities, which is the quantity a downstream decision needs. If instead personalization changes the ranking substantially for some evaluators, those evaluators have preferences that differ from the population in direction, and the evaluator-specific features of Table~\ref{tab:feature-classes} should be the ones responsible.
+
+\subsection{Using the Uncertainty}
+
+The decomposition of Section~\ref{sec:uncertainty} makes the personalization process observable. A high epistemic term after several labels indicates that the labels so far have not been informative about the dimensions on which this evaluator differs from the population, for example because the encountered bumps were all of one kind; an information-seeking policy that chooses which events to ask about, or that varies the vehicle setting to produce informative episodes, follows naturally and is the subject of future work. A persistently high aleatoric term identifies episodes near the evaluator's decision boundary, on which a controller should not switch settings aggressively. The reliability interval provides a conservative gate before a prediction is acted upon at all. None of these quantities is available from a point-estimated evaluator.
+
+\subsection{Interpretation of Feature Results}
+
+Posterior signs and magnitudes of population coefficients must not be read causally. Road severity, speed, vehicle setting, bump geometry, and the evaluator's recent history may be confounded with the features, and correlated transient statistics can reverse conditional signs even after pruning. The defensible statements are predictive: which features the population needs, how compactly the reference predictions can be reproduced, on which features evaluators agree in direction, and which sensors can be omitted without measurable loss. Whether a setting change that alters a common feature changes judgments requires an interventional experiment, which is the natural next step once a controller is coupled to the evaluator.
+
+\subsection{Limitations and Future Work}
+
+The number of evaluators is small relative to the number of episodes, and the unit of replication for every personalization claim is the evaluator, so evaluator-level intervals are wide by construction. Context and holdout are split in recorded order, which resembles deployment but leaves session, location, and repeated-bump dependence within an evaluator unmodeled; grouped sensitivity analyses are reported where the metadata permit. A good/bad label is deliberately simple and is not a validated multi-attribute comfort scale. The linear reward with a fixed feature map is interpretable and data-efficient, and the nonlinear baseline tests whether it is limiting on this data; a Gaussian-process or neural reward with the same hierarchical structure is a possible extension. The 6D channels may be replaced by virtual sensors reconstructed from production signals; a rigorous treatment would propagate the reconstruction uncertainty into the likelihood rather than substitute a point waveform, and is left for future work. Finally, closing the loop, from the personalized evaluator to a controller or setting selector, is outside the scope of this paper.
 
 \section{Conclusion}
+\label{sec:conclusion}
 
+We have presented a hierarchical Bayesian model for predicting an individual occupant's good/bad judgment of a vehicle's response to a road bump. Evaluator-specific logistic coefficients over interpretable ride-response features share a normal population distribution whose posterior, learned from the feedback of previous evaluators, is the cold-start prior for a new one; P\'{o}lya--Gamma updates then personalize the posterior from a small number of labels. The retained posterior yields an exact decomposition of each prediction's uncertainty into an epistemic part that contracts with personal feedback and an aleatoric part that reflects intrinsic ambiguity, together with a reliability interval for the evaluator model as a whole. A shared group spike-and-slab prior and projection-predictive search over a cleaned bank of ISO-inspired features determine which features and sensors are required and separate population-common from evaluator-specific preference dimensions. \draftnote{One or two sentences of quantified conclusions from Section~\ref{sec:experiments}.} The model provides the evaluator side of an occupant-adaptive chassis; coupling it to the control side is the next step.
 
+\appendices
 
+\section{Conditional Mutual Information Selection}
+\label{app:cmi}
 
+As an independent check on the model-based selection of Section~\ref{sec:features}, we estimate for each group $A$ the conditional mutual information $I(Y;\bm Z_A\mid\bm Z_S,U)$ between the label and the group's features given an already selected set $S$ and the evaluator identity $U$, following the conditional-likelihood view of information-theoretic selection~\cite{brown2012conditional}. The estimator is model-based: with a correctly specified conditional model, the expected difference in log score between a model with and without $A$ equals the conditional mutual information. Concretely, within every population evaluator the episodes are split into $K_{\mathrm{cmi}}=5$ stratified folds, and an L2-regularized logistic model with evaluator-specific intercepts and slopes is fitted on the training folds and scored on the validation fold. The cross-fitted gain
+\begin{equation}
+ \widehat I(Y;\bm Z_A\mid\bm Z_S,U)=\frac{1}{U}\sum_{u=1}^{U}\frac{1}{N_u}\sum_{i=1}^{N_u}
+ \big[\ell^{S\cup A}_{ui}-\ell^{S}_{ui}\big],
+ \label{eq:cmi}
+\end{equation}
+where $\ell^{S}_{ui}$ is the cross-fitted log predictive density of episode $i$ under set $S$, is averaged per evaluator first so that its standard error reflects evaluator variation. Forward selection adds the group with the largest gain and stops when the best gain is nonpositive. Table~\ref{tab:cmi} reports the forward path at the feature and sensor levels and its agreement with Sections~\ref{sec:pip} and~\ref{sec:projpred}.
 
+\begin{table}[t]
+\caption{Forward Conditional Mutual Information Selection}
+\label{tab:cmi}
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{rlcc}
+\toprule
+Step & Added group & Gain (nat/episode) & Evaluator SE \\
+\midrule
+1 & \tbd & \tbd & \tbd \\
+2 & \tbd & \tbd & \tbd \\
+$\vdots$ & & & \\
+\bottomrule
+\end{tabular}
+\end{table}
 
+\section{Retained Feature Bank}
+\label{app:bank}
 
+\draftnote{Table of the retained statistics per channel after pruning with $\rho_{\max}=0.95$, the removed near-duplicates and the column each was merged into, and the standardization constants' source (population set of each fold).}
 
+\section{Sampler Convergence}
+\label{app:convergence}
 
+\draftnote{Trace plots of the population log-likelihood, the number of included groups, and $\|\bm\mu\odot\bm\gamma\|$ for the retained sweeps; rank-normalized $\widehat R$ and effective sample sizes across chains; sensitivity of Table~\ref{tab:main} to the grid of Table~\ref{tab:grid}.}
 
+\section{Reproducibility}
+\label{app:repro}
 
+\draftnote{Software versions, hardware, wall-clock time per LOEO fold for population sampling, personalization, and selection; seeds; run identifiers of the frozen artifacts behind every table and figure.}
 
+\section*{Acknowledgment}
+\draftnote{Funding, data-collection acknowledgments, conflicts of interest, and the ethics and consent statement.}
 
-\newpage
+\bibliographystyle{IEEEtran}
+\bibliography{refs}
 
-\begin{IEEEbiography}[{\includegraphics[width=1in,height=1.25in,clip,keepaspectratio]{fig1}}]{Michael Shell}
-Use $\backslash${\tt{begin\{IEEEbiography\}}} and then for the 1st argument use $\backslash${\tt{includegraphics}} to declare and link the author photo.
-Use the author name as the 3rd argument followed by the biography text.
-\end{IEEEbiography}
-
-\vspace{11pt}
-
-\bf{If you will not include a photo:}\vspace{-33pt}
-\begin{IEEEbiographynophoto}{John Doe}
-Use $\backslash${\tt{begin\{IEEEbiographynophoto\}}} and the author name as the argument followed by the biography text.
-\end{IEEEbiographynophoto}
-
-
-
-
-\vfill
+\ifdraftnotes
+\vspace{1ex}
+\noindent\draftnote{Add IEEE-format author biographies and photographs for the final files.}
+\fi
 
 \end{document}
-
-
