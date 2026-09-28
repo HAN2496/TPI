@@ -6,6 +6,7 @@ datasets/
 CLAUDE.md
 .codex_tmp/
 .agents/
+.codex
 
 .DS_Store
 .python-version

@@ -48,7 +48,8 @@ PARAMS = {  # name: (start, bounds)
 PHYSICAL = {
     "fp": (1.6, (1.2, 2.0)), "zp": (0.22, (0.15, 0.4)), "ba": (0.25, (0.1, 0.4)), "hi": (-0.15, (-0.5, 0.5)),
     "log_tau": (np.log(0.03), (np.log(0.015), np.log(0.1))), "fz": (1.5, (1.2, 1.8)), "zz": (0.25, (0.15, 0.4)),
-    "czp": (0.0, (-15.0, 15.0)), "kappa": (-0.075, (-0.12, -0.04)), "log_lam_a": (np.log(5.0), (0.0, np.log(20.0))),
+    # kappa 상한을 0 으로 확장 (2026-09-16): 타이어 처짐 → 유효 반경 전달 비율을 1 로 본 기존 하한이 과했고 적합이 −0.04 경계에 붙었음
+    "czp": (0.0, (-15.0, 15.0)), "kappa": (-0.075, (-0.12, 0.0)), "log_lam_a": (np.log(5.0), (0.0, np.log(20.0))),
     "log_rx": (np.log(1e-3), (np.log(4e-4), 2.0)), "log_rz": (np.log(2e-3), (np.log(9e-4), 4.0)),
 }
 A_NOISE = ["log_qa", "log_qp", "log_qg", "log_rw", "log_rx"]
@@ -218,6 +219,11 @@ VARIANTS = {
     "a_full": dict(build=build_a, channels=("vbar", "ax"),
                    names=["fp", "zp", "ba", "hi", "log_tau"] + A_NOISE, fixed={}),
     "b_full": dict(build=build_b, channels=("vbar", "ax", "az"), names=B_NAMES, fixed={}),
+    # 발표용 기본형 (Ideal-sensor model): bounce·pitch 독립 진동자, IMU 는 CG·무지연, 휠속은 평균만.
+    # 센서 체인 (τ_I, h_I, x_I, Δv_w) 과 구배를 모두 끈 형태 — build_b 에서 tau 를 무시할 수 없어 아주 작게 두고 h_I=x_I=c_zp=0, q_g≈0
+    "baseline": dict(build=build_b, channels=("vbar", "ax", "az"),
+                     names=["fp", "zp", "ba", "fz", "zz", "log_qa", "log_qp", "log_qz", "log_rw", "log_rx", "log_rz"],
+                     fixed={"hi": 0.0, "xi": 0.0, "czp": 0.0, "tau": 1e-4, "qg": 0.0}, params=PHYSICAL),
     "c_wheel": dict(build=build_b, channels=("vbar", "ax", "az", "dvw"),
                     names=B_NAMES + ["ell", "kappa", "log_rd"], fixed={}),
     "d_torque": dict(build=build_b, channels=("vbar", "ax", "az", "dvw"),
@@ -270,12 +276,12 @@ VARIANTS = {
     "pb2_halfcar": dict(build=build_pb, channels=("vbar", "ax", "dvw", "az"),
                         names=[n for n in PB_PITCH if n not in ("fp", "zp")] + ["log_kf", "log_kr", "log_cf", "log_cr", "log_qv", "log_rz"],
                         fixed=PB_FIXED | {"dist": 0.0, "chain": 1.0, "lf": 1.45, "lr": 1.45, "m": 2300.0, "iyy": 2300.0 * 1.45 * 1.45},
-                        params=PHYSICAL | {"log_qv": PARAMS["log_qz"]}, bounce_index=7),
+                        params=PHYSICAL | {"log_qv": PARAMS["log_qz"]}, bounce_index=7, structured={"qa": 1, "qv": 6}),
 }
 STAGES = {"a": ("a_naive", "a_lag", "a_full"), "b": ("b_full",), "c": ("c_wheel",), "d": ("d_torque",),
           "e": ("e_fixgeo",), "f": ("f_fixlever",), "g": ("g_physical",), "h": ("h_nograde",),
           "m": ("m6", "m6_ba", "m6_lam", "m6_nokappa", "m5_nodelay", "m6_nodvw", "m6_nograde"), "n": ("m5_nodelay_nokappa",),
-          "p": ("m5_nodelay",), "q": ("m4_nodelay_nograde",)}
+          "p": ("m5_nodelay",), "q": ("m4_nodelay_nograde",), "base": ("baseline",)}
 
 
 def observations(x):
@@ -370,7 +376,7 @@ def merge_csv(path, rows):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("stage", choices=("a", "b", "c", "d", "e", "f", "g", "h", "m", "n", "p", "q", "all"))
+    parser.add_argument("stage", choices=("a", "b", "c", "d", "e", "f", "g", "h", "m", "n", "p", "q", "base", "all"))
     parser.add_argument("--objectives", default="ml,sup",
                         help="쉼표 구분: ml, sup, joint:<mu>, aug, aug:<r_label>, alt:<n> (플랜트 sup ↔ Q,R full EM 교대 n회), "
                              "alts:<n> (플랜트 sup ↔ q_a,q_z 만 structured EM 교대 n회), joint2:<mu_p>:<mu_b> (우도 + pitch + bounce 라벨), "
@@ -381,7 +387,7 @@ def main():
     parser.add_argument("--em-iters", type=int, default=2000, help="alt 의 EM 반복 수 (60회로는 미수렴: 우도가 계속 오르며 corr 이 내려감)")
     parser.add_argument("--optimizer", default="powell", choices=("powell", "coord"),
                         help="coord = Abbeel 2005 식 좌표 상승 (objective 이름에 @coord 접미)")
-    parser.add_argument("--warm", default="", help="이 모델의 같은 목적함수 적합값을 시작점으로 (예: h_nograde 를 g_physical 에서)")
+    parser.add_argument("--warm", default="", help="시작점으로 쓸 적합: '모델' (같은 목적함수) 또는 '모델:목적함수' (예: pb2_halfcar:joint2:3:3)")
     parser.add_argument("--models", default="", help="stage 대신 변형 이름을 쉼표로 직접 지정 (예: pb1_block,pb2_basic)")
     args = parser.parse_args()
     cfg, x, y, ids, test = data()
@@ -394,6 +400,7 @@ def main():
     obs = observations(x)
     obs["label"] = label - label[train].mean()
     names = tuple(args.models.split(",")) if args.models else sum(STAGES.values(), ()) if args.stage == "all" else STAGES[args.stage]
+    warm_model, _, warm_objective = args.warm.partition(":")  # '모델' 또는 '모델:목적함수'
     objectives = tuple(value.strip() for value in args.objectives.split(","))
     print(f"train={len(train)} fit={len(fit_index)} dev-test={dev.sum()} "
           f"(sealed {', '.join(SEALED)}: {(test & np.isin(drivers, SEALED)).sum()} ep) "
@@ -433,10 +440,10 @@ def main():
             bounds = [table[key][1] for key in train_spec["names"]]
             if kind in ("res", "reso", "pred"):
                 start = [np.log(d0[n]) for n in train_spec["names"]]  # 출처 적합의 잡음값에서 출발 (논문의 '초기 추정치')
-            elif args.warm and (args.warm, objective) in previous:  # 다른 모델의 같은 목적함수 적합값에서 출발 (없는 파라미터는 시작값 유지)
-                dw = {i.split("=")[0]: float(i.split("=")[1]) for i in previous[args.warm, objective].split()}
+            elif args.warm and (warm_model, warm_objective or objective) in previous:  # 다른 모델(·목적함수) 적합값에서 출발 (없는 파라미터는 시작값 유지)
+                dw = {i.split("=")[0]: float(i.split("=")[1]) for i in previous[warm_model, warm_objective or objective].split()}
                 start = [(np.log(dw[n]) if n.startswith("log_") else dw[n]) if n in dw else s for n, s in zip(train_spec["names"], start)]
-                print(f"  warm start from {args.warm}_{objective}", flush=True)
+                print(f"  warm start from {warm_model}_{warm_objective or objective}", flush=True)
             tag = "@coord" if args.optimizer == "coord" else ""
             started, key = time.perf_counter(), f"{name}_{objective}{tag}"
 
@@ -451,10 +458,12 @@ def main():
                     ss = spec["build"](unpack(train_spec["names"], p, train_spec["fixed"]), cfg.fs)
                     omega = DEG ** 2 * posterior_variance(ss, target.shape[1]) + P_label
                     return np.mean(np.log(omega) + (pred - target) ** 2 / omega)
-                if kind == "joint2":  # 우도 + mu_p·pitch NRMSE + mu_b·bounce NRMSE (bounce 는 bounce 속도 w_s, 라벨 단위 미확정이라 자유 이득)
-                    mu_p, mu_b = (float(v) for v in value.split(":"))
-                    gain_b, offset_b = calibrate(state[..., bidx], target_b)
+                if kind in ("joint2", "sup2"):  # joint2: 우도 + mu_p·pitch NRMSE + mu_b·bounce NRMSE.  sup2: 우도 없이 pitch + bounce NRMSE 만 (결합 모델의 sup)
+                    gain_b, offset_b = calibrate(state[..., bidx], target_b)  # bounce 라벨 단위 미확정이라 자유 이득
                     nrmse_b = np.sqrt(np.mean((gain_b * state[..., bidx] + offset_b - target_b) ** 2)) / target_b.std()
+                    if kind == "sup2":
+                        return nrmse + nrmse_b
+                    mu_p, mu_b = (float(v) for v in value.split(":"))
                     return energy + mu_p * nrmse + mu_b * nrmse_b
                 return {"ml": energy, "aug": energy, "sup": nrmse, "alt": nrmse, "alts": nrmse}[kind] if kind != "joint" else energy + float(value) * nrmse
 

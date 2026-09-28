@@ -53,7 +53,7 @@ class Config:
     optimization_mode: str = "online"
     visualize_oracle: bool = False
     n_optimization_scenarios: int = 40
-    surrogate_degree: int = 3
+    surrogate_degree: int = 2
     cma_population_size: int = 8
     cma_generations: int = 15
     cma_sigma: float = 0.25

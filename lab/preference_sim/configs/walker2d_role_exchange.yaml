@@ -1,0 +1,121 @@
+name: linear_gaits_role_exchange
+seed: 197
+data_root: data/runs
+environment:
+  horizon: 1000
+  feature_version: 5
+  touchdown_rate: 2.0
+  touchdown_refractory: 8
+  role_margin: 0.08
+  role_switch_rate: 1.5
+  role_switch_refractory: 10
+profiles:
+  upright:
+    target_feature: upright
+    bilateral: true
+    reference: straight
+    pretrained_model: data/runs/linear_gaits_bilateral/policies/upright/step_000000000.zip
+    checkpoint_steps: [0]
+    policy_transform: {type: periodic_mirror, period: 200}
+    weights: {survival: 12.0, progress: 4.0, walk_speed: 12.0, upright: 30.0, smooth: 0.2, alternation: 5.0, role_exchange: 10.0, stance_balance: 6.0, push_balance: 4.0}
+    gates:
+      torso_abs_angle: {max: 0.175}
+    effects:
+      - {metric: torso_abs_angle, direction: lower, minimum: 0.015}
+  running:
+    target_feature: run_speed
+    bilateral: true
+    reference: upright
+    pretrained_model: data/runs/linear_gaits_release/policies/running/step_000786432.zip
+    checkpoint_steps: [0]
+    policy_transform: {type: periodic_mirror, period: 190}
+    weights: {survival: 12.0, progress: 4.0, run_speed: 30.0, flight: 4.0, alternation: 8.0, role_exchange: 30.0, stance_balance: 10.0, push_balance: 6.0}
+    effects:
+      - {metric: speed, direction: higher, minimum: 0.20}
+      - {metric: airborne, direction: higher, minimum: 0.01}
+  crouched:
+    target_feature: crouch
+    bilateral: true
+    reference: upright
+    pretrained_model: data/runs/linear_gaits_bilateral/policies/crouched/step_000196608.zip
+    checkpoint_steps: [0]
+    weights: {survival: 12.0, progress: 4.0, walk_speed: 3.0, crouch: 8.0, alternation: 8.0, role_exchange: 20.0, stance_balance: 10.0, push_balance: 6.0}
+    effects:
+      - {metric: height, direction: lower, minimum: 0.06}
+  straight:
+    target_feature: straight_legs
+    bilateral: true
+    reference: crouched
+    pretrained_model: data/runs/linear_gaits_bilateral/policies/straight/step_000000000.zip
+    checkpoint_steps: [0]
+    policy_transform: {type: periodic_mirror, period: 200}
+    weights: {survival: 12.0, progress: 4.0, straight_legs: 30.0, alternation: 8.0, role_exchange: 25.0, stance_balance: 10.0, push_balance: 6.0}
+    effects:
+      - {metric: knee_abs_angle, direction: lower, minimum: 0.02}
+      - {metric: knee_abs_speed, direction: lower, minimum: 0.35}
+  one_leg:
+    target_feature: stance_balance
+    target_mode: min
+    bilateral: false
+    reference: upright
+    pretrained_model: data/runs/linear_gaits_bilateral/policies/one_leg/step_000196608.zip
+    checkpoint_steps: [0]
+    weights: {survival: 12.0, progress: 5.0, walk_speed: 2.0, upright: 1.0, alternation: -6.0, stance_balance: -8.0, push_balance: -8.0}
+    gates:
+      phi_stance_balance: {max: 0.45}
+      phi_push_balance: {max: 0.55}
+    effects:
+      - {metric: phi_stance_balance, direction: lower, minimum: 0.15}
+      - {metric: phi_push_balance, direction: lower, minimum: 0.15}
+training:
+  pretrained_model: data/runs/linear_gaits_bilateral/policies/crouched/step_000196608.zip
+  checkpoint_steps: [0, 196608, 524288]
+  n_envs: 8
+  workers: 4
+  learning_rate: 0.00010
+  gamma: 0.999
+  initial_action_std: 0.18
+  n_steps: 1024
+  batch_size: 256
+  n_epochs: 5
+  ent_coef: 0.0
+  target_kl: 0.02
+  evaluation_seed: 131000
+  evaluation_episodes: 12
+competence:
+  min_completion_rate: 0.90
+  min_mean_length_fraction: 0.95
+  min_speed: 0.7
+  min_alternation: 0.48
+  min_role_exchange: 0.30
+  min_stance_balance: 0.67
+  min_push_balance: 0.65
+selection:
+  seed: 231000
+  episodes: 40
+collection:
+  calibration_seed: 331000
+  context_seed: 431000
+  test_seed: 541000
+  calibration_episodes: 30
+  context_episodes: 60
+  test_episodes: 100
+  diagnostic_episodes: 20
+users:
+  n_train: 5000
+  n_test: 1000
+  labels_per_user: 120
+  seed: 631000
+  beta: 2.0
+  threshold_sd: 0.3
+  mean: {survival: 8.0, progress: 6.0, walk_speed: 1.0, run_speed: -2.0, upright: 0.0, crouch: 3.0, straight_legs: 1.0, smooth: 0.4, flight: 0.0, alternation: 4.0, role_exchange: 0.0, stance_balance: 5.0, push_balance: 5.0}
+  sd: {survival: 0.6, progress: 0.5, walk_speed: 3.0, run_speed: 3.0, upright: 3.0, crouch: 3.0, straight_legs: 3.0, smooth: 1.0, flight: 2.0, alternation: 1.0, role_exchange: 2.0, stance_balance: 1.0, push_balance: 1.0}
+  probe_users:
+    one_leg_fan:
+      weights: {survival: 12.0, progress: 8.0, walk_speed: 2.0, upright: 1.0, alternation: -12.0, stance_balance: -12.0, push_balance: -12.0}
+validation:
+  n_train: 128
+  n_test: 64
+  n_burnin: 150
+  n_samples: 300
+  newuser_n_iters: 12

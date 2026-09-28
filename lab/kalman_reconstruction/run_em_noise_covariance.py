@@ -36,7 +36,7 @@ def smoother_moments(ss, T):  # 데이터와 무관한 공분산 재귀: P_{t|T}
     return np.stack(Ps), np.stack(J[:-1])
 
 
-def em(ss, y, u, x0, iters, tol, diag, rebuild=None, system=False):
+def em(ss, y, u, x0, iters, tol, diag, rebuild=None, system=False, rebuild_index=(1, 7)):
     """diag=False: full Q, R.  diag=True: 대각만.  rebuild 가 주어지면 structured: R 과 q_p, q_g 는 고정하고
     연속시간 세기 q_a (a_x 구동, 상태 1), q_z (bounce 구동, 상태 7) 만 M-step 대각 비율로 갱신해 Van Loan 으로 Q 를 다시 만든다
     (generalized EM 근사; 식별되는 항목만 EM 에 맡기는 방법 1, methods.md §5.8-12).
@@ -72,7 +72,7 @@ def em(ss, y, u, x0, iters, tol, diag, rebuild=None, system=False):
         R_new = (np.einsum("nti,ntj->ij", e, e) / N + (H @ Ps @ H.T).sum(0)) / T
         Q_new, R_new = (Q_new + Q_new.T) / 2, (R_new + R_new.T) / 2
         if rebuild is not None:
-            Q_new, R_new = rebuild((Q_new[1, 1] / Q[1, 1], Q_new[7, 7] / Q[7, 7])).Q, R
+            Q_new, R_new = rebuild(tuple(Q_new[i, i] / Q[i, i] for i in rebuild_index)).Q, R  # 갱신 항목의 상태 index 는 모델별 (spec["structured"])
         elif diag:
             Q_new, R_new = np.diag(np.diag(Q_new)), np.diag(np.diag(R_new))
         done = it > 0 and abs(history[-1] - history[-2]) < tol * abs(history[-2])
@@ -98,7 +98,7 @@ def main():
     dev = test & ~np.isin(drivers, SEALED)
     train, _, _ = training_split(ids, test)
     fit_index = train[np.linspace(0, len(train) - 1, min(args.fit_episodes, len(train))).astype(int)]
-    label, obs, fs = y[:, :, 2], observations(x), cfg.fs
+    label, bounce, obs, fs = y[:, :, 2], y[:, :, 0], observations(x), cfg.fs
     spec = VARIANTS[args.model]
     with (OUTPUT / "pitch_staged_metrics.csv").open(encoding="utf-8-sig") as stream:
         fits = {row["objective"]: row["parameters"] for row in csv.DictReader(stream) if row["model"] == args.model}
@@ -117,6 +117,10 @@ def main():
         q_hat = state[..., 3]
         pred = DEG * q_hat + label[train].mean() - DEG * q_hat[train].mean()
         corr, rmse, _ = metrics(label[dev], pred[dev], fs)
+        bounce_corr = np.nan
+        if "bounce_index" in spec:  # 결합 모델: bounce 출력 상태를 자유 이득으로 Bounce_rate_6D 와 대조
+            gb, ob = calibrate(state[train][..., spec["bounce_index"]], bounce[train])
+            bounce_corr = np.median(metrics(bounce[dev], gb * state[dev][..., spec["bounce_index"]] + ob, fs)[0])
         # 라벨 선형 판독 (train 으로 회귀): system EM 처럼 상태의 의미가 닮음변환으로 흐트러졌을 때의 pitch 상한
         w = np.linalg.lstsq(np.c_[state[train].reshape(-1, state.shape[-1]), np.ones(train.size * state.shape[1])],
                             label[train].ravel(), rcond=None)[0]
@@ -129,11 +133,11 @@ def main():
                          energy_fit=white_fit["energy"], energy_dev=white_dev["energy"], nis=white_dev["nis"],
                          acf1=white_dev["acf1"], corr_p10=cp[0], corr_median=cp[1], corr_p90=cp[2],
                          rmse_median=np.median(rmse), signed_lag_ms=signed_lag_ms(label[dev], pred[dev], fs),
-                         free_gain=calibrate(q_hat[train], label[train])[0], corr_readout=corr_readout,
+                         free_gain=calibrate(q_hat[train], label[train])[0], corr_readout=corr_readout, bounce_corr=bounce_corr,
                          plant_change=plant_change, seconds=seconds,
                          Q_diag=" ".join(f"{v:.4g}" for v in np.diag(ss.Q)), R_diag=" ".join(f"{v:.4g}" for v in np.diag(ss.R))))
         print(f"{source:9s} {method:9s} it={iterations:3d} energy_fit={white_fit['energy']:.4f} corr={cp[1]:.3f} "
-              f"readout={corr_readout:.3f} free_gain={rows[-1]['free_gain']:+.1f} nis={white_dev['nis']:.2f} "
+              f"readout={corr_readout:.3f} bounce={bounce_corr:.3f} free_gain={rows[-1]['free_gain']:+.1f} nis={white_dev['nis']:.2f} "
               f"acf1={white_dev['acf1']:+.2f} |dA|/|A|={plant_change:.3f} Rdiag=[{rows[-1]['R_diag']}] ({seconds:.0f}s)", flush=True)
 
     for source in args.sources.split(","):
@@ -143,18 +147,21 @@ def main():
         report(source, "source", ss0, 0, 0.0)
         yv, uv, x0 = arrays(fit_index, len(ss0.A))
         for variant in args.variants.split(","):
-            started, current = time.perf_counter(), {k: d[k] for k in ("qa", "qz") if k in d}  # structured 용 (bounce 없는 모델은 qa 만)
+            # structured 가 갱신하는 연속시간 세기와 그 상태 index (모델별): 9-상태는 {q_a: 1, q_z: 7}, pitch⊕bounce 는 {q_a: 1, q_v: 6}
+            smap = spec["structured"] if "structured" in spec else {k: i for k, i in (("qa", 1), ("qz", 7)) if k in d}
+            started, current = time.perf_counter(), {k: d[k] for k in smap}
 
-            def rebuild(scale):  # structured: q_a, q_z 를 비율로 갱신해 같은 플랜트로 Q 를 다시 이산화
-                current["qa"], current["qz"] = current["qa"] * scale[0], current["qz"] * scale[1]
+            def rebuild(scale):  # structured: 해당 세기를 M-step 대각 비율로 갱신해 같은 플랜트로 Q 를 다시 이산화
+                for k, s in zip(smap, scale):
+                    current[k] *= s
                 return spec["build"](d | current, fs)
 
             ss, history = em(ss0, yv, uv if ss0.B is not None else None, x0, args.iters, args.tol, variant == "diag",
-                             rebuild if variant == "structured" else None, system=(variant == "system"))
+                             rebuild if variant == "structured" else None, system=(variant == "system"), rebuild_index=tuple(smap.values()))
             histories[f"{source}_{variant}"] = history
             report(source, f"em_{variant}", ss, len(history), time.perf_counter() - started, ss0)
             if variant == "structured":
-                print(f"          q_a {d['qa']:.4g} -> {current['qa']:.4g}, q_z {d['qz']:.4g} -> {current['qz']:.4g}", flush=True)
+                print("          " + ", ".join(f"{k} {d[k]:.4g} -> {current[k]:.4g}" for k in smap), flush=True)
         write_csv(OUTPUT / f"em_noise_covariance{args.suffix}_metrics.csv", rows)
     (OUTPUT / f"em_noise_covariance{args.suffix}_history.json").write_text(json.dumps(histories, indent=1), encoding="utf-8")
     fig, ax = plt.subplots(figsize=(7, 4))
