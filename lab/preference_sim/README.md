@@ -1,5 +1,101 @@
 # Walker2d preference simulation
 
+## Linear gait experiment (current)
+
+`run_linear_gaits.py` is the new experiment. `main.py` and its configs remain
+the earlier offline experiment and are not the entry point for this version.
+
+```powershell
+.venv\Scripts\python.exe lab/preference_sim/run_linear_gaits.py `
+  --config lab/preference_sim/configs/walker2d_role_exchange.yaml `
+  --run-id linear_gaits_role_exchange
+.venv\Scripts\python.exe lab/preference_sim/run_linear_gaits.py users validate `
+  --run-id linear_gaits_role_exchange
+.venv\Scripts\python.exe lab/preference_sim/test_linear_gaits.py
+```
+
+The five behaviors are upright walking, running, crouched walking, walking with
+extended knees, and intentionally one-legged walking. Walker2d is planar:
+"upright" means torso posture, not steering/yaw. The one-legged policy is an
+intentional edge case, not a failure accepted into the ordinary bilateral set.
+
+Fine-tuning and user utility use exactly the same 13 trajectory features:
+`survival`, `progress`, `walk_speed`, `run_speed`, `upright`, `crouch`,
+`straight_legs`, `smooth`, `flight`, `alternation`, `role_exchange`,
+`stance_balance`, and `push_balance`. Repeated touchdowns by the same foot and
+simultaneous landings do not count as alternation. `role_exchange` separately
+requires the colored feet to exchange their world-x front/back ordering and
+balances how long each leg leads. `stance_balance` compares exclusive left/right
+stance time, and `push_balance` compares positive forward ground impulse.
+Running, upright, and straight checkpoints use a deterministic periodic mirror
+transform selected on validation seeds. It swaps both leg observations and leg
+actions; reported features come from the resulting MuJoCo motion.
+
+PPO receives the prefix difference `reward_t = weights @ (phi_prefix_t -
+phi_prefix_previous)`. Its undiscounted episode sum is therefore exactly
+`weights @ phi_episode`, which is also the synthetic-user utility. No original
+Walker2d reward, healthy bonus, terminal penalty, or other hidden reward is
+added. Survival and progress have explicit user coefficients rather than a
+separate fixed base reward. Additive features use the fixed 1,000-step horizon;
+early termination cannot receive full survival or progress. Style credit is
+gated by forward progress, so standing still cannot collect it. The running
+feature peaks near 2.1 m/s instead of rewarding unlimited speed.
+
+Basic competence is an admissibility criterion for candidate policies: at
+least 90% completion, 95% mean horizon fraction, and 0.7 m/s mean speed over
+1,000 steps (8 seconds). The four ordinary gait policies must additionally
+pass minimum alternation, role-exchange, stance-balance, and push-balance gates.
+The one-leg policy instead has maximum stance/push gates so it remains
+intentionally asymmetric.
+Checkpoint screening and selection use separate seeds.
+Final test reports include every attempted rollout, including falls, and test
+seeds are never used for checkpoint selection. `gait_quality.json` reports
+competence and quantitative style effects separately; a completed command
+does not imply the gait quality gate passed.
+
+The default population has 5,000 training and 1,000 test users, sampled from
+one Gaussian in feature weights. Survival and progress weights have positive
+population means and vary between users. Style weights vary broadly and may
+be negative. Means are calibrated without looking at test trajectories.
+Upright, running, and crouched occupy broad oracle regions; the current
+straight policy overlaps them heavily and may receive few Gaussian users. Its
+exact count is reported instead of being hidden by an archetype mixture. This
+retains the hierarchical Gaussian modeling assumption and does not add a
+common reward outside `w`.
+A named `one_leg_fan` probe has strongly negative alternation/stance/push
+weights. It is stored with split `probe` and is deliberately excluded from the
+Gaussian population fit. A separate threshold
+governs binary feedback: `p(good) = sigmoid(beta * (w @ phi - threshold))`.
+Calibration uses its own trajectory seeds. A linear reference and Gaussian
+threshold noise preserve joint Gaussianity of the effective coefficient vector.
+The bias is part of that vector, with `Z @ theta` equal to the exact logit.
+Both raw weights and effective coefficients are exported to avoid mixing scales.
+
+`linear_preferences.npz` contains `Z`, raw `phi`, effective `theta_true`, raw
+`weights_true`, thresholds, calibration transforms, binary labels, per-user
+context indices, episode splits, and policy eligibility. Calibration labels
+are unavailable (`-1`). Each user receives 120 independently selected context
+trajectories. The 6,000 users share a trajectory bank; user count is not a claim
+of 6,000 independently simulated trajectories per policy. Diagnostic zero-action
+and noisy-policy episodes help identify competence weights but are explicitly
+ineligible for policy selection. They are split by seed just like normal data.
+
+The initial fully Bayesian check uses 128 train and 64 test Gaussian users from
+the full export. It reports overall and competent-only AUROC, personalized
+policy recovery, and regret. It also adapts the named probe separately and
+reports whether inference selects the one-leg policy. This is an integration
+check, not an MCMC convergence claim or a full-population fit.
+
+Artifacts are in `data/runs/<run-id>/`: checkpoints, selected-policy metadata,
+`rollouts/bank.npz` (raw signals, per-step features and valid masks), compact
+preference exports, CSV tables, measured gait plots, and videos replaying the
+first held-out seed without selecting attractive episodes.
+
+Environment/API references: [Walker2d](https://gymnasium.farama.org/environments/mujoco/walker2d/)
+and [Stable Baselines3 PPO](https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html).
+
+## Earlier experiment
+
 This experiment builds an offline trajectory bank, simulates personalized binary
 feedback, and exports the result for the repository's fully Bayesian model.
 

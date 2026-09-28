@@ -1,0 +1,180 @@
+{"kind":"deck","id":"pr/nccp77","name":"Deck"}
+{"kind":"layout","layoutId":"/ppt/slideMasters/slideMaster1.xml","name":"","type":"master","placeholders":[{"name":"title","type":"title","textPreview":"Click to edit the title text format"},{"name":"body","type":"body","textPreview":"Click to edit the outline text format | Second Outline Level | Third Outline Level | Fourth Outline Level | Fifth Outline Level | Sixth O..."}]}
+{"kind":"layout","layoutId":"/ppt/slideLayouts/slideLayout1.xml","name":"DEFAULT","type":"blank"}
+{"kind":"slide","id":"sl/y90nupkv","slide":1,"title":"왜 PBRL이 필요한가?","textShapes":32}
+{"kind":"shape","id":"sh/4ne5g3yh","slide":1,"name":"Rounded Rectangle 64","bbox":[664.25,209.41,574.08,245.76]}
+{"kind":"shape","id":"sh/cfydcnu5","slide":1,"name":"Rounded Rectangle 64","bbox":[751.52,260.53,399.91,190.77]}
+{"kind":"textbox","id":"sh/ts7md4r2","slide":1,"name":"TextBox 5","text":"왜 PBRL이 필요한가?","textPreview":"왜 PBRL이 필요한가?","textChars":13,"textLines":1,"bbox":[59.45,173.95,244.8,30.29]}
+{"kind":"shape","id":"sh/sryl4zqx","slide":1,"name":"Rectangle 6","bbox":[302.33,188.35,270.72,1.15]}
+{"kind":"textbox","id":"sh/fu94fe98","slide":1,"name":"TextBox 7","text":"Simple feedback의 두 형태","textPreview":"Simple feedback의 두 형태","textChars":21,"textLines":1,"bbox":[664.25,173.95,316.8,30.29]}
+{"kind":"shape","id":"sh/utg3698n","slide":1,"name":"Rectangle 8","bbox":[969.53,188.35,230.4,1.15]}
+{"kind":"shape","id":"sh/wn6dc7eh","slide":1,"name":"Rounded Rectangle 9","bbox":[59.45,209.41,554.88,90.79]}
+{"kind":"textbox","id":"sh/hofulsf2","slide":1,"name":"TextBox 10","text":"기존 접근의 한계","textPreview":"기존 접근의 한계","textChars":9,"textLines":1,"bbox":[74.81,217.09,176.14,27.24]}
+{"kind":"textbox","id":"sh/z650ba1k","slide":1,"name":"TextBox 38","text":"PBRL의 학습 과정","textPreview":"PBRL의 학습 과정","textChars":11,"textLines":1,"bbox":[59.45,464.16,249.6,30.29]}
+{"kind":"shape","id":"sh/z2xgf6to","slide":1,"name":"Rectangle 39","bbox":[292.73,478.56,319.68,1.15]}
+{"kind":"shape","id":"sh/e1oz61c3","slide":1,"name":"Rounded Rectangle 40","bbox":[59.45,507.36,117.12,98.88]}
+{"kind":"shape","id":"sh/14fyhgbe","slide":1,"name":"Oval 41","bbox":[102.65,514.08,24.96,24.96]}
+{"kind":"textbox","id":"sh/036h8but","slide":1,"name":"TextBox 42","text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[102.65,519,24.96,15.29]}
+{"kind":"textbox","id":"sh/nqxgjqtk","slide":1,"name":"TextBox 43","text":"선택지 제시","textPreview":"선택지 제시","textChars":6,"textLines":1,"bbox":[67.13,541.83,101.76,23.43]}
+{"kind":"textbox","id":"sh/mpozalcz","slide":1,"name":"TextBox 44","text":"현재 policy로\n여러 선택지를 만든다","textPreview":"현재 policy로 | 여러 선택지를 만든다","textChars":22,"textLines":2,"bbox":[65.21,565.14,105.6,28.43]}
+{"kind":"textbox","id":"sh/9sfylgbq","slide":1,"name":"TextBox 45","text":"→","textPreview":"→","textChars":1,"textLines":1,"bbox":[183.08,540.91,10.56,21.42]}
+{"kind":"shape","id":"sh/or6hcvu5","slide":1,"name":"Rounded Rectangle 46","bbox":[201.8,507.36,117.12,98.88]}
+{"kind":"shape","id":"sh/buh0nqtg","slide":1,"name":"Oval 47","bbox":[245,514.08,24.96,24.96]}
+{"kind":"textbox","id":"sh/at8zelcb","slide":1,"name":"TextBox 48","text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[245,519,24.96,15.29]}
+{"kind":"textbox","id":"sh/8zqx4vq9","slide":1,"name":"TextBox 49","text":"사람 피드백","textPreview":"사람 피드백","textChars":6,"textLines":1,"bbox":[209.48,542.15,101.76,22.78]}
+{"kind":"textbox","id":"sh/t0jyd0ru","slide":1,"name":"TextBox 50","text":"사람이 선택지를 \n평가한다.","textPreview":"사람이 선택지를  | 평가한다.","textChars":15,"textLines":2,"bbox":[207.56,565.14,105.6,28.43]}
+{"kind":"textbox","id":"sh/6x8f2583","slide":1,"name":"TextBox 51","text":"→","textPreview":"→","textChars":1,"textLines":1,"bbox":[326.33,540.91,10.56,21.42]}
+{"kind":"shape","id":"sh/7yhgbq9o","slide":1,"name":"Rounded Rectangle 52","bbox":[344.16,507.36,117.12,98.88]}
+{"kind":"shape","id":"sh/kvqx0vqd","slide":1,"name":"Oval 53","bbox":[387.36,514.08,24.96,24.96]}
+{"kind":"textbox","id":"sh/lwzy90ry","slide":1,"name":"TextBox 54","text":"3","textPreview":"3","textChars":1,"textLines":1,"bbox":[387.36,519.61,24.96,15.29]}
+{"kind":"textbox","id":"sh/yt8fyl87","slide":1,"name":"TextBox 55","text":"보상모델 학습","textPreview":"보상모델 학습","textChars":7,"textLines":1,"bbox":[351.84,542.15,101.76,22.78]}
+{"kind":"textbox","id":"sh/juhg7q9s","slide":1,"name":"TextBox 56","text":"판단 기록으로\n보상모델을 배운다.","textPreview":"판단 기록으로 | 보상모델을 배운다.","textChars":18,"textLines":2,"bbox":[349.92,565.14,105.6,28.43]}
+{"kind":"textbox","id":"sh/wr6xwbq1","slide":1,"name":"TextBox 57","text":"→","textPreview":"→","textChars":1,"textLines":1,"bbox":[468.89,540.91,10.56,21.42]}
+{"kind":"shape","id":"sh/xsfy5grm","slide":1,"name":"Rounded Rectangle 58","bbox":[487.61,507.36,117.12,98.88]}
+{"kind":"shape","id":"sh/dc7md8fe","slide":1,"name":"Oval 59","bbox":[530.81,514.08,24.96,24.96]}
+{"kind":"textbox","id":"sh/cby5k3yt","slide":1,"name":"TextBox 60","text":"4","textPreview":"4","textChars":1,"textLines":1,"bbox":[530.81,519.61,24.96,15.29]}
+{"kind":"textbox","id":"sh/ra54bix8","slide":1,"name":"TextBox 61","text":"policy 학습","textPreview":"policy 학습","textChars":9,"textLines":1,"bbox":[495.29,541.83,101.76,23.43]}
+{"kind":"textbox","id":"sh/q9wnidgn","slide":1,"name":"TextBox 62","text":"학습된 보상으로 policy를 학습한다.","textPreview":"학습된 보상으로 policy를 학습한다.","textChars":22,"textLines":1,"bbox":[493.37,565.14,105.6,28.43]}
+{"kind":"shape","id":"sh/3m547yxw","slide":1,"name":"Oval 65","bbox":[677.69,214.82,34.56,34.56]}
+{"kind":"textbox","id":"sh/ilw3etgr","slide":1,"name":"TextBox 66","text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[677.69,223.56,34.56,16.83]}
+{"kind":"textbox","id":"sh/9kr6lsfm","slide":1,"name":"TextBox 67","text":"pairwise feedback","textPreview":"pairwise feedback","textChars":17,"textLines":1,"bbox":[714.17,215.48,259.2,27.24]}
+{"kind":"textbox","id":"sh/oji5sne1","slide":1,"name":"TextBox 68","text":"두 동작을 비교해 더 나은 쪽을 고르는 방식","textPreview":"두 동작을 비교해 더 나은 쪽을 고르는 방식","textChars":24,"textLines":1,"bbox":[714.17,242.05,489.6,19.58]}
+{"kind":"shape","id":"sh/8ra1oze9","slide":1,"name":"Rounded Rectangle 71","bbox":[664.25,464.16,574.08,149.76]}
+{"kind":"shape","id":"sh/ts32h4vu","slide":1,"name":"Oval 72","bbox":[677.69,469.56,34.56,34.56]}
+{"kind":"textbox","id":"sh/ylsjipw7","slide":1,"name":"TextBox 73","text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[677.69,478.3,34.56,16.83]}
+{"kind":"textbox","id":"sh/jm1kbuds","slide":1,"name":"TextBox 74","text":"Good/Bad feedback 예시","textPreview":"Good/Bad feedback 예시","textChars":20,"textLines":1,"bbox":[714.17,470.22,316.8,27.24]}
+{"kind":"textbox","id":"sh/kna1kzed","slide":1,"name":"TextBox 75","text":"하나의 동작의 좋고 나쁨을 고르는 방식 (두개의 동작을 동시에 경험하기 어려울 때)","textPreview":"하나의 동작의 좋고 나쁨을 고르는 방식 (두개의 동작을 동시에 경험하기 어려울 때)","textChars":46,"textLines":1,"bbox":[714.17,496.8,489.6,19.58]}
+{"kind":"shape","id":"sh/loj2dkvy","slide":1,"name":"Rounded Rectangle 76","bbox":[757.64,517.92,399.87,91.2]}
+{"kind":"textbox","id":"sh/ip4zyl4f","slide":1,"name":"Text 0","text":"선호 기반 학습 — 개요","textPreview":"선호 기반 학습 — 개요","textChars":13,"textLines":1,"bbox":[57.6,36.47,767.92,28.72]}
+{"kind":"textbox","id":"sh/sf6h4v2h","slide":1,"name":"Text 1","text":"선호 기반 학습 (Preference based Reinforcement Learning, PBRL)","textPreview":"선호 기반 학습 (Preference based Reinforcement Learning, PBRL)","textChars":56,"textLines":1,"bbox":[57.6,71.06,1161.52,57.52]}
+{"kind":"textbox","id":"sh/6d4z25kb","slide":1,"name":"Text 2","text":"최적화를 위한 reward를 직접 설계하기 어려울 때, 사람의 피드백으로 reward를 학습한다.\n자연스러운 로봇 동작, 편안한 승차감처럼 목표를 reward objective의 형태로 수식화가 어려운 경우가 많다. PBRL은 사람의 피드백으로 reward model을 학습하고, 그 기준으로 policy를 학습한다.\n","textPreview":"최적화를 위한 reward를 직접 설계하기 어려울 때, 사람의 피드백으로 reward를 학습한다. | 자연스러운 로봇 동작, 편안한 승차감처럼 목표를 reward objective의 형태로 수식화가 어려운 경우가 많다. PBRL은 사람의 피드백으...","textChars":178,"textLines":3,"bbox":[57.6,124.74,1161.52,43.12]}
+{"kind":"shape","id":"sh/kratwza5","slide":1,"name":"Shape 25","bbox":[57.6,621.13,1164.4,32.58]}
+{"kind":"textbox","id":"sh/ypsbupsz","slide":1,"name":"Text 26","text":"정리 :  PBRL은 원하는 행동을 직접 정의하거나 시연하기 어려운 문제에서 사람의 평가로 reward를 학습하며, 특히 고객 피드백의 적용에서는 Good/Bad feedback이 실용적일 수 있다.","textPreview":"정리 :  PBRL은 원하는 행동을 직접 정의하거나 시연하기 어려운 문제에서 사람의 평가로 reward를 학습하며, 특히 고객 피드백의 적용에서는 Good/Bad feedback이 실용적일 수 있다.","textChars":111,"textLines":1,"bbox":[72,622.07,1142.32,30.65]}
+{"kind":"shape","id":"sh/svut0za1","slide":1,"name":"Shape 29","bbox":[57.6,676.8,1164.47,0.04]}
+{"kind":"textbox","id":"sh/gzut4jax","slide":1,"name":"TextBox 127","text":"Imitation learning, IRL은 비용이 큰 전문가의 demo에 의존한다.\n자연어 기반 피드백도 유망하지만 인간은  본인의 취향을 잘 설명하지 못한다. ","textPreview":"Imitation learning, IRL은 비용이 큰 전문가의 demo에 의존한다. | 자연어 기반 피드백도 유망하지만 인간은  본인의 취향을 잘 설명하지 못한다.","textChars":91,"textLines":2,"bbox":[77,238.42,523.88,51.65]}
+{"kind":"shape","id":"sh/k3yl0zql","slide":1,"name":"Rounded Rectangle 9","bbox":[60.4,312.34,554.88,137.48]}
+{"kind":"textbox","id":"sh/65g3298r","slide":1,"name":"TextBox 4","text":"PBRL이 해결하는 지점","textPreview":"PBRL이 해결하는 지점","textChars":13,"textLines":1,"bbox":[75.76,320.02,199.39,27.24]}
+{"kind":"textbox","id":"sh/vmdcj2xw","slide":1,"name":"TextBox 12","text":"선택지를 고르도록 유도하여 본인도 몰랐던 암묵적인 선호를 이끌어낼 수 있음\n또한 피드백 실수를 하여도 노이즈가 자연스럽게 완화될 수 있기에 피드백의 질에 의존도가 비교적 낮다\n일반 고객들의 피드백을 효율적으로 활용할 수 있는 가능성","textPreview":"선택지를 고르도록 유도하여 본인도 몰랐던 암묵적인 선호를 이끌어낼 수 있음 | 또한 피드백 실수를 하여도 노이즈가 자연스럽게 완화될 수 있기에 피드백의 질에 의존도가 비교적 낮다 | 일반 고객들의 피드백을 효율적으로 활용할 수 있는 가능성","textChars":129,"textLines":3,"bbox":[77.96,341.34,523.88,99.63]}
+{"kind":"image","id":"im/mxgnqpoj","slide":1,"name":"Picture 77","bbox":[838.36,521.76,225.86,83.52]}
+{"kind":"image","id":"im/nypojup4","slide":1,"name":"Picture 70","bbox":[773.43,264.43,355.72,184.79]}
+{"kind":"notes","id":"nt/y90nupkv","slide":1,"text":""}
+{"kind":"slide","id":"sl/n9i9bw","slide":2,"title":"선호 기반 학습 - 2차년도 연구","textShapes":47}
+{"kind":"shape","id":"sh/ap0vq90b","slide":2,"name":"White Background","bbox":[0,0,1280,720]}
+{"kind":"textbox","id":"sh/xsrulojm","slide":2,"text":"선호 기반 학습 - 2차년도 연구","textPreview":"선호 기반 학습 - 2차년도 연구","textChars":18,"textLines":1,"bbox":[60,27,430,26]}
+{"kind":"textbox","id":"sh/wridsji1","slide":2,"text":"계층적 선호 학습과 개인화 제어 루프","textPreview":"계층적 선호 학습과 개인화 제어 루프","textChars":20,"textLines":1,"bbox":[60,62,1160,47]}
+{"kind":"textbox","id":"sh/nmpcfu1k","slide":2,"text":"다수 사용자의 선호 분포로 learned prior를 구성하고, 새 사용자 posterior와 PI reward를 이용해 제어 파라미터를 반복적으로 갱신한다.","textPreview":"다수 사용자의 선호 분포로 learned prior를 구성하고, 새 사용자 posterior와 PI reward를 이용해 제어 파라미터를 반복적으로 갱신한다.","textChars":88,"textLines":1,"bbox":[60,114,1160,30]}
+{"kind":"shape","id":"sh/mlgvm90z","slide":2,"bbox":[60,158,1160,409]}
+{"kind":"shape","id":"sh/9oruh4jq","slide":2,"bbox":[78,171,255,25]}
+{"kind":"textbox","id":"sh/8nydozi5","slide":2,"text":"A  Multi-user preference learning","textPreview":"A  Multi-user preference learning","textChars":33,"textLines":1,"bbox":[90,175,230,17]}
+{"kind":"shape","id":"sh/7itwryho","slide":2,"bbox":[875,183,30,0.1]}
+{"kind":"textbox","id":"sh/6hkvyt0j","slide":2,"text":"feedback data","textPreview":"feedback data","textChars":13,"textLines":1,"bbox":[911,174,90,18]}
+{"kind":"shape","id":"sh/cnel4ze5","slide":2,"bbox":[1008,183,30,0.1]}
+{"kind":"textbox","id":"sh/xonmxkfq","slide":2,"text":"control signal","textPreview":"control signal","textChars":14,"textLines":1,"bbox":[1044,174,80,18]}
+{"kind":"shape","id":"sh/alw32pwz","slide":2,"bbox":[1125,183,30,0.1]}
+{"kind":"textbox","id":"sh/bm54vuxk","slide":2,"text":"update","textPreview":"update","textChars":6,"textLines":1,"bbox":[1161,174,50,18]}
+{"kind":"shape","id":"sh/ojel0fet","slide":2,"bbox":[80,211,205,122]}
+{"kind":"textbox","id":"sh/pkn2tkfe","slide":2,"text":"Multi-user feedback","textPreview":"Multi-user feedback","textChars":19,"textLines":1,"bbox":[90,219,185,28]}
+{"kind":"shape","id":"sh/2hc3y5wn","slide":2,"bbox":[97,252,36,27]}
+{"kind":"textbox","id":"sh/ni5krax8","slide":2,"text":"User 1","textPreview":"User 1","textChars":6,"textLines":1,"bbox":[97,255,36,20]}
+{"kind":"shape","id":"sh/0fulwfex","slide":2,"bbox":[92,285,46,28]}
+{"kind":"textbox","id":"sh/1g32p0fi","slide":2,"text":"D_1","textPreview":"D_1","textChars":3,"textLines":1,"bbox":[92,289,46,20]}
+{"kind":"shape","id":"sh/h0badc3u","slide":2,"bbox":[154,252,36,27]}
+{"kind":"textbox","id":"sh/gz2947m9","slide":2,"text":"User 2","textPreview":"User 2","textChars":6,"textLines":1,"bbox":[154,255,36,20]}
+{"kind":"shape","id":"sh/vytsb2lo","slide":2,"bbox":[149,285,46,28]}
+{"kind":"textbox","id":"sh/uxkr2x4j","slide":2,"text":"D_2","textPreview":"D_2","textChars":3,"textLines":1,"bbox":[149,289,46,20]}
+{"kind":"shape","id":"sh/tcba9s3y","slide":2,"bbox":[229,252,36,27]}
+{"kind":"textbox","id":"sh/8b290nmd","slide":2,"text":"User U","textPreview":"User U","textChars":6,"textLines":1,"bbox":[229,255,36,20]}
+{"kind":"shape","id":"sh/7ats7ils","slide":2,"bbox":[224,285,46,28]}
+{"kind":"textbox","id":"sh/69kryd47","slide":2,"text":"D_U","textPreview":"D_U","textChars":3,"textLines":1,"bbox":[224,289,46,20]}
+{"kind":"textbox","id":"sh/dsfalw32","slide":2,"text":"...","textPreview":"...","textChars":3,"textLines":1,"bbox":[199,266,24,22]}
+{"kind":"textbox","id":"sh/s7mtcr2h","slide":2,"text":"D_u = {(tau_ui, y_ui)}","textPreview":"D_u = {(tau_ui, y_ui)}","textChars":22,"textLines":1,"bbox":[94,316,176,14]}
+{"kind":"shape","id":"sh/adg76tkz","slide":2,"bbox":[326,218,190,108]}
+{"kind":"textbox","id":"sh/bepofe1k","slide":2,"text":"Trajectory encoder","textPreview":"Trajectory encoder","textChars":18,"textLines":1,"bbox":[336,226,170,28]}
+{"kind":"textbox","id":"sh/cfyp8j25","slide":2,"text":"z_ui = f(tau_ui)\n\nselected ride features\nmissing-state reconstruction","textPreview":"z_ui = f(tau_ui) |  | selected ride features | missing-state reconstruction","textChars":69,"textLines":4,"bbox":[338,257,166,60]}
+{"kind":"shape","id":"sh/xg7qhojq","slide":2,"bbox":[560,202,360,142]}
+{"kind":"textbox","id":"sh/29w729k3","slide":2,"text":"Hierarchical Bayesian PI model","textPreview":"Hierarchical Bayesian PI model","textChars":30,"textLines":1,"bbox":[570,210,340,28]}
+{"kind":"shape","id":"sh/napobe1o","slide":2,"bbox":[580,242,320,30]}
+{"kind":"textbox","id":"sh/obyp4j2t","slide":2,"text":"Population: theta_u ~ N(mu, Sigma)","textPreview":"Population: theta_u ~ N(mu, Sigma)","textChars":34,"textLines":1,"bbox":[590,247,300,20]}
+{"kind":"shape","id":"sh/pc76doje","slide":2,"bbox":[580,279,320,30]}
+{"kind":"textbox","id":"sh/6507edk7","slide":2,"text":"Likelihood: p(y_ui=1) = sigmoid(theta_u^T z_ui)","textPreview":"Likelihood: p(y_ui=1) = sigmoid(theta_u^T z_ui)","textChars":47,"textLines":1,"bbox":[590,284,300,20]}
+{"kind":"textbox","id":"sh/7698ny1s","slide":2,"text":"Polya-Gamma Gibbs sampling","textPreview":"Polya-Gamma Gibbs sampling","textChars":26,"textLines":1,"bbox":[585,315,150,20]}
+{"kind":"textbox","id":"sh/ryp4ja58","slide":2,"text":"population + user posterior","textPreview":"population + user posterior","textChars":27,"textLines":1,"bbox":[742,315,153,20]}
+{"kind":"shape","id":"sh/6xg3a54n","slide":2,"bbox":[966,211,214,122]}
+{"kind":"textbox","id":"sh/t07mlkny","slide":2,"text":"New-user posterior","textPreview":"New-user posterior","textChars":18,"textLines":1,"bbox":[976,219,194,28]}
+{"kind":"textbox","id":"sh/szylcfmt","slide":2,"text":"p(theta_* | D_old)\n\n+ 10-20 feedback\n\np(theta_* | D_*, D_old)","textPreview":"p(theta_* | D_old) |  | + 10-20 feedback |  | p(theta_* | D_*, D_old)","textChars":61,"textLines":5,"bbox":[978,250,190,74]}
+{"kind":"shape","id":"sh/ju5kfq5w","slide":2,"bbox":[288,264,30,16]}
+{"kind":"shape","id":"sh/i9w36lob","slide":2,"bbox":[520,264,32,16]}
+{"kind":"shape","id":"sh/5w7mh0n2","slide":2,"bbox":[924,264,34,16]}
+{"kind":"shape","id":"sh/4vel8v6h","slide":2,"bbox":[78,362,220,25]}
+{"kind":"textbox","id":"sh/3q94ru5g","slide":2,"text":"B  Personalized control loop","textPreview":"B  Personalized control loop","textChars":28,"textLines":1,"bbox":[90,366,195,17]}
+{"kind":"shape","id":"sh/2503ip4v","slide":2,"bbox":[1017,335,26,64]}
+{"kind":"textbox","id":"sh/kba1crmd","slide":2,"text":"posterior","textPreview":"posterior","textChars":9,"textLines":1,"bbox":[1048,352,70,18]}
+{"kind":"shape","id":"sh/lc3i5w3y","slide":2,"bbox":[78,427,47,47]}
+{"kind":"textbox","id":"sh/y9sjah47","slide":2,"text":"r_t","textPreview":"r_t","textChars":3,"textLines":1,"bbox":[78,437,47,25]}
+{"kind":"shape","id":"sh/za103mls","slide":2,"bbox":[161,406,190,90]}
+{"kind":"textbox","id":"sh/8fu1gr29","slide":2,"text":"Personalized controller","textPreview":"Personalized controller","textChars":23,"textLines":1,"bbox":[171,414,170,28]}
+{"kind":"textbox","id":"sh/903i9w3u","slide":2,"text":"u_t = pi(x_t; c_u)\nfixed gain / gain scheduling","textPreview":"u_t = pi(x_t; c_u) | fixed gain / gain scheduling","textChars":47,"textLines":2,"bbox":[173,445,166,42]}
+{"kind":"shape","id":"sh/mdcje143","slide":2,"bbox":[411,406,210,90]}
+{"kind":"textbox","id":"sh/7el07mlo","slide":2,"text":"Vehicle / eRide dynamics","textPreview":"Vehicle / eRide dynamics","textChars":24,"textLines":1,"bbox":[421,414,190,28]}
+{"kind":"textbox","id":"sh/w3u1kb2l","slide":2,"text":"x_(t+1) = F(x_t, u_t, w_t)","textPreview":"x_(t+1) = F(x_t, u_t, w_t)","textChars":26,"textLines":1,"bbox":[423,445,186,42]}
+{"kind":"shape","id":"sh/h4nidg3q","slide":2,"bbox":[681,406,150,90]}
+{"kind":"textbox","id":"sh/5ozahcry","slide":2,"text":"Trajectory","textPreview":"Trajectory","textChars":10,"textLines":1,"bbox":[691,414,130,28]}
+{"kind":"textbox","id":"sh/4nq987qd","slide":2,"text":"tau = {x_t, u_t}\nride feature z","textPreview":"tau = {x_t, u_t} | ride feature z","textChars":31,"textLines":2,"bbox":[693,445,126,42]}
+{"kind":"shape","id":"sh/jmhsf29s","slide":2,"bbox":[882,406,158,90]}
+{"kind":"textbox","id":"sh/ilor6x87","slide":2,"text":"Personalized PI","textPreview":"Personalized PI","textChars":15,"textLines":1,"bbox":[892,414,138,28]}
+{"kind":"textbox","id":"sh/tczalcru","slide":2,"text":"R_hat_u(tau)\nposterior mean + uncertainty","textPreview":"R_hat_u(tau) | posterior mean + uncertainty","textChars":41,"textLines":2,"bbox":[894,445,134,42]}
+{"kind":"shape","id":"sh/sbq9crq9","slide":2,"bbox":[1082,406,116,90]}
+{"kind":"textbox","id":"sh/rahsjm94","slide":2,"text":"Optimizer","textPreview":"Optimizer","textChars":9,"textLines":1,"bbox":[1092,414,96,28]}
+{"kind":"textbox","id":"sh/6p8rah8j","slide":2,"text":"Grid / CMA-ES\nRL","textPreview":"Grid / CMA-ES | RL","textChars":16,"textLines":2,"bbox":[1094,445,92,42]}
+{"kind":"shape","id":"sh/9gfq9srq","slide":2,"bbox":[128,443,26,16]}
+{"kind":"shape","id":"sh/8f690nq5","slide":2,"bbox":[357,443,45,16]}
+{"kind":"textbox","id":"sh/ylk7ato3","slide":2,"text":"u_t","textPreview":"u_t","textChars":3,"textLines":1,"bbox":[366,423,28,18]}
+{"kind":"shape","id":"sh/zmdojypo","slide":2,"bbox":[627,443,45,16]}
+{"kind":"textbox","id":"sh/0nmpc369","slide":2,"text":"x_t","textPreview":"x_t","textChars":3,"textLines":1,"bbox":[636,423,28,18]}
+{"kind":"shape","id":"sh/lov6l87e","slide":2,"bbox":[837,443,37,16]}
+{"kind":"shape","id":"sh/mp47etoz","slide":2,"bbox":[1046,443,28,16]}
+{"kind":"textbox","id":"sh/7qdonypk","slide":2,"text":"reward","textPreview":"reward","textChars":6,"textLines":1,"bbox":[1035,423,52,18]}
+{"kind":"shape","id":"sh/8rmpg365","slide":2,"bbox":[175,507,447,13]}
+{"kind":"textbox","id":"sh/9sv6p87q","slide":2,"text":"state feedback x_t","textPreview":"state feedback x_t","textChars":18,"textLines":1,"bbox":[329,502,140,18]}
+{"kind":"shape","id":"sh/2t0n298v","slide":2,"bbox":[175,535,1024,13]}
+{"kind":"textbox","id":"sh/3u9obepg","slide":2,"text":"controller parameter update c_u / k_p","textPreview":"controller parameter update c_u / k_p","textChars":37,"textLines":1,"bbox":[526,530,300,18]}
+{"kind":"textbox","id":"sh/72hg7u1w","slide":2,"text":"검증 결과","textPreview":"검증 결과","textChars":5,"textLines":1,"bbox":[60,576,110,25]}
+{"kind":"shape","id":"sh/618zepkb","slide":2,"bbox":[173,590,1047,0.1]}
+{"kind":"shape","id":"sh/t4zy94jm","slide":2,"bbox":[57.6,606,1164.4,49]}
+{"kind":"textbox","id":"sh/s3qhgz21","slide":2,"text":"실제 사용자  Prior 0.7813 / Posterior 0.8381","textPreview":"실제 사용자  Prior 0.7813 / Posterior 0.8381","textChars":39,"textLines":1,"bbox":[76,616,350,28]}
+{"kind":"shape","id":"sh/f61gbe1s","slide":2,"bbox":[436,614,0.1,32]}
+{"kind":"textbox","id":"sh/u58zi9k7","slide":2,"text":"Few-shot  100 train - 10 test - 10 feedback / AUROC 0.910","textPreview":"Few-shot  100 train - 10 test - 10 feedback / AUROC 0.910","textChars":57,"textLines":1,"bbox":[450,616,390,28]}
+{"kind":"shape","id":"sh/h8jydojy","slide":2,"bbox":[850,614,0.1,32]}
+{"kind":"textbox","id":"sh/g7ahkj2d","slide":2,"text":"State reconstruction  corr. 0.9927 / AUROC delta +0.02","textPreview":"State reconstruction  corr. 0.9927 / AUROC delta +0.02","textChars":54,"textLines":1,"bbox":[865,616,335,28]}
+{"kind":"shape","id":"sh/baxgza1o","slide":2,"bbox":[57.6,676.8,1164.47,0.1]}
+{"kind":"notes","id":"nt/n9i9bw","slide":2,"text":"Content sources:\n- C:/Users/Gooooood/Documents/MLCS/Lab_Project/04_VMC/회사미팅/최종보고.pdf, pp. 39 and 56: first-year PI model and personalized controller results.\n- C:/Users/Gooooood/Documents/MLCS/Lab_Project/06_TPI/월례회의/20260612_월례회의.pdf, pp. 39, 43 and 46: hierarchical Bayesian learned prior and real-driver prior/posterior AUROC.\n- C:/Users/Gooooood/Documents/MLCS/Lab_Project/06_TPI/월례회의/20260715_월례회의.pdf, pp. 18 and 26: feature selection and scalable inference.\n- C:/Users/Gooooood/Documents/MLCS/Lab_Project/06_TPI/월례회의/20260819_월례회의.pdf, pp. 14, 17 and 26: state reconstruction, end-to-end framework and personalized controller experiment.\nMetrics shown: real-driver AUROC 0.7813 prior and 0.8381 posterior; synthetic experiment AUROC 0.910 with 100 train users, 10 test users and 10 feedback items per user; Bi-LSTM reconstruction correlation 0.9927 and downstream AUROC change +0.02."}
+{"kind":"slide","id":"sl/hwbqtkby","slide":3,"title":"선호 기반 학습 — 연구 사례","textShapes":15}
+{"kind":"textbox","id":"sh/et8zmto7","slide":3,"name":"Text 0","text":"선호 기반 학습 — 연구 사례","textPreview":"선호 기반 학습 — 연구 사례","textChars":16,"textLines":1,"bbox":[57.6,36.47,767.92,28.72]}
+{"kind":"textbox","id":"sh/zuh0vypc","slide":3,"name":"Text 1","text":"사람 Good/Bad 피드백으로 보상모델을 학습하는 방법","textPreview":"사람 Good/Bad 피드백으로 보상모델을 학습하는 방법","textChars":31,"textLines":1,"bbox":[57.6,71.06,1161.52,57.52]}
+{"kind":"textbox","id":"sh/c76hk361","slide":3,"name":"Text 2","text":"아래 두 연구는 사람이 평가한 동작을 reward/policy 학습으로 연결해 실제 제어시스템이 사용하는 것이 목적이다.\n(A) PREC: 사용자별 취향을 소수의 대표 policy로 압축하는 정책 제어시스템 개인화 연구 (B) LASER: 비전문가의 피드백으로 reward model을 만들 때 skip을 도입하여 개인별 보정","textPreview":"아래 두 연구는 사람이 평가한 동작을 reward/policy 학습으로 연결해 실제 제어시스템이 사용하는 것이 목적이다. | (A) PREC: 사용자별 취향을 소수의 대표 policy로 압축하는 정책 제어시스템 개인화 연구 (B) LASER: 비...","textChars":182,"textLines":2,"bbox":[57.6,127.16,1161.52,54.94]}
+{"kind":"textbox","id":"sh/d8zit87m","slide":3,"name":"Text 3","text":"A  PREC | 취향이 다른 많은 사람들을 몇 개의 대표 policy로 요약","textPreview":"A  PREC | 취향이 다른 많은 사람들을 몇 개의 대표 policy로 요약","textChars":43,"textLines":1,"bbox":[57.6,199.52,575.92,28.72]}
+{"kind":"shape","id":"sh/q5ozitov","slide":3,"name":"Shape 4","bbox":[57.6,235.41,575.92,207.09]}
+{"kind":"textbox","id":"sh/w3a1wn65","slide":3,"name":"Text 5","text":"PREC 개요 — 전체 데이터로 공용 표현을 배우고, 비슷한 취향을 묶어 그룹별 보상 모델과 policy를 학습","textPreview":"PREC 개요 — 전체 데이터로 공용 표현을 배우고, 비슷한 취향을 묶어 그룹별 보상 모델과 policy를 학습","textChars":62,"textLines":1,"bbox":[69.13,416.96,552.87,23.92]}
+{"kind":"shape","id":"sh/xoji5s7q","slide":3,"name":"Shape 6","bbox":[57.6,451.69,575.92,115.12]}
+{"kind":"textbox","id":"sh/5kfipszu","slide":3,"name":"Text 7","text":"문제  보행 보조 장치 같은 control system은 사용자마다 선호하는 안정성·속도·효율이 다름. 모두에게 하나의 policy를 배포하는 것은 비용이 싸지만 만족도가 낮고, 1인 1 policy는 데이터·검증 비용 때문에 배포가 어려움.\n방법  전체 데이터로 공통 표현을 먼저 학습하고, 비슷한 취향의 사용자를 묶어 그룹별 reward model과 대표 policy를 학습. policy 수 K는 배포 조건에 맞게 정함.","textPreview":"문제  보행 보조 장치 같은 control system은 사용자마다 선호하는 안정성·속도·효율이 다름. 모두에게 하나의 policy를 배포하는 것은 비용이 싸지만 만족도가 낮고, 1인 1 policy는 데이터·검증 비용 때문에 배포가 어려움. |...","textChars":238,"textLines":2,"bbox":[72,459.36,547.12,100.72]}
+{"kind":"shape","id":"sh/kj6hgny9","slide":3,"name":"Shape 8","bbox":[57.6,583.22,185.54,84.4]}
+{"kind":"textbox","id":"sh/jix0niho","slide":3,"name":"Text 9","text":"취향이 비슷한 사람끼리 묶임\n30명을 5그룹으로 나눌 때, 군집 품질이 기존 방식보다 높음 (0.54 vs 0.27)","textPreview":"취향이 비슷한 사람끼리 묶임 | 30명을 5그룹으로 나눌 때, 군집 품질이 기존 방식보다 높음 (0.54 vs 0.27)","textChars":65,"textLines":2,"bbox":[57.6,587.03,185.54,76.72]}
+{"kind":"shape","id":"sh/ihozedgj","slide":3,"name":"Shape 10","bbox":[252.81,583.22,185.54,84.4]}
+{"kind":"textbox","id":"sh/xgfil8zy","slide":3,"name":"Text 11","text":"policy 수는 감소, \n만족도는 증가\n평균 만족, 하위 30% 만족, 공평성 지표가 단일 policy보다 높고, 라벨 10~50개 구간에서는 1인 1 policy보다도 높음","textPreview":"policy 수는 감소,  | 만족도는 증가 | 평균 만족, 하위 30% 만족, 공평성 지표가 단일 policy보다 높고, 라벨 10~50개 구간에서는 1인 1 policy보다도 높음","textChars":98,"textLines":3,"bbox":[262.41,587.03,166.34,76.72]}
+{"kind":"shape","id":"sh/wf6hcnyd","slide":3,"name":"Shape 12","bbox":[447.99,583.22,185.54,84.4]}
+{"kind":"textbox","id":"sh/ved0jihs","slide":3,"name":"Text 13","text":"노이즈에도 순위 유지\n판정 16~28%를 일부러 뒤섞어도 방법 간 순위가 크게 바뀌지 않음","textPreview":"노이즈에도 순위 유지 | 판정 16~28%를 일부러 뒤섞어도 방법 간 순위가 크게 바뀌지 않음","textChars":50,"textLines":2,"bbox":[457.59,587.03,166.34,76.72]}
+{"kind":"textbox","id":"sh/ad4zadg7","slide":3,"name":"Text 14","text":"B  LASER |  비전문가의 피드백으로 각각의 reward model을 정확도 높게 학습","textPreview":"B  LASER |  비전문가의 피드백으로 각각의 reward model을 정확도 높게 학습","textChars":51,"textLines":1,"bbox":[646.07,199.52,595.2,28.72]}
+{"kind":"shape","id":"sh/9svih8zm","slide":3,"name":"Shape 15","bbox":[646.07,235.41,575.92,207.09]}
+{"kind":"textbox","id":"sh/yxkfi9wz","slide":3,"name":"Text 16","text":"LASER 개요 — 확실한 good/bad를 기준점으로 두고, skip 위치와 평가자별 성향을 함께 추정","textPreview":"LASER 개요 — 확실한 good/bad를 기준점으로 두고, skip 위치와 평가자별 성향을 함께 추정","textChars":58,"textLines":1,"bbox":[657.6,416.96,552.87,23.92]}
+{"kind":"shape","id":"sh/zytgbexk","slide":3,"name":"Shape 17","bbox":[646.07,451.69,575.92,115.12]}
+{"kind":"textbox","id":"sh/0j2xkje5","slide":3,"name":"Text 18","text":"문제  비전문가들이 선호기반 학습을 하며 개인 보상 모델을 학습하는 경우, 사람들은 모두 good/bad 기준점이 달라 기존의 알고리즘에서는 개인의 피드백 성향에 따라 성능차이가 심하게 났음.\n\n방법  Skip feedback을 추가 -> 애매하면 안 찍어도 된다. 확실한 Good/Bad feedback을 받아 양 끝 기준점으로, Skip feedback 점수를 추정하여 활용.  그 사람이 얼마나 관대/엄격한지에 맞춰 보정. 이렇게 함으로써 서로 다른 개인이 본인의 보상모델을 학습할 때 LASER를 쓰면 모두 일관되게 좋은 성능이 안정적으로 나올 수 있음.","textPreview":"문제  비전문가들이 선호기반 학습을 하며 개인 보상 모델을 학습하는 경우, 사람들은 모두 good/bad 기준점이 달라 기존의 알고리즘에서는 개인의 피드백 성향에 따라 성능차이가 심하게 났음. |  | 방법  Skip feedback을 추가 ->...","textChars":314,"textLines":3,"bbox":[660.47,459.36,547.12,100.72]}
+{"kind":"shape","id":"sh/lkbyd4fq","slide":3,"name":"Shape 19","bbox":[646.07,583.22,185.54,84.4]}
+{"kind":"textbox","id":"sh/qt0fepw3","slide":3,"name":"Text 20","text":"task 평균 성능 향상\nlocomotion, manipulation task 모두에서 다른 방식보다 성능 향상","textPreview":"task 평균 성능 향상 | locomotion, manipulation task 모두에서 다른 방식보다 성능 향상","textChars":62,"textLines":2,"bbox":[663.02,587.03,151.65,76.72]}
+{"kind":"shape","id":"sh/bu9w7uxo","slide":3,"name":"Shape 21","bbox":[841.29,583.22,185.54,84.4]}
+{"kind":"textbox","id":"sh/cv2xgzet","slide":3,"name":"Text 22","text":"판정 일관성 상승\n33명의 인간 대상 실험에서 skip을 허용하자                 good/bad 판정 일관성이 4~6%p 높아짐","textPreview":"판정 일관성 상승 | 33명의 인간 대상 실험에서 skip을 허용하자                 good/bad 판정 일관성이 4~6%p 높아짐","textChars":79,"textLines":2,"bbox":[841.29,587.03,185.54,76.72]}
+{"kind":"shape","id":"sh/dwbe94fe","slide":3,"name":"Shape 23","bbox":[1036.5,583.22,185.54,84.4]}
+{"kind":"textbox","id":"sh/2p0fapwr","slide":3,"name":"Text 24","text":"skip 기준은 사람마다 다름\nskip을 누르는 구간이 하위 17%~상위 94%까지 달라, 사람별 보정이 필요함","textPreview":"skip 기준은 사람마다 다름 | skip을 누르는 구간이 하위 17%~상위 94%까지 달라, 사람별 보정이 필요함","textChars":62,"textLines":2,"bbox":[1046.1,587.03,166.34,76.72]}
+{"kind":"shape","id":"sh/6tk7yxcz","slide":3,"name":"Shape 29","bbox":[57.6,676.8,1164.47,0.04]}
+{"kind":"image","id":"im/25s7mtsf","slide":3,"name":"Image 0","bbox":[65.24,239.88,561.15,176.43]}
+{"kind":"image","id":"im/n618fyt0","slide":3,"name":"Image 1","bbox":[654.45,242.25,556.02,174.81]}
+{"kind":"notes","id":"nt/hwbqtkby","slide":3,"text":""}
