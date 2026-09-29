@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bayesian 예측 평가지표 문헌 조사</title>
+<style>
+  :root {
+    --bg: #fbfbf9; --fg: #1d1f24; --muted: #5d6270; --line: #e3e3dc;
+    --card: #ffffff; --accent: #1f5f8b; --accent-soft: #e4eef6;
+    --warn: #8a4b08; --warn-soft: #fbeedc; --ok: #2b6a3f; --ok-soft: #e3f1e6;
+    --code: #f1f1ec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14161a; --fg: #e6e6e1; --muted: #a0a4ad; --line: #2c3037;
+      --card: #1b1e24; --accent: #7fb3d9; --accent-soft: #1f2c39;
+      --warn: #e2a463; --warn-soft: #332614; --ok: #8fd19f; --ok-soft: #16301e;
+      --code: #23272e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --fg: #e6e6e1; --muted: #a0a4ad; --line: #2c3037;
+    --card: #1b1e24; --accent: #7fb3d9; --accent-soft: #1f2c39;
+    --warn: #e2a463; --warn-soft: #332614; --ok: #8fd19f; --ok-soft: #16301e;
+    --code: #23272e;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 16px/1.65 -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", Roboto, sans-serif; }
+  main { max-width: 900px; margin: 0 auto; padding: 32px 16px 64px; }
+  header { border-bottom: 1px solid var(--line); padding-bottom: 16px; margin-bottom: 28px; }
+  h1 { font-size: 1.7rem; margin: 0 0 6px; line-height: 1.3; }
+  .meta { color: var(--muted); font-size: 0.92rem; }
+  h2 { font-size: 1.25rem; margin: 40px 0 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+  h3 { font-size: 1.05rem; margin: 22px 0 8px; color: var(--accent); }
+  p { margin: 0 0 12px; }
+  ul, ol { margin: 0 0 12px; padding-left: 22px; }
+  li { margin-bottom: 6px; }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: 0.92em; }
+  .note { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 10px 14px; border-radius: 0 6px 6px 0; margin: 14px 0; }
+  .warn { border-left: 3px solid var(--warn); background: var(--warn-soft); padding: 10px 14px; border-radius: 0 6px 6px 0; margin: 14px 0; }
+  .ok   { border-left: 3px solid var(--ok);   background: var(--ok-soft);   padding: 10px 14px; border-radius: 0 6px 6px 0; margin: 14px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 18px; font-size: 0.94rem; }
+  th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { background: var(--card); font-weight: 600; }
+  .tag { display: inline-block; font-size: 0.78rem; padding: 1px 7px; border-radius: 10px; border: 1px solid var(--line); color: var(--muted); margin-left: 4px; }
+  .toc { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px; }
+  .toc ol { margin: 0; }
+  .src li { font-size: 0.9rem; }
+  a { color: var(--accent); }
+  @media (max-width: 600px) { table { display: block; overflow-x: auto; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Bayesian 예측 모형의 평가지표: 유사 사례 문헌 조사</h1>
+  <div class="meta">
+    작성 2026-09-29 · 대상 논문: <code>docs/fully_bayesian/my_papers/main.tex</code> (T-IV 초안) ·
+    목적: 실험 절의 평가지표와 프로토콜을 분야 관행에 맞춰 확정하기 위한 근거 정리
+  </div>
+</header>
+
+<div class="warn">
+  <strong>조사 범위와 한계.</strong> 웹 검색으로 초록, 인용문, 요약 수준까지 확인했다. 작업 환경의 네트워크 프록시가
+  arXiv, NeurIPS, OUP 등 본문 접근을 차단해 논문 본문은 읽지 못했다. 본문을 읽어야 확정되는 세부는
+  <span class="tag">기억 기반</span>으로 표시했으므로 인용 전에 원문을 확인해야 한다.
+</div>
+
+<nav class="toc">
+  <strong>목차</strong>
+  <ol>
+    <li><a href="#s1">원칙: proper scoring rule과 ELPD</a></li>
+    <li><a href="#s2">계층 모형의 새 그룹 예측: LOO가 아니라 LOGO</a></li>
+    <li><a href="#s3">유사 사례: 다수 사용자 선호 학습</a></li>
+    <li><a href="#s4">유사 사례: LOSO 프로토콜의 few-shot 개인화</a></li>
+    <li><a href="#s5">불확실성 자체를 평가하는 방법</a></li>
+    <li><a href="#s6">순차 평가: prequential 원리</a></li>
+    <li><a href="#s7">차량 분야의 관행</a></li>
+    <li><a href="#s8">지표 요약표</a></li>
+    <li><a href="#s9">우리 논문에 대한 결정 사항</a></li>
+    <li><a href="#src">출처</a></li>
+  </ol>
+</nav>
+
+<h2 id="s1">1. 원칙: proper scoring rule과 ELPD</h2>
+<p>
+  예측 분포를 평가하는 규칙은 예측자가 자기 믿음을 정직하게 보고할 때만 기대 점수가 최대가 되어야 한다.
+  이런 규칙을 proper scoring rule이라 하고, 최댓값이 유일하면 strictly proper라 한다 (Gneiting &amp; Raftery 2007).
+  이진 예측의 대표 규칙은 두 가지다.
+</p>
+<ul>
+  <li><strong>Log score</strong> S(p, y) = log p(y). 관측값에 매우 낮은 확률을 준 경우를 가혹하게 벌한다.</li>
+  <li><strong>Brier score</strong> (p - y)^2. 이차 규칙으로 과신과 과소신을 완만하게 벌한다.</li>
+</ul>
+<p>
+  AUROC는 proper scoring rule이 아니다. 순위만 보므로 확률의 크기와 보정에 무관하고, 관측 단위로 분해되지 않아
+  표준오차를 내려면 bootstrap이 필요하며, holdout에 한 클래스만 있으면 정의되지 않는다.
+</p>
+<p>
+  Bayesian 문맥에서 log score의 기대값이 <strong>expected log predictive density (ELPD)</strong>이고, 이것이
+  Vehtari 계열 방법론의 중심 지표다. 모형 비교 규칙도 정해져 있다.
+</p>
+<ul>
+  <li>ELPD 차이가 4보다 작으면 작은 차이로 본다. 4보다 크면 차이의 표준오차(se_diff)와 비교한다.</li>
+  <li>후보 모형이 많으면(변수 선택) 선택 자체가 과적합을 만든다. 이때는 projection predictive 선택을 권한다.</li>
+  <li>관측 수가 작거나 모형이 매우 비슷하면 ELPD 차이의 표준오차 추정이 신뢰하기 어렵다
+      (Sivula, Magnusson, Vehtari의 LOO 불확실성 사례 연구 <span class="tag">기억 기반</span>).</li>
+</ul>
+
+<h2 id="s2">2. 계층 모형의 새 그룹 예측: LOO가 아니라 LOGO</h2>
+<p>
+  계층 모형에서는 두 예측 과제를 구분해야 한다. (a) 이미 관측된 그룹 안의 새 관측, (b) 완전히 새로운 그룹의 관측.
+  우리 문제의 새 탑승자는 (b)이고, 여기에 맞는 도구는 <strong>leave-one-group-out CV (LOGO-CV)</strong>다.
+</p>
+<div class="note">
+  LOGO에서는 held-out 그룹의 그룹별 파라미터를 적분해야 하므로, PSIS 같은 importance sampling 근사가 대개 실패한다.
+  그래서 그룹마다 MCMC 재적합이 필요하고 비용이 크다. 2026년 arXiv 논문 "Approximating Bayesian leave-one-group-out
+  cross-validation"이 이 근사를 다룬다.
+</div>
+<p>
+  우리 LOEO (leave-one-evaluator-out) 프로토콜은 정확히 LOGO이고, 평가자마다 population 모형을 재적합하는 현재 설계가
+  표준 절차와 일치한다. 논문에서 이 용어와 근거를 명시하면 심사자가 "왜 LOO-PSIS를 쓰지 않았나"를 묻지 않는다.
+</p>
+
+<h2 id="s3">3. 유사 사례: 다수 사용자 선호 학습</h2>
+<table>
+  <thead><tr><th>연구</th><th>설정</th><th>평가 방식</th><th>우리와의 관계</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Chu &amp; Ghahramani 2005;<br>Houlsby et al. 2012</td>
+      <td>GP 잠재 효용, 쌍대 비교, 다수 사용자(Houlsby)</td>
+      <td>held-out 비교의 오류율이 중심 <span class="tag">기억 기반</span></td>
+      <td>다수 사용자 구조는 같으나 피드백이 쌍대 비교</td>
+    </tr>
+    <tr>
+      <td>Birlutiu, Groot, Heskes 2013</td>
+      <td>계층(multi-task) 선호 학습, 보청기 청취 실험, 능동 학습</td>
+      <td>held-out 쌍대 비교의 예측 정확도로 계층 모형의 이득 제시</td>
+      <td>구조가 가장 닮음. 데이터가 적은 피험자가 다른 피험자에서 힘을 빌린다는 논리 동일</td>
+    </tr>
+    <tr>
+      <td>Sadigh et al. 2017 → Bıyık et al. 2024</td>
+      <td>선호 기반 보상 학습</td>
+      <td>초기 alignment metric(추정 가중치와 진짜 가중치의 정렬도) → 단점 지적 후 <strong>held-out 선호의 log-likelihood</strong>로 전환</td>
+      <td>"보상 최적화가 아니라 보상 학습이 목적이면 log-likelihood" 라는 판단이 우리와 같음</td>
+    </tr>
+    <tr>
+      <td>Allenby &amp; Rossi (HB 선택 모형)</td>
+      <td>마케팅 컨조인트, 개인 수준 이질성</td>
+      <td>holdout hit rate. holdout 선택 확률은 posterior mean 파라미터가 아니라 <strong>retained posterior draw들에 대한 평균</strong>으로 계산</td>
+      <td>우리 예측식(M개 particle 평균)과 같은 관행</td>
+    </tr>
+    <tr>
+      <td>Poddar et al. 2024 (VPL)</td>
+      <td>LLM 보상 모형 개인화, 소수 주석에서 사용자 잠재 변수 추론</td>
+      <td>다중 모달 선호 분포 회복 정확도; held-out 선호 쌍 정확도와 하류 정책 성능 <span class="tag">기억 기반</span></td>
+      <td>점 추정 잠재 변수 vs 우리의 full posterior 대비점</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="s4">4. 유사 사례: LOSO 프로토콜의 few-shot 개인화</h2>
+<h3>BayaHAR (2026)</h3>
+<p>
+  활동 인식에서 Bayesian few-shot 사용자 적응. leave-one-subject-out으로 평가하고, 클래스당 1~16 shot 예산을
+  100 에피소드에 걸쳐 평균한다. 우리의 "문맥 예산 t와 시작 오프셋 R회 평균" 설계와 같은 구조다.
+</p>
+<h3>HB-PVI (2026)</h3>
+<p>
+  47명 코호트에서 계층 Bayesian 개인화를 leave-one-participant-out으로 평가한다. 특징은 세 가지다.
+</p>
+<ul>
+  <li>참가자별 이득 분포를 Student-t 계층 모형으로 추정해 <strong>평균이 아니라 분포</strong>로 보고한다.</li>
+  <li>라벨 하나의 기대 표본 정보 가치(EVSI)로 정지 규칙을 만든다. "피드백 하나의 가치"를 정량화한 사례다.</li>
+  <li>라벨 비용, 계산, 해악을 차감한 누적 효용을 보고한다. 평균 F1 이득은 양수여도 비용 차감 후 음수가 되는 경우를 보였다.</li>
+</ul>
+<div class="ok">
+  "평가자별 이득 분포"와 "피드백 하나의 가치"는 우리 기여 2(신뢰도의 정량화)를 평가하는 형식으로 그대로 가져올 수 있다.
+</div>
+<h3>정서 인식 개인화</h3>
+<p>LOSO가 표준이며, 피험자 간 변동이 병목이라는 지적이 공통이다 (ACM IMWUT 2024 체계적 평가 등).</p>
+
+<h2 id="s5">5. 불확실성 자체를 평가하는 방법</h2>
+<h3>5.1 확률 품질: Ovadia et al. 2019</h3>
+<p>
+  분포 이동 아래 예측 불확실성의 대규모 벤치마크. 지표는 NLL, Brier, ECE. 사후 보정은 이동 아래서 부족했고,
+  모형에 대해 주변화(marginalize)하는 방법이 폭넓게 강했다. Fully Bayesian을 택한 우리 입장의 근거로 쓸 수 있다.
+</p>
+<h3>5.2 분해의 품질: Mucsányi et al. 2024</h3>
+<p>
+  epistemic과 aleatoric 분해를 <strong>하류 과제</strong>로 평가한다. 정답 여부 예측 AUROC, 기권(abstained) 예측,
+  OOD 검출, ECE 등. 두 성분의 Spearman 순위 상관을 분리도 지표로 쓴다.
+</p>
+<div class="warn">
+  핵심 발견: 표준 분해 공식의 두 성분이 CIFAR-10에서 0.88 이상, ImageNet에서 0.78 이상 순위 상관되어 실질적으로
+  분리되지 않는다. 우리 분해식 p(1-p) = E[p_m(1-p_m)] + Var(p_m) 도 같은 공식이다. 두 항의 순위 상관을 보고하지 않으면
+  심사자가 이 논문을 들어 반박할 수 있다.
+</div>
+<h3>5.3 기권과 selective prediction</h3>
+<p>
+  불확실도로 기권할 때 risk-coverage 곡선과 그 아래 면적 AURC (Geifman &amp; El-Yaniv)가 표준 지표다.
+  AURC는 모형 정확도에 민감해 E-AURC가 제안되었고, 2024 NeurIPS 논문이 평가상의 흔한 결함을 정리했다.
+  우리 "신뢰 판정" 규칙은 이 틀로 평가할 수 있다.
+</p>
+<h3>5.4 보정의 위계: Van Calster et al.</h3>
+<table>
+  <thead><tr><th>수준</th><th>정의</th><th>측정</th></tr></thead>
+  <tbody>
+    <tr><td>Mean (in-the-large)</td><td>예측 평균과 관측 사건율의 일치</td><td>O/E 비율, intercept</td></tr>
+    <tr><td>Weak</td><td>logit(pred)에 대한 회귀의 intercept = 0, slope = 1</td><td>calibration intercept, slope</td></tr>
+    <tr><td>Moderate</td><td>예측 R%인 집단의 실제 사건율이 R%</td><td>flexible calibration curve, reliability diagram, ECE/ICI</td></tr>
+    <tr><td>Strong</td><td>모든 공변량 패턴에서 사건율 = 예측</td><td>실증 데이터로는 사실상 불가</td></tr>
+  </tbody>
+</table>
+<p>개발과 검증은 moderate 보정에 집중하라고 권한다. 임상 예측 분야는 discrimination과 calibration을 항상 함께 보고하고 Brier를 종합 지표로 쓴다.</p>
+<h3>5.5 LOO-PIT</h3>
+<p>
+  Bayesian 모형의 보정 점검 표준은 교차검증 예측 누적분포 값(PIT)이 균등분포에 가까운지 보는 것이다 (Gabry et al., Visualization in Bayesian workflow).
+  이진 결과에서는 무작위화된 PIT를 쓰거나 reliability diagram으로 대체한다.
+</p>
+<h3>5.6 Posterior mean vs plug-in (2026, 임상 예측)</h3>
+<p>
+  posterior mean 예측이 plug-in 예측보다 calibration slope를 1에 가깝게 개선하지만 O/E 비율은 약간 나빠지고,
+  표본이 작을수록 KL 발산이 낮았다. 우리가 particle 평균으로 예측하는 것이 보정에 유리하다는 근거다.
+</p>
+
+<h2 id="s6">6. 순차 평가: prequential 원리</h2>
+<p>
+  Dawid의 prequential (predictive sequential) 원리는 예측 분포를 순차 갱신하면서 누적 손실로 모형을 비교한다.
+  누적 log score의 합은 log marginal likelihood와 같다. 별도 테스트 집합 없이 순차 유입 중 성능을 재며, 어떤 손실로도 확장된다.
+</p>
+<div class="note">
+  우리 "문맥 t에 따른 개인화 곡선"은 정확히 prequential 평가다. 다음 에피소드에 대한 one-step-ahead log score를 누적하면
+  holdout 절반을 떼지 않아도 순차 성능이 정의되므로, 라벨이 적은 평가자에서 특히 유용하다.
+</div>
+
+<h2 id="s7">7. 차량 분야의 관행</h2>
+<ul>
+  <li><strong>Ran et al. 2023 (Sensors).</strong> lane centering 궤적 선호를 Bayesian 쌍대 질의로 학습. 평가는 수렴까지의 질의 수(평균 약 11회)와 운전자 선호 모형의 적합도(GOF) 표.</li>
+  <li><strong>Kikuchi &amp; Inaba 2025 (SAE).</strong> 24명의 감각 점수를 네 지각 그룹으로 군집화, bootstrap 앙상블로 불확실성 평가, 교차검증 예측 정확도 보고.</li>
+  <li><strong>Bayesian calibration of the Intelligent Driver Model (IEEE T-ITS 2024).</strong> 계층 Bayesian으로 운전자별 파라미터 불확실성을 다루고 WAIC와 LOO로 모형 선택. 차량 분야에서 ELPD 계열 지표를 쓴 선례.</li>
+</ul>
+
+<h2 id="s8">8. 지표 요약표</h2>
+<table>
+  <thead><tr><th>지표</th><th>재는 것</th><th>성질</th><th>우리 논문에서의 역할</th></tr></thead>
+  <tbody>
+    <tr><td>ELPD / MLPD (log score)</td><td>예측 분포의 질</td><td>strictly proper, 관측 단위 분해, SE와 paired 비교 가능</td><td><strong>주 지표.</strong> LOGO로 계산, cold start 대비 paired 차이</td></tr>
+    <tr><td>Brier</td><td>확률 정확도 (discrimination + calibration 종합)</td><td>strictly proper, 완만한 벌점</td><td>보조 종합 지표</td></tr>
+    <tr><td>AUROC / AUPRC</td><td>순위 판별력</td><td>not proper, 보정 무관, 단일 클래스에서 미정의</td><td>보조. 한계 명시</td></tr>
+    <tr><td>Calibration slope / intercept</td><td>weak 보정</td><td>logit 회귀</td><td>보고. posterior mean 예측의 slope 이점 언급</td></tr>
+    <tr><td>Reliability diagram / ECE</td><td>moderate 보정</td><td>구간화에 민감</td><td>보고 (pooled holdout)</td></tr>
+    <tr><td>LOO-PIT</td><td>Bayesian 보정 점검</td><td>이진에서는 무작위화 필요</td><td>부록 후보</td></tr>
+    <tr><td>Epistemic → 정답 여부 예측 AUROC</td><td>불확실도의 유용성</td><td>과제 기반</td><td><strong>필수.</strong> 기여 2 검증</td></tr>
+    <tr><td>Risk-coverage 곡선, AURC</td><td>기권 규칙의 품질</td><td>정확도 의존 (E-AURC로 보정)</td><td>신뢰 판정 규칙의 평가</td></tr>
+    <tr><td>Spearman(epi, ale)</td><td>분해의 분리도</td><td>Mucsányi 벤치마크 기준</td><td><strong>필수.</strong> 반박 방어</td></tr>
+    <tr><td>Prequential 누적 log score</td><td>순차 예측 성능</td><td>holdout 불필요</td><td>개인화 곡선의 대안 정의</td></tr>
+    <tr><td>평가자별 ΔELPD 분포</td><td>개인화 이득의 이질성</td><td>HB-PVI 형식</td><td>표로 보고, 해가 된 평가자 포함</td></tr>
+    <tr><td>Hit rate</td><td>이산 선택 정확도</td><td>HB 컨조인트 관행</td><td>불필요 (이진 라벨에서는 accuracy)</td></tr>
+  </tbody>
+</table>
+
+<h2 id="s9">9. 우리 논문에 대한 결정 사항</h2>
+<ol>
+  <li><strong>주 지표는 LOGO ELPD.</strong> 평가자별 재적합, 평가자 단위 표준오차, cold start 대비 paired 차이. ELPD 차이 4와 표준오차 비교 규칙을 실험 절에 명시하고, 평가자 수가 작아 SE가 불안정할 수 있음을 한계로 적는다.</li>
+  <li><strong>AUROC는 보조.</strong> 단일 클래스 holdout에서 미정의인 점을 명시한다.</li>
+  <li><strong>보정은 위계로 보고.</strong> reliability diagram (moderate)과 calibration slope, intercept (weak)를 함께 두고, posterior mean 예측의 slope 이점을 언급한다.</li>
+  <li><strong>불확실성은 과제로 평가.</strong> epistemic 항의 정답 여부 예측 AUROC, epistemic 항으로 기권할 때의 risk-coverage 곡선, 두 성분의 순위 상관을 반드시 보고한다.</li>
+  <li><strong>순차 곡선은 prequential로도 정의.</strong> holdout 지표 외에 one-step-ahead 누적 log score를 추가한다.</li>
+  <li><strong>평가자별 이득 분포.</strong> 평가자마다 ΔELPD를 내고 분포를 보고하며, 개인화가 해가 된 평가자를 숨기지 않는다.</li>
+  <li><strong>피처 선택 기준도 같은 지표.</strong> 부분집합 S의 점수 Q_t(S)는 held-out 평가자 macro ELPD로 정의하고, projpred 경로 위에서 1 SE 규칙으로 정지한다. PIP와 CMI는 선택기가 아니라 진단으로 보고한다.</li>
+</ol>
+
+<h2 id="src">출처</h2>
+<ul class="src">
+  <li><a href="https://sites.stat.washington.edu/raftery/Research/PDF/Gneiting2007jasa.pdf">Gneiting &amp; Raftery, Strictly Proper Scoring Rules, Prediction, and Estimation (JASA 2007)</a></li>
+  <li><a href="https://cran.r-project.org/web/packages/scoringutils/vignettes/scoring-rules.html">Scoring rules in scoringutils (CRAN)</a></li>
+  <li><a href="https://avehtari.github.io/modelselection/CV-FAQ.html">Vehtari, Cross-validation FAQ</a></li>
+  <li><a href="https://users.aalto.fi/~ave/casestudies/LOO_uncertainty/loo_uncertainty.html">Uncertainty in Bayesian LOO-CV Model Comparison</a></li>
+  <li><a href="https://arxiv.org/abs/2609.05713">Approximating Bayesian leave-one-group-out cross-validation (arXiv 2026)</a></li>
+  <li><a href="https://arxiv.org/pdf/2309.03742">Efficient estimation and correction of selection-induced bias with order statistics</a></li>
+  <li><a href="https://icml.cc/Conferences/2005/proceedings/papers/018_Preference_ChuGhahramani.pdf">Chu &amp; Ghahramani, Preference Learning with Gaussian Processes (ICML 2005)</a></li>
+  <li><a href="https://papers.nips.cc/paper/4700-collaborative-gaussian-processes-for-preference-learning">Houlsby et al., Collaborative Gaussian Processes for Preference Learning (NIPS 2012)</a></li>
+  <li><a href="https://link.springer.com/article/10.1007/s10994-012-5297-4">Birlutiu, Groot, Heskes, Efficiently learning the preferences of people (Machine Learning 2013)</a></li>
+  <li><a href="https://arxiv.org/html/2402.15757v1">Bıyık et al., Batch Active Learning of Reward Functions from Human Preferences (ACM THRI 2024)</a></li>
+  <li><a href="https://s3.amazonaws.com/OM-SHARE/Hierarchical+Bayes+SSRN-id655541.pdf">Allenby, Hierarchical Bayes Models: A Practitioner's Guide</a></li>
+  <li><a href="https://arxiv.org/html/2607.13314">HB conjoint 배경 (arXiv 2026)</a></li>
+  <li><a href="https://arxiv.org/abs/2408.10075">Poddar et al., Personalizing RLHF with Variational Preference Learning (NeurIPS 2024)</a></li>
+  <li><a href="https://arxiv.org/pdf/2606.04798">BayaHAR: Lightweight Bayesian Few-Shot User Adaptation (arXiv 2026)</a></li>
+  <li><a href="https://arxiv.org/html/2609.05582">HB-PVI: Hierarchical Bayesian Personalization and Value-of-Information (arXiv 2026)</a></li>
+  <li><a href="https://doi.org/10.1145/3699724">Systematic Evaluation of Personalized Deep Learning Models for Affect Recognition (IMWUT 2024)</a></li>
+  <li><a href="https://proceedings.neurips.cc/paper_files/paper/2019/hash/8558cb408c1d76621371888657d2eb1d-Abstract.html">Ovadia et al., Can You Trust Your Model's Uncertainty? (NeurIPS 2019)</a></li>
+  <li><a href="https://arxiv.org/pdf/2402.19460">Mucsányi et al., Benchmarking Uncertainty Disentanglement (NeurIPS 2024 D&amp;B)</a></li>
+  <li><a href="https://arxiv.org/pdf/2408.12175">Measuring Orthogonality as the Blind-Spot of Uncertainty Disentanglement</a></li>
+  <li><a href="https://arxiv.org/pdf/2302.11874">Selective prediction and uncertainty estimation of 523 ImageNet classifiers</a></li>
+  <li><a href="https://arxiv.org/pdf/2407.01032">Overcoming Common Flaws in the Evaluation of Selective Classification Systems (NeurIPS 2024)</a></li>
+  <li><a href="https://www.sciencedirect.com/science/article/abs/pii/S0895435615005818">Van Calster et al., A calibration hierarchy for risk models was defined (J Clin Epidemiol 2016)</a></li>
+  <li><a href="https://link.springer.com/article/10.1186/s12916-019-1466-7">Van Calster et al., Calibration: the Achilles heel of predictive analytics (BMC Medicine 2019)</a></li>
+  <li><a href="https://academic.oup.com/jamia/article/27/4/621/5762806">Tutorial on calibration measurements and calibration models (JAMIA 2020)</a></li>
+  <li><a href="https://arxiv.org/pdf/1709.01449">Gabry et al., Visualization in Bayesian workflow (LOO-PIT)</a></li>
+  <li><a href="https://arxiv.org/abs/2605.19163">Progression to the mean: posterior mean vs plug-in predictions (arXiv 2026)</a></li>
+  <li><a href="https://arxiv.org/pdf/1905.08737">Fong &amp; Holmes, On the marginal likelihood and cross-validation (prequential)</a></li>
+  <li><a href="https://doi.org/10.3390/s23115246">Ran et al., Online Personalized Preference Learning for Lane Centering Control Trajectory (Sensors 2023)</a></li>
+  <li><a href="https://www.sae.org/publications/technical-papers/content/2025-01-8273/">Kikuchi &amp; Inaba, Sensory-Driven Design Method for Personalizing Ride Comfort (SAE 2025)</a></li>
+  <li><a href="https://arxiv.org/html/2210.03571v2">Bayesian Calibration of the Intelligent Driver Model (IEEE T-ITS 2024)</a></li>
+</ul>
+</main>
+</body>
+</html>
