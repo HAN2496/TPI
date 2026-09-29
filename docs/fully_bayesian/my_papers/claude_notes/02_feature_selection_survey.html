@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bayesian 피처 선택 문헌 조사</title>
+<style>
+  :root {
+    --bg: #fbfbf9; --fg: #1d1f24; --muted: #5d6270; --line: #e3e3dc;
+    --card: #ffffff; --accent: #1f5f8b; --accent-soft: #e4eef6;
+    --warn: #8a4b08; --warn-soft: #fbeedc; --ok: #2b6a3f; --ok-soft: #e3f1e6;
+    --code: #f1f1ec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14161a; --fg: #e6e6e1; --muted: #a0a4ad; --line: #2c3037;
+      --card: #1b1e24; --accent: #7fb3d9; --accent-soft: #1f2c39;
+      --warn: #e2a463; --warn-soft: #332614; --ok: #8fd19f; --ok-soft: #16301e;
+      --code: #23272e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --fg: #e6e6e1; --muted: #a0a4ad; --line: #2c3037;
+    --card: #1b1e24; --accent: #7fb3d9; --accent-soft: #1f2c39;
+    --warn: #e2a463; --warn-soft: #332614; --ok: #8fd19f; --ok-soft: #16301e;
+    --code: #23272e;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 16px/1.65 -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", Roboto, sans-serif; }
+  main { max-width: 920px; margin: 0 auto; padding: 32px 16px 64px; }
+  header { border-bottom: 1px solid var(--line); padding-bottom: 16px; margin-bottom: 28px; }
+  h1 { font-size: 1.7rem; margin: 0 0 6px; line-height: 1.3; }
+  .meta { color: var(--muted); font-size: 0.92rem; }
+  h2 { font-size: 1.25rem; margin: 40px 0 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+  h3 { font-size: 1.05rem; margin: 22px 0 8px; color: var(--accent); }
+  h4 { font-size: 0.98rem; margin: 16px 0 6px; }
+  p { margin: 0 0 12px; }
+  ul, ol { margin: 0 0 12px; padding-left: 22px; }
+  li { margin-bottom: 6px; }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: 0.92em; }
+  .note { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 10px 14px; border-radius: 0 6px 6px 0; margin: 14px 0; }
+  .warn { border-left: 3px solid var(--warn); background: var(--warn-soft); padding: 10px 14px; border-radius: 0 6px 6px 0; margin: 14px 0; }
+  .ok   { border-left: 3px solid var(--ok);   background: var(--ok-soft);   padding: 10px 14px; border-radius: 0 6px 6px 0; margin: 14px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 18px; font-size: 0.93rem; }
+  th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { background: var(--card); font-weight: 600; }
+  .tag { display: inline-block; font-size: 0.78rem; padding: 1px 7px; border-radius: 10px; border: 1px solid var(--line); color: var(--muted); margin-left: 4px; }
+  .toc { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px; }
+  .toc ol { margin: 0; }
+  .src li { font-size: 0.9rem; }
+  a { color: var(--accent); }
+  @media (max-width: 600px) { table { display: block; overflow-x: auto; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Bayesian 피처 선택 문헌 조사: held-out ELPD를 기준으로 삼을 때</h1>
+  <div class="meta">
+    작성 2026-09-29 · 선행 문서: <a href="01_evaluation_metrics_survey.html">01_evaluation_metrics_survey.html</a> ·
+    대상: <code>main.tex</code> Section V (Ride-Response Features and Bayesian Feature Selection) 와 Section VI-H
+  </div>
+</header>
+
+<div class="warn">
+  <strong>조사 범위와 한계.</strong> 01 문서와 같이 웹 검색으로 초록, 요약, 인용문 수준까지 확인했다. 프록시가 arXiv 등 본문을
+  차단해 원문은 읽지 못했다. 원문을 읽어야 확정되는 세부는 <span class="tag">기억 기반</span>으로 표시했다.
+</div>
+
+<nav class="toc">
+  <strong>목차</strong>
+  <ol>
+    <li><a href="#s1">전제: 선택의 목적을 먼저 정한다</a></li>
+    <li><a href="#s2">방법의 분류 체계</a></li>
+    <li><a href="#s3">사전분포 기반: spike-and-slab, group, horseshoe</a></li>
+    <li><a href="#s4">계층 / 다중 과제 모형에서의 공유 선택과 공통 vs 개인 분해</a></li>
+    <li><a href="#s5">사후 요약 기반: projection predictive, DSS, posterior summarization</a></li>
+    <li><a href="#s6">재표집 기반: stability selection과 선택 안정성 지표</a></li>
+    <li><a href="#s7">정보이론 기반 필터</a></li>
+    <li><a href="#s8">직접 CV 탐색과 selection-induced bias</a></li>
+    <li><a href="#s9">센서 수준 선택과 상관 사전 정리</a></li>
+    <li><a href="#s10">질문별 방법 매핑</a></li>
+    <li><a href="#s11">우리 논문의 선택 절차 확정안</a></li>
+    <li><a href="#s12">남는 위험과 점검 항목</a></li>
+    <li><a href="#src">출처</a></li>
+  </ol>
+</nav>
+
+<h2 id="s1">1. 전제: 선택의 목적을 먼저 정한다</h2>
+<p>
+  피처 선택은 목적이 셋으로 갈리고, 목적마다 맞는 방법과 맞는 기준이 다르다.
+</p>
+<ol>
+  <li><strong>예측 개선.</strong> 불필요한 피처를 빼서 held-out 예측을 좋게 만들기.</li>
+  <li><strong>해석.</strong> 예측을 재현하는 최소 집합을 찾고, 어떤 피처가 어떤 역할을 하는지 말하기.</li>
+  <li><strong>배포 결정.</strong> 어떤 센서를 빼도 되는지, 즉 비용이 드는 입력을 제거해도 성능이 유지되는지 판정하기.</li>
+</ol>
+<div class="warn">
+  Riha, Lindgren, Kohns, Bürkner, Vehtari (2026, "To select or not to select")는 유한 표본에서 모형 선택이 예측에
+  불필요하거나 해로울 수 있음을 보였다. 사전분포가 예측 공간에서 일관되면(predictively consistent), 유연한 전체 모형이
+  선택된 작은 모형과 예측 성능이 같거나 낫다. 선택이 도움이 되는 경우는 오히려 결합 사전분포가 나쁘다는 신호라고 본다.
+</div>
+<p>
+  따라서 우리 논문에서 피처 선택을 <em>예측 성능 개선</em>으로 내세우면 약하다. 기여 3은 목적 2와 3, 즉 "population이 어떤
+  피처를 쓰는가, 공통과 개인은 어떻게 갈리는가, 어떤 센서가 필요한가"로 세워야 하고, 선택된 집합의 held-out ELPD가 전체 뱅크와
+  <em>같다</em>는 것이 성공 조건이다. 01 문서에서 정한 주 지표(LOGO ELPD)는 이 성공 조건을 재는 자리에 쓰인다.
+</p>
+
+<h2 id="s2">2. 방법의 분류 체계</h2>
+<table>
+  <thead><tr><th>계열</th><th>선택이 일어나는 곳</th><th>대표 방법</th><th>출력</th></tr></thead>
+  <tbody>
+    <tr><td>사전분포 기반</td><td>모형 안 (희소 사전분포)</td><td>spike-and-slab, group spike-and-slab, (regularized) horseshoe</td><td>포함 확률(PIP), 수축된 계수</td></tr>
+    <tr><td>사후 요약 기반</td><td>모형 밖 (결정 문제)</td><td>projection predictive, DSS, posterior summarization</td><td>중첩 경로, 손실 곡선, 크기 선택</td></tr>
+    <tr><td>재표집 기반</td><td>데이터 부표집 반복</td><td>stability selection, cluster stability selection</td><td>선택 빈도, 오발견 상한</td></tr>
+    <tr><td>정보이론 필터</td><td>모형 이전</td><td>mRMR, JMI, CMIM, conditional MI</td><td>순위, 중복 제거</td></tr>
+    <tr><td>직접 CV 탐색</td><td>부분집합마다 재적합</td><td>forward / backward CV, leave-one-group-out ELPD</td><td>부분집합별 held-out 점수</td></tr>
+  </tbody>
+</table>
+<p>
+  현재 코드의 세 방법은 각각 첫째(spike-and-slab), 둘째(projpred), 넷째(CMI) 계열이다. 결과가 다르게 나오는 이유는 계열이
+  다른 질문에 답하기 때문이고, 어느 하나가 다른 하나를 검증하지 않는다. 다섯째 계열이 유일하게 01 문서의 주 지표를 직접 재지만,
+  후보가 많으면 selection-induced bias가 생긴다(8절).
+</p>
+
+<h2 id="s3">3. 사전분포 기반: spike-and-slab, group, horseshoe</h2>
+<h3>3.1 Spike-and-slab</h3>
+<ul>
+  <li><strong>George &amp; McCulloch (1993, 1997).</strong> SSVS의 원형. 잠재 지표로 포함/제외를 표현하고 Gibbs로 사후 포함 확률을 얻는다.</li>
+  <li><strong>Malsiner-Walli &amp; Wagner (2011).</strong> spike/slab 변형들의 비교. 포함 확률은 효과 크기와 함께 커지고 <em>slab 분산이 커지면 작아진다</em>. 상관된 회귀변수에서는 g-slab, f-slab 같은 종속 slab에서 포함 확률이 낮아지고, 독립 slab에서는 높아진다. Dirac spike가 연속 spike보다 MCMC 효율이 좋다.</li>
+  <li><strong>Yang, Wainwright, Jordan (2016).</strong> 사후 집중(통계적 성질)이 빠른 혼합(계산적 성질)을 보장하지 않는다. 절단 희소 사전분포 아래서 특정 Metropolis-Hastings의 혼합 시간이 변수 수에 거의 선형임을 보였다. 상관 설계에서 지표 체인이 잘 섞이는지 진단해야 한다는 근거.</li>
+  <li><strong>Barbieri &amp; Berger (2004).</strong> 예측 최적 모형은 최고 사후확률 모형이 아니라 <em>median probability model</em>, 즉 PIP가 1/2 이상인 변수들의 모형이다. 제곱 오차 손실과 직교(또는 중첩) 설계 조건 아래 최적성이 성립한다. 우리 PIP 임계값 1/2의 근거이지만, 상관 설계에서는 보장이 약해지므로 사전 정리(9절)가 그 전제를 돕는다.</li>
+</ul>
+<div class="note">
+  <strong>우리 모형의 특수성.</strong> 우리 slab는 N(mu, Sigma)이고 Sigma가 데이터에서 학습되는 population 공분산이다. 즉 slab 분산이
+  고정 하이퍼파라미터가 아니라 사후분포에서 결정된다. Malsiner-Walli &amp; Wagner의 결과에 비추면, 개인차가 큰(Sigma_jj 큰) 피처는 같은 효과
+  크기에서도 PIP가 낮게 나올 수 있다. 따라서 PIP를 "관련성"으로 읽지 말고 "population이 공통 사용하는가"로 읽어야 하며, 개인차는
+  4절의 분해에서 따로 본다.
+</div>
+<h3>3.2 Group spike-and-slab</h3>
+<ul>
+  <li><strong>Xu &amp; Ghosh (2015, Bayesian Analysis).</strong> Bayesian group lasso를 spike-and-slab으로 재구성해 그룹 수준과 그룹 내 선택을 함께 한다. 사후 중위수 추정량이 직교 설계에서 oracle 성질을 갖고, median thresholding으로 정확히 0인 추정치를 얻는다. 우리 "sensor 단위 gamma"가 이 계열이다.</li>
+  <li>변분 근사 버전들(2023)이 있으나, 우리 규모(d 약 50, U 약 10)에서는 Gibbs가 충분하다.</li>
+</ul>
+<h3>3.3 Regularized horseshoe</h3>
+<ul>
+  <li><strong>Piironen &amp; Vehtari (2017, EJS).</strong> 전역 수축 하이퍼파라미터의 사전분포를 "0이 아닌 계수의 유효 개수"로 지정하는 방법과, 큰 계수에 최소 정규화를 주는 regularized horseshoe를 제안. 유한 slab 폭의 spike-and-slab의 연속 대응물로 볼 수 있고, 로지스틱 회귀의 분리(separation) 상황에서 유리하다.</li>
+  <li>장점은 이산 지표가 없어 HMC로 잘 섞인다는 것. 단점은 정확한 0이 없어 "센서를 제거해도 된다"는 주장을 직접 지지하지 못한다는 것. projpred의 기준 모형으로 쓰는 것이 표준 조합이다.</li>
+</ul>
+<p>
+  우리 코드의 exact-zero group spike-and-slab은 센서 제거 주장에 유리하므로 유지하고, horseshoe 기준 모형은 강건성 점검(부록)으로 두는 것이 맞다.
+</p>
+
+<h2 id="s4">4. 계층 / 다중 과제 모형에서의 공유 선택과 공통 vs 개인 분해</h2>
+<p>이 절이 기여 3의 "공통 / 개인 / 비활성" 분해에 가장 직접적인 선행 연구다.</p>
+<h3>4.1 고정효과와 랜덤효과의 동시 선택</h3>
+<ul>
+  <li><strong>Kinney &amp; Dunson (2007, Biometrics).</strong> 로지스틱 혼합효과 모형에서 어떤 변수가 고정효과에, 어떤 변수가 랜덤효과에 들어가야 하는지를 stochastic search Gibbs로 동시에 선택한다. 고정효과 계수가 0인지와 랜덤효과 <em>분산</em>이 0인지를 각각 지표로 다루고, 변수마다 두 종류의 포함 확률을 얻는다. 분산 성분에는 folded-t 사전분포와 parameter-expansion을 쓴다.</li>
+  <li><strong>Frühwirth-Schnatter &amp; Tüchler (2008, Statistics and Computing).</strong> 랜덤효과 공분산의 Cholesky 인자에 비중심 모수화를 써서, 각 효과가 랜덤인지 아닌지와 공분산이 0인지를 변수 선택 방법으로 결정한다.</li>
+  <li><strong>Frühwirth-Schnatter &amp; Wagner (2010, 2011).</strong> 분산에 대한 수축 사전분포로 "효과가 시변인가 상수인가", "랜덤인가 고정인가"를 모형 공간 MCMC로 탐색한다.</li>
+</ul>
+<div class="ok">
+  <strong>우리 분해와의 대응.</strong> 이 문헌의 언어로 쓰면, 피처 j에 대해
+  <em>비활성</em> = 고정효과 0이고 랜덤효과 분산 0,
+  <em>공통</em> = 고정효과 mu_j가 0이 아니고 랜덤효과 분산 Sigma_jj가 작음,
+  <em>개인</em> = 랜덤효과 분산 Sigma_jj가 큼(부호가 사용자마다 갈릴 수 있음).
+  우리 q_j = E[Phi(|mu_j| / sqrt(Sigma_jj))]는 이 구분을 사후 요약으로 연속화한 것이다. 형식적 대안은 Kinney &amp; Dunson처럼
+  Sigma_jj에도 spike-and-slab을 두는 것이지만, 우리 Sigma는 inverse-Wishart 전체 공분산이라 구조를 바꿔야 한다. 논문에서는 q_j를
+  Kinney &amp; Dunson의 두 포함 확률에 대응하는 요약 통계로 소개하고, 형식적 분산 선택은 future work으로 두면 된다.
+</div>
+<h3>4.2 다중 과제 학습의 공유 희소성</h3>
+<ul>
+  <li><strong>Hernández-Lobato et al. (2010, ECML).</strong> 일반화 spike-and-slab으로 여러 과제가 <em>공통 부분집합</em>을 선택하도록 강제하고 EP로 추론한다. 우리 "사용자 공통 gamma"와 같은 구조다.</li>
+  <li><strong>Jalali, Sanghavi, Ruan, Ravikumar (2010, NIPS, "dirty model").</strong> 계수 행렬을 블록 희소(공유 support)와 원소 희소(과제별 support)의 합으로 분해하는 l1 + l1,inf 정규화. 어떤 피처는 일부 과제만 쓴다는 것을 허용한다. 우리 "공통 vs 개인"의 빈도주의 대응물이며, 공유 support만 두는 우리 gamma의 한계(개인만 쓰는 피처는 공통 gamma로는 잡히지 않음)를 설명할 때 인용할 수 있다.</li>
+</ul>
+<p>
+  우리 모형에서 "개인만 쓰는 피처"는 gamma가 아니라 Sigma_jj를 통해 표현된다. gamma_j = 1이면서 mu_j 약 0, Sigma_jj 큼이 그 경우다. 따라서 공유 gamma는 dirty model의 공유 support가 아니라 "누구라도 쓰는가"에 해당하고, 개인 support는 연속적으로 Sigma에 들어 있다. 이 점을 V-D에서 한 문장으로 명시하면 심사자의 "왜 사용자별 지표를 두지 않았나" 질문에 답이 된다.
+</p>
+
+<h2 id="s5">5. 사후 요약 기반: projection predictive, DSS, posterior summarization</h2>
+<h3>5.1 Projection predictive inference</h3>
+<ul>
+  <li><strong>Piironen, Paasiniemi, Vehtari (2020, EJS).</strong> 결정이론적 2단계: 먼저 예측이 좋은(희소하지 않아도 되는) 기준 모형을 만들고, 그 예측을 재현하는 최소 부분집합을 KL 투영으로 찾는다. 제외된 피처와 사전분포의 정보가 투영을 통해 부분모형에 들어오므로 희소성과 예측력의 절충이 좋다. 크기 선택에는 빠른 LOO를 쓴다.</li>
+  <li><strong>Pavone, Piironen, Bürkner, Vehtari (2022, Computational Statistics).</strong> 기준 모형이 왜 선택을 안정화하는가: 기준 모형은 목표 변수의 잡음 필터로 작동한다. 잡음이 선택 불안정의 주원인이므로, 기준 모형 예측에 맞추는 것이 원 데이터에 맞추는 것보다 분산이 크게 줄어든다.</li>
+  <li><strong>Catalina, Bürkner, Vehtari (2022, AISTATS).</strong> projpred를 일반화 선형 및 가법 <em>다수준(multilevel)</em> 모형으로 확장. 그룹 수준 항을 가진 기준 모형을 부분모형으로 투영한다. 우리 계층 모형에 projpred를 쓰는 것의 직접 선행이다. 우리 구현은 사용자별로 따로 투영하는데(각 u마다 b_S^(m,u)), 이 논문은 다수준 부분모형으로 투영한다는 점이 다르다 <span class="tag">기억 기반</span>.</li>
+  <li><strong>McLatchie, Rögnvaldsson, Weber, Vehtari (2025, Statistical Science).</strong> 안전하고 효율적인 작업 흐름. forward 탐색, 교차검증된 탐색(cv_varsel), 크기 결정 휴리스틱 두 가지(효용 차이 구간 기반, 기준 모형과의 평균 ELPD 차이 기반). 가장 흔한 규칙은 "기준 모형의 효용에서 1 표준오차 안에 드는 가장 작은 부분모형"이며, 표준오차는 <em>차이</em>의 표준오차다. <code>suggest_size()</code>는 휴리스틱이므로 그림을 보고 최종 결정하라고 권한다. 단순 CV나 정보 기준으로 고르는 것보다 과적합이 덜하다.</li>
+  <li><strong>Weber et al. (2024, Computational Statistics).</strong> 유한 지지집합 이산 반응 가족으로 확장.</li>
+</ul>
+<div class="note">
+  <strong>우리 구현과의 차이 두 가지.</strong> (1) 정지 규칙. 우리는 "intercept-only에서 full까지의 KL 감소 중 95% 회복"인데, 표준은
+  "기준 모형과의 held-out ELPD 차이가 1 SE 이내". 전자는 in-sample KL 기준이고 후자는 예측 기준이다. 95% 규칙을 유지하려면 그 근거를
+  대야 하고, 표준 규칙으로 바꾸면 01 문서의 주 지표와 정합한다. (2) 부분모형의 형태. 우리는 사용자별 독립 로지스틱으로 투영한다.
+  Catalina et al.은 다수준 부분모형으로 투영한다. 사용자별 투영은 "각 사용자의 예측을 재현하는 피처"를 묻는 것이고, 다수준 투영은
+  "계층 구조를 유지한 채 재현"을 묻는다. 후자가 우리 모형과 일관되지만 구현 비용이 크다. 논문에서는 사용자별 투영을 택한 이유
+  (계산이 결정적이고 빠르며 Gibbs 재실행이 없음)를 적고 차이를 명시한다.
+</div>
+<h3>5.2 Decoupling shrinkage and selection (DSS)</h3>
+<p>
+  <strong>Hahn &amp; Carvalho (2015, JASA).</strong> 회귀 계수의 전체 사후분포를 희소 선형 예측기의 열(sequence)로 요약한다. 선택은 사후 예측
+  분포의 척도 위에서 하므로 "얼마나 적합을 잃는가"에 의미 있는 눈금이 생긴다. 우리 "KL 회복 비율 alpha"가 이 눈금에 해당하고, DSS의
+  "excess loss vs. sparsity" 그림 형식은 V-C 결과 그림으로 그대로 쓸 수 있다.
+</p>
+<h3>5.3 Lower-dimensional posterior summarization</h3>
+<p>
+  <strong>Woody, Carvalho, Murray (2021, JCGS).</strong> 모형 적합과 해석을 분리하는 2단계. 복잡한 모형의 사후분포를 해석 가능한 저차원
+  요약으로 투영하고, 데이터를 한 번만 쓰므로 여러 요약에 걸쳐 Bayesian 불확실성이 유효하게 남는다. 우리 q_j, S_j, 공통/개인/비활성 분류는
+  이 의미의 사후 요약이다. 요약마다 posterior draw별로 계산해 불확실성 구간을 함께 보고하는 것이 이 틀의 요구다.
+</p>
+
+<h2 id="s6">6. 재표집 기반: stability selection과 선택 안정성 지표</h2>
+<ul>
+  <li><strong>Meinshausen &amp; Bühlmann (2010, JRSS-B).</strong> 부표집마다 기본 선택기(예: lasso)를 돌려 선택 빈도를 세고, 임계값을 넘는 변수를 안정 변수로 선언한다. 오발견 기대 수에 대한 유한 표본 상한이 있다. Shah &amp; Samworth (2013)의 complementary pairs 버전이 상한을 개선한다.</li>
+  <li><strong>Faletto &amp; Bien (2022, cluster stability selection).</strong> 상관이 높은 대리 변수들이 <em>표를 나눠 가져</em>(split the vote) 아무 것도 선택되지 않는 실패를 지적하고, 미리 정한 군집 단위로 선택 확률을 계산한다. 같은 이론 보장을 유지한다.</li>
+  <li><strong>Nogueira, Sechidis, Brown (2018, JMLR).</strong> 피처 선택 알고리즘의 안정성을 정량화하는 통계적 척도. 추정치, 분산, 신뢰구간, 두 절차의 안정성 비교 가설검정을 제공한다.</li>
+</ul>
+<div class="note">
+  PIP의 dilution(3.1)과 stability selection의 vote splitting은 같은 현상이다. 우리 "sensor 단위 gamma"는 cluster stability selection의
+  군집 배정과 같은 발상이고, 상관 사전 정리(9절)도 같은 문제를 완화한다. 빈도주의 대응물이 있다는 점은 심사자가 "Bayesian 포함 확률만
+  믿을 수 있나"라고 물을 때의 방어선이다. Nogueira 척도는 LOEO 폴드마다 선택된 집합이 얼마나 일치하는지를 한 수치로 보고할 수 있게 한다.
+</div>
+
+<h2 id="s7">7. 정보이론 기반 필터</h2>
+<ul>
+  <li><strong>Brown, Pocock, Zhao, Luján (2012, JMLR).</strong> mRMR, JMI, CMIM 등 정보이론 기준들을 조건부 우도 최대화라는 하나의 틀로 통합하고, 각 기준이 어떤 근사를 하는지 밝혔다.</li>
+  <li><strong>Vergara &amp; Estévez (2014).</strong> 관련성, 중복성, 상보성(synergy), Markov blanket을 정의하고 방법들을 검토. 작은 표본에서는 JMI가 정확도, 안정성, 유연성의 절충이 가장 좋다.</li>
+</ul>
+<p>
+  우리 conditional-MI 모듈은 사용자별 로지스틱 회귀의 교차 적합 log score 차이로 I(Y; Z_A | Z_S, U)를 추정하는 모형 기반 추정기다. 계열상 필터이며
+  계층 구조와 새 사용자 문제를 반영하지 않는다. 본문에서 빼고 부록에서 "선택된 집합이 모형 없는 관련성 기준으로도 지지되는가"를 확인하는 용도로만
+  쓰는 결정은 이 문헌에 비추어도 맞다.
+</p>
+
+<h2 id="s8">8. 직접 CV 탐색과 selection-induced bias</h2>
+<ul>
+  <li><strong>Piironen &amp; Vehtari (2017, Statistics and Computing).</strong> Bayesian 모형 선택 방법들의 비교. CV 점수 같은 효용 추정치를 <em>최적화</em>하면 데이터가 적을 때 추정치의 분산 때문에 과적합된 모형을 고르게 되고, 선택된 모형의 성능 평가에 낙관 편향이 생긴다. CV는 탐색 <em>바깥</em>에서 크기 선택과 최종 평가에 쓸 때 가치가 크다. 후보가 많을수록 projection predictive가 유리하다.</li>
+  <li><strong>McLatchie &amp; Vehtari (2023).</strong> 순서통계량으로 selection-induced bias를 추정하고 보정한다.</li>
+  <li><strong>Vehtari CV-FAQ.</strong> 후보 모형이 소수면 선택 과적합이 작고, 다수(변수 선택)면 문제가 된다.</li>
+</ul>
+<div class="warn">
+  우리 뱅크는 d 약 50이므로 forward CV 탐색을 그대로 하면 후보 수가 수천이 되어 편향이 크다. projpred 경로로 후보를 d개의 중첩 집합으로
+  줄인 뒤 그 위에서만 LOGO ELPD를 계산하는 것이 이 문헌의 권고와 정확히 일치한다. 그래도 최종 선택된 집합의 성능은 선택에 쓰지 않은
+  바깥 LOEO 폴드(nested)에서 보고해야 낙관 편향이 없다.
+</div>
+
+<h2 id="s9">9. 센서 수준 선택과 상관 사전 정리</h2>
+<h3>9.1 센서 선택</h3>
+<ul>
+  <li>웨어러블 활동 인식 분야에서는 ablation(leave-one-sensor-out)으로 센서 부분집합을 고르는 것이 관행이다. 11개 노드 중 7개, 심지어 3개로도 정확도가 거의 유지된 사례가 보고되었고, 센서 과잉 배치 점검의 근거로 쓰인다.</li>
+  <li><strong>Minimum-cost sensor channel selection (2024).</strong> 성능 임계값을 만족하는 최소 비용 채널 부분집합을 branch and bound로 전역 최적, greedy로 근사 해결. 비용 절감 90% 안팎.</li>
+  <li>이론적으로는 group sparsity(group lasso, Yuan &amp; Lin 2006; group spike-and-slab, 3.2)가 센서 = 그룹의 자연스러운 형식이다.</li>
+</ul>
+<div class="ok">
+  우리 채널은 5개이므로 부분집합이 32개뿐이다. 경로 탐색이나 근사 없이 <strong>전수</strong>로 각 부분집합의 LOGO ELPD를 계산할 수 있다.
+  기여 3의 "어느 센서가 필요한가"는 이 32행 표 하나와 leave-one-sensor-out 요약으로 답하는 것이 가장 직접적이고, sensor 단위 PIP와
+  projpred 센서 경로는 그 표를 설명하는 보조 자료가 된다.
+</div>
+<h3>9.2 상관 사전 정리</h3>
+<p>
+  <strong>Dormann et al. (2013, Ecography).</strong> 공선성 대처 방법 23종의 검토와 시뮬레이션. 공선성은 계수 분산을 키우고 관련 변수 식별을 그르친다.
+  공선성 전용 방법(잠재변수, 트리 기반)이 전통적 GLM과 <em>임계값 기반 사전 선택</em>보다 낫지 않았다. 분야 관행의 임계값은 |r| 약 0.7이다.
+</p>
+<p>
+  우리 규칙 0.95는 이보다 보수적이다. 이 차이는 의도적으로 설명해야 한다: 우리는 공선성을 제거하려는 것이 아니라(계층 Bayesian 모형이
+  중간 정도 상관은 사후분포로 흡수한다) <em>거의 중복인 열</em>(RMS와 표준편차 등)을 제거해 피처 단위 포함 확률이 정의되게 하고 투영 Hessian의
+  특이성을 막으려는 것이다. 0.7로 내리면 물리적으로 다른 통계(예: 피크와 RMS)가 함께 지워질 수 있다. 격자에 0.90과 0.99를 넣어 민감도를 보인다.
+</p>
+
+<h2 id="s10">10. 질문별 방법 매핑</h2>
+<table>
+  <thead><tr><th>질문</th><th>맞는 방법</th><th>출력</th><th>판정 기준</th></tr></thead>
+  <tbody>
+    <tr><td>population이 이 피처를 쓰는가</td><td>공유 group spike-and-slab (3.1, 3.2)</td><td>PIP, median probability model</td><td>PIP 1/2 (Barbieri &amp; Berger), 지표 체인 혼합 진단</td></tr>
+    <tr><td>예측을 재현하는 최소 집합은</td><td>projection predictive (5.1)</td><td>중첩 경로, 손실 곡선</td><td>기준 모형 대비 LOGO ELPD 차이 1 SE 이내의 최소 크기</td></tr>
+    <tr><td>어느 센서를 빼도 되는가</td><td>전수 부분집합 LOGO ELPD (9.1), sensor PIP, sensor projpred</td><td>32행 표, leave-one-sensor-out</td><td>전체 대비 ΔELPD와 SE, 차이 4 규칙</td></tr>
+    <tr><td>공통인가 개인인가</td><td>고정/랜덤 효과 선택 관점 (4.1), 사후 요약 (5.3)</td><td>q_j, S_j, Sigma_jj 사후분포</td><td>q_j 임계값 0.9와 민감도</td></tr>
+    <tr><td>선택이 데이터에 안정적인가</td><td>cluster stability selection (6), Nogueira 척도</td><td>폴드별 선택 빈도, 안정성 지수와 CI</td><td>보고용, 임계값 없음</td></tr>
+    <tr><td>모형 없는 관련성으로도 지지되는가</td><td>conditional MI / JMI (7)</td><td>forward 순위</td><td>부록, 일치표</td></tr>
+    <tr><td>선택이 예측을 해치지 않았는가</td><td>바깥 LOEO 재적합 (8)</td><td>선택 집합 vs 전체 뱅크 ELPD</td><td>차이가 0에 가깝고 SE 안</td></tr>
+  </tbody>
+</table>
+
+<h2 id="s11">11. 우리 논문의 선택 절차 확정안</h2>
+<p>아래는 데이터를 보기 전에 고정할 절차다. 각 단계에 근거 문헌을 붙였다.</p>
+<ol>
+  <li><strong>정리.</strong> population 폴드 안에서 |r| 0.95 이상 쌍 제거, 우선순위 규칙 고정 (Dormann 2013; 목적은 중복 제거).</li>
+  <li><strong>기준 모형.</strong> 정리된 전체 뱅크 + 공유 group spike-and-slab의 계층 모형 (George &amp; McCulloch; Xu &amp; Ghosh; Hernández-Lobato 2010). 강건성으로 regularized horseshoe 기준 모형을 부록에 (Piironen &amp; Vehtari 2017).</li>
+  <li><strong>피처 수준 후보 집합 두 개.</strong>
+      (a) median probability model: PIP 1/2 이상 (Barbieri &amp; Berger 2004).
+      (b) projpred forward 경로 위에서 기준 모형과의 nested-LOGO ELPD 차이가 1 SE 이내인 최소 집합 (McLatchie et al. 2025; Catalina et al. 2022). 정지 규칙을 현재의 "KL 95% 회복"에서 이것으로 바꾸거나, 둘을 함께 보고하고 차이를 논한다.</li>
+  <li><strong>센서 수준.</strong> 5채널 32개 부분집합 전수 LOGO ELPD 표 + leave-one-sensor-out. sensor PIP와 sensor projpred 경로는 보조 (9.1).</li>
+  <li><strong>분해.</strong> 포함된 피처마다 q_j, S_j를 posterior draw별로 계산해 구간과 함께 보고 (Woody et al. 2021). 분류는 Kinney &amp; Dunson의 고정/랜덤 효과 선택 언어로 소개하고, 형식적 분산 선택은 future work (4.1).</li>
+  <li><strong>안정성.</strong> LOEO 폴드별 선택 집합의 Nogueira 안정성 지수, 채널 군집을 쓴 cluster stability selection의 선택 빈도 (6).</li>
+  <li><strong>일치표.</strong> PIP, projpred, CSS, CMI 네 진단이 같은 피처를 가리키는지 한 표에 (7).</li>
+  <li><strong>최종 평가.</strong> 선택 집합으로 재적합한 계층 모형의 바깥 LOEO ELPD를 전체 뱅크와 비교. 성공 조건은 "차이가 SE 안"이며 "개선"이 아니다 (Riha et al. 2026; Piironen &amp; Vehtari 2017).</li>
+</ol>
+<div class="ok">
+  이 절차에서 기준(LOGO ELPD), 탐색(projpred 경로 또는 전수), 정지(1 SE), 보고(진단 일치표)가 모두 사전에 정해지므로 "사후 분석"이라는
+  인상이 사라진다. 세 방법의 결과가 달라도 "다른 질문에 대한 답"으로 정리되어 일치표가 오히려 해석 자료가 된다.
+</div>
+
+<h2 id="s12">12. 남는 위험과 점검 항목</h2>
+<ul>
+  <li><strong>PIP dilution과 slab 의존.</strong> 상관 피처 간 표 나눔, Sigma_jj가 큰 피처의 PIP 저하 (3.1). 대응: 사전 정리, sensor 단위 결과 병행, (a,b) 격자와 slab 민감도 보고.</li>
+  <li><strong>지표 체인의 혼합.</strong> 상관 설계에서 gamma 체인이 느리게 섞일 수 있다 (Yang et al. 2016; Malsiner-Walli &amp; Wagner 2011). 대응: 다중 체인, 포함 개수 trace, gamma 단위별 Rhat.</li>
+  <li><strong>정지 규칙의 근거.</strong> KL 95%는 관행이 아니다. 표준 1 SE 규칙으로 통일하거나 둘을 병기 (5.1).</li>
+  <li><strong>투영 대상의 형태.</strong> 사용자별 투영 vs 다수준 투영 차이를 명시 (5.1, Catalina et al.).</li>
+  <li><strong>Selection-induced optimism.</strong> 선택에 쓴 폴드에서 최종 성능을 보고하지 않기; 바깥 LOEO 필수 (8).</li>
+  <li><strong>표준오차의 신뢰성.</strong> 평가자 수가 작으면 ELPD 차이의 SE가 불안정하다 (01 문서 1절). 1 SE 규칙의 결과가 SE 추정에 민감할 수 있음을 적는다.</li>
+  <li><strong>공유 gamma의 표현 한계.</strong> 일부 사용자만 쓰는 피처는 gamma가 아니라 Sigma로 표현된다는 점을 V-D에서 명시 (4.2, Jalali dirty model).</li>
+  <li><strong>주장의 수위.</strong> 선택으로 예측이 좋아졌다고 쓰지 않는다. "같은 성능을 더 적은 피처와 센서로" 가 주장이다 (1절).</li>
+</ul>
+
+<h2 id="src">출처</h2>
+<ul class="src">
+  <li><a href="https://arxiv.org/abs/2606.22850">Riha, Lindgren, Kohns, Bürkner, Vehtari, To select or not to select: predictively consistent priors instead of model selection (arXiv 2026)</a></li>
+  <li><a href="https://projecteuclid.org/journals/electronic-journal-of-statistics/volume-14/issue-1/Projective-inference-in-high-dimensional-problems--Prediction-and-feature/10.1214/20-EJS1711.full">Piironen, Paasiniemi, Vehtari, Projective inference in high-dimensional problems (EJS 2020)</a></li>
+  <li><a href="https://research.aalto.fi/en/publications/using-reference-models-in-variable-selection/">Pavone, Piironen, Bürkner, Vehtari, Using reference models in variable selection (Computational Statistics 2022)</a></li>
+  <li><a href="https://proceedings.mlr.press/v151/catalina22a.html">Catalina, Bürkner, Vehtari, Projection Predictive Inference for Generalized Linear and Additive Multilevel Models (AISTATS 2022)</a></li>
+  <li><a href="https://projecteuclid.org/journals/statistical-science/volume-40/issue-1/Advances-in-Projection-Predictive-Inference/10.1214/24-STS949.full">McLatchie, Rögnvaldsson, Weber, Vehtari, Advances in Projection Predictive Inference (Statistical Science 2025)</a></li>
+  <li><a href="https://link.springer.com/article/10.1007/s00180-024-01506-0">Weber et al., Projection predictive variable selection for discrete response families with finite support (Computational Statistics 2024)</a></li>
+  <li><a href="https://mc-stan.org/projpred/reference/suggest_size.html">projpred: suggest_size()</a></li>
+  <li><a href="https://avehtari.github.io/modelselection/bodyfat.html">Vehtari, Projection predictive variable selection: review and recommendations (bodyfat case study)</a></li>
+  <li><a href="https://arxiv.org/pdf/1503.08650">Piironen &amp; Vehtari, Comparison of Bayesian predictive methods for model selection (Statistics and Computing 2017)</a></li>
+  <li><a href="https://arxiv.org/pdf/2309.03742">McLatchie &amp; Vehtari, Efficient estimation and correction of selection-induced bias with order statistics (2023)</a></li>
+  <li><a href="https://avehtari.github.io/modelselection/CV-FAQ.html">Vehtari, Cross-validation FAQ</a></li>
+  <li><a href="https://projecteuclid.org/euclid.aos/1085408489">Barbieri &amp; Berger, Optimal predictive model selection (Annals of Statistics 2004)</a></li>
+  <li><a href="https://arxiv.org/abs/1408.0464">Hahn &amp; Carvalho, Decoupling shrinkage and selection in Bayesian linear models (JASA 2015)</a></li>
+  <li><a href="https://www.tandfonline.com/doi/abs/10.1080/10618600.2020.1796684">Woody, Carvalho, Murray, Model interpretation through lower-dimensional posterior summarization (JCGS 2021)</a></li>
+  <li><a href="https://projecteuclid.org/journals/electronic-journal-of-statistics/volume-11/issue-2/Sparsity-information-and-regularization-in-the-horseshoe-and-other-shrinkage/10.1214/17-EJS1337SI.full">Piironen &amp; Vehtari, Sparsity information and regularization in the horseshoe and other shrinkage priors (EJS 2017)</a></li>
+  <li><a href="https://projecteuclid.org/euclid.ba/1423083633">Xu &amp; Ghosh, Bayesian Variable Selection and Estimation for Group Lasso (Bayesian Analysis 2015)</a></li>
+  <li><a href="https://arxiv.org/abs/1812.07259">Malsiner-Walli &amp; Wagner, Comparing Spike and Slab Priors for Bayesian Variable Selection (Austrian J. Statistics 2011)</a></li>
+  <li><a href="https://projecteuclid.org/journals/annals-of-statistics/volume-44/issue-6/On-the-computational-complexity-of-high-dimensional-Bayesian-variable-selection/10.1214/15-AOS1417.full">Yang, Wainwright, Jordan, On the computational complexity of high-dimensional Bayesian variable selection (Annals of Statistics 2016)</a></li>
+  <li><a href="https://academic.oup.com/biometrics/article/63/3/690/7324899">Kinney &amp; Dunson, Fixed and Random Effects Selection in Linear and Logistic Models (Biometrics 2007)</a></li>
+  <li><a href="https://link.springer.com/article/10.1007/s11222-007-9030-2">Frühwirth-Schnatter &amp; Tüchler, Bayesian parsimonious covariance estimation for hierarchical linear mixed models (Statistics and Computing 2008)</a></li>
+  <li><a href="https://www.sciencedirect.com/science/article/abs/pii/S0304407609001614">Frühwirth-Schnatter &amp; Wagner, Stochastic model specification search for Gaussian and partial non-Gaussian state space models (J. Econometrics 2010)</a></li>
+  <li><a href="https://link.springer.com/chapter/10.1007/978-3-642-15880-3_39">Hernández-Lobato et al., Expectation Propagation for Bayesian Multi-task Feature Selection (ECML 2010)</a></li>
+  <li><a href="https://papers.nips.cc/paper/4125-a-dirty-model-for-multi-task-learning">Jalali, Sanghavi, Ruan, Ravikumar, A Dirty Model for Multi-task Learning (NIPS 2010)</a></li>
+  <li><a href="https://rss.onlinelibrary.wiley.com/doi/10.1111/j.1467-9868.2010.00740.x">Meinshausen &amp; Bühlmann, Stability Selection (JRSS-B 2010)</a></li>
+  <li><a href="https://arxiv.org/abs/2201.00494">Faletto &amp; Bien, Cluster Stability Selection (2022)</a></li>
+  <li><a href="https://jmlr.org/papers/v18/17-514.html">Nogueira, Sechidis, Brown, On the Stability of Feature Selection Algorithms (JMLR 2018)</a></li>
+  <li><a href="https://www.jmlr.org/papers/v13/brown12a.html">Brown, Pocock, Zhao, Luján, Conditional Likelihood Maximisation (JMLR 2012)</a></li>
+  <li><a href="https://link.springer.com/article/10.1007/s00521-013-1368-0">Vergara &amp; Estévez, A review of feature selection methods based on mutual information (Neural Computing and Applications 2014)</a></li>
+  <li><a href="https://arxiv.org/abs/2402.00875">Minimum-Cost Sensor Channel Selection For Wearable Computing (2024)</a></li>
+  <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7796131/">Ablation Analysis to Select Wearable Sensors for Classifying Standing, Walking, and Running</a></li>
+  <li><a href="https://research.utwente.nl/en/publications/collinearity-a-review-of-methods-to-deal-with-it-and-a-simulation/">Dormann et al., Collinearity: a review of methods to deal with it and a simulation study (Ecography 2013)</a></li>
+  <li><a href="https://github.com/odoomta-web/Hierarchical_SkinnyGibbs_Sampler-Codes">Hierarchical (skinny) Gibbs samplers for spike-and-slab logistic regression with Pólya–Gamma augmentation</a></li>
+</ul>
+</main>
+</body>
+</html>
