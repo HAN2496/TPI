@@ -136,7 +136,7 @@ with an evaluator-specific coefficient vector $\bm\theta_u\in\R^d$, and the judg
 \end{equation}
 Equation~\eqref{eq:logistic} is equivalent to $y_{ui}=\mathbb{I}(r_{ui}+\eta_{ui}>0)$ with standard logistic noise $\eta_{ui}$, so the model can be read either as a noisy threshold on a personal reward or as a Bernoulli likelihood. The coefficient vector is what personalization must learn: two evaluators who receive the same episode can produce different labels only through different $\bm\theta_u$.
 
-\subsection{Cold Start and Sequential Personalization}
+\subsection{Prediction Task for a New Evaluator}
 
 At deployment a new evaluator, denoted $\newuser$, enters the vehicle with no personal labels. After the evaluator has judged $t$ episodes, the personal context is
 \begin{equation}
@@ -147,7 +147,7 @@ which grows in recorded order. For every future episode $j$ the system must retu
  p_{\newuser j,t}=p\big(y_{\newuser j}=1\mid\bm z_{\newuser j},\D_{\newuser,t},\D_{1:U}\big),
  \label{eq:target}
 \end{equation}
-together with a measure of how much that probability can be trusted. The case $t=0$ is the cold start, in which the prediction relies entirely on the population data. The problem is thus to (i) learn from $\D_{1:U}$ a representation of the population that transfers to an unseen evaluator, (ii) update it from a small $t$, and (iii) quantify the uncertainty of \eqref{eq:target} at every $t$. A secondary question, answered in Section~\ref{sec:features}, is which components of $\bm z$, and hence which sensors, are needed for (i)--(iii).
+together with a measure of how much that probability can be trusted. We call the case $t=0$ the \emph{cold start}, in which the prediction relies entirely on the population data, and the passage from $t=0$ through increasing $t$ \emph{sequential personalization}. The problem is thus to (i) learn from $\D_{1:U}$ a representation of the population that transfers to an unseen evaluator, (ii) update it from a small $t$, and (iii) quantify the uncertainty of \eqref{eq:target} at every $t$. A secondary question, answered in Section~\ref{sec:features}, is which components of $\bm z$, and hence which sensors, are needed for (i)--(iii).
 
 \section{Hierarchical Fully Bayesian Preference Model}
 \label{sec:model}
