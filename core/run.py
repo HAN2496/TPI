@@ -5,7 +5,11 @@ from datetime import datetime
 from pathlib import Path
 
 import numpy as np
-import torch
+
+try:  # torch는 선택 의존성: 없는 환경(CPU 전용 분석 컨테이너)에서도 core를 import 할 수 있게 한다
+    import torch
+except ImportError:  # pragma: no cover
+    torch = None
 
 from .metrics import save_metrics_txt
 
@@ -13,8 +17,9 @@ from .metrics import save_metrics_txt
 def seed_all(seed):
     random.seed(seed)
     np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
+    if torch is not None:
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
 
 
 class Run:
