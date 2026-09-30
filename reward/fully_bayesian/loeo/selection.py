@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import time
 from itertools import combinations
 
 import numpy as np
@@ -52,13 +53,24 @@ def bank_from_features(bank, feature_names):
 
 
 def refit_and_score(cfg, sub_bank, channels, fs, pop_data, names, held, budgets, seed):
-    """Fit the hierarchical model on `sub_bank` for the population and score the held-out evaluator."""
+    """Fit the hierarchical model on `sub_bank` for the population and score the held-out evaluator.
+
+    Returns (metrics_by_budget, lpd_by_budget, timing, feature_names) where timing is a dict of
+    wall-clock seconds: 'features' (extraction + transform), 'gibbs' (reduced chain), 'eval'
+    (held-out protocol incl. metrics) and 'total'.
+    """
+    tic = time.time()
     phi = B.make_pipeline(sub_bank, channels, fs).fit([pop_data[n][0] for n in names], None)
+    t_feat = time.time() - tic
     pop, _, _, stats = P.fit_population(cfg, phi, pop_data, names,
                                         spike_slab=cfg.sel_spike_slab, reduced=True, seed=seed)
+    tic_ev = time.time()
     Z = phi.transform(held[0]).astype(np.float64)
     res, lpd, info = P.evaluate_proposed(cfg, pop, Z, np.asarray(held[1]), seed, budgets=budgets)
-    return res, lpd, stats["seconds"], phi.feature_names
+    t_eval = time.time() - tic_ev
+    total = time.time() - tic
+    timing = dict(features=total - stats["seconds"] - t_eval, gibbs=stats["seconds"], eval=t_eval, total=total)
+    return res, lpd, timing, phi.feature_names
 
 
 def sensor_subsets(channels, min_size=1):

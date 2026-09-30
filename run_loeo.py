@@ -284,7 +284,9 @@ def run_fold_select(cfg, run, name, data, channels, fs):
         obj = joblib.load(model_path)
         from reward.fully_bayesian.model import Population
         phi, pop = obj["phi"], Population.from_state_dict(obj["pop"])
-        pruned = dict(phi.pairs and {ch: [m for c, m in phi.pairs if c == ch] for ch, _ in phi.pairs})
+        pruned = {}                                     # {channel: [stats]} in pipeline order
+        for ch, st in phi.pairs:
+            pruned.setdefault(ch, []).append(st)
     else:
         bank = B.full_bank(channels)
         pruned, _ = B.prune_bank([pop_data[n][0] for n in pop_names], channels, fs, bank, cfg.rho_max)
@@ -293,7 +295,11 @@ def run_fold_select(cfg, run, name, data, channels, fs):
     d_feat = len(phi.feature_names) - 1
     budgets = list(cfg.sel_budgets)
     # projection-predictive path on the reference model
+    tic_pp = time.time()
     order = S.projpred_path(cfg, phi, pop, pop_data, unit="feature")
+    secs_pp = time.time() - tic_pp
+    log(cfg, f"[select] {name}: d={d_feat} reference {'loaded' if model_path.exists() else 'refit'}, "
+             f"projpred path {len(order) - 1} steps in {secs_pp:.1f}s")
     ks = S.size_grid(d_feat, cfg.sel_sizes)
     subsets = S.path_subsets(order, ks)
     subsets[d_feat] = [f for f in phi.feature_names if f != "bias"]
@@ -305,14 +311,15 @@ def run_fold_select(cfg, run, name, data, channels, fs):
     for label, feats in candidates.items():
         sub_bank = S.bank_from_features(pruned, feats)
         res, lpd, secs, fn = S.refit_and_score(cfg, sub_bank, channels, fs, pop_data, pop_names, held, budgets, cfg.seeds[0])
-        results[label] = dict(features=feats, n_features=len(feats), seconds=secs,
+        results[label] = dict(features=feats, n_features=len(feats), seconds=secs["total"], timing=secs,
                               metrics={str(t): v for t, v in res.items()},
                               lpd={str(t): v.tolist() for t, v in lpd.items()})
         log(cfg, f"[select] {name}: {label:>6} ({len(feats):2d} feats) "
-                 + "  ".join(f"t={t}: {res[t]['mlpd']:.3f}" for t in res) + f"  [{secs:.0f}s]")
+                 + "  ".join(f"t={t}: {res[t]['mlpd']:.3f}" for t in res)
+                 + f"  [{secs['total']:.1f}s: gibbs {secs['gibbs']:.1f} eval {secs['eval']:.1f}]")
     fold = dict(name=name, d_features=d_feat, sizes=ks, path=[dict(added=r["added"], kl=r["projection_kl"],
                 captured=r["captured"], n=r["n_features"] - 1) for r in order],
-                pip_set=pip_set, candidates=results, seconds=time.time() - tic)
+                pip_set=pip_set, candidates=results, seconds_projpred=secs_pp, seconds=time.time() - tic)
     R.write_json(fold, out_json)
     return fold
 
@@ -339,10 +346,11 @@ def run_fold_sensors(cfg, run, name, data, channels, fs):
         label = "+".join(subset)
         sub_bank = B.restrict_bank(pruned, subset)
         res, lpd, secs, fn = S.refit_and_score(cfg, sub_bank, channels, fs, pop_data, pop_names, held, budgets, cfg.seeds[0])
-        results[label] = dict(channels=subset, n_features=len(fn) - 1, seconds=secs,
+        results[label] = dict(channels=subset, n_features=len(fn) - 1, seconds=secs["total"], timing=secs,
                               metrics={str(t): v for t, v in res.items()},
                               lpd={str(t): v.tolist() for t, v in lpd.items()})
-        log(cfg, f"[sensors] {name}: {label:<70} " + "  ".join(f"t={t}: {res[t]['mlpd']:.3f}" for t in res))
+        log(cfg, f"[sensors] {name}: {label:<70} " + "  ".join(f"t={t}: {res[t]['mlpd']:.3f}" for t in res)
+                 + f"  [{secs['total']:.1f}s: gibbs {secs['gibbs']:.1f} eval {secs['eval']:.1f}]")
     fold = dict(name=name, subsets=results, seconds=time.time() - tic)
     R.write_json(fold, out_json)
     return fold
