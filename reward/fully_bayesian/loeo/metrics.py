@@ -102,8 +102,12 @@ def spearman(a, b):
     return float(spearmanr(a, b).correlation)
 
 
-def summarize(y, P, seed=0, trust_K=600):
-    """All holdout metrics for particle predictions P (M, N)."""
+def summarize(y, P, seed=0, trust_K=600, light=False):
+    """All holdout metrics for particle predictions P (M, N).
+
+    light=True skips the posterior x bootstrap reliability interval, which is the only
+    expensive part; selection reads MLPD only.
+    """
     from core.metrics import auroc_trust_interval
     P = np.asarray(P, float)
     p = P.mean(axis=0)
@@ -111,7 +115,10 @@ def summarize(y, P, seed=0, trust_K=600):
     lpd = pointwise_lpd(y, p)
     aurc, eaurc, _, _ = risk_coverage(y, p, epi)
     slope, intercept = calibration_slope_intercept(y, p)
-    trust = auroc_trust_interval(np.asarray(y), P, seed, K=trust_K)
+    if light:
+        trust = {"ci_lo": float("nan"), "ci_hi": float("nan"), "trustworthy": False}
+    else:
+        trust = auroc_trust_interval(np.asarray(y), P, seed, K=trust_K)
     return {
         "n": int(len(y)), "n_pos": int(np.sum(y)),
         "mlpd": float(lpd.mean()), "elpd": float(lpd.sum()),

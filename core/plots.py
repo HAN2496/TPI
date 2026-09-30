@@ -3,7 +3,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-plt.rcParams["font.family"] = "Malgun Gothic"
+from matplotlib import font_manager as _fm
+if any(f.name == "Malgun Gothic" for f in _fm.fontManager.ttflist):   # Windows desktop; silent elsewhere
+    plt.rcParams["font.family"] = "Malgun Gothic"
 plt.rcParams["axes.unicode_minus"] = False
 
 STYLE = {

@@ -11,6 +11,38 @@ from . import metrics as M
 
 MAIN_KEYS = ["mlpd", "brier", "auroc", "auprc", "ece", "cal_slope", "epi_mean", "ale_mean",
              "epi_ale_spearman", "correctness_auroc_epi", "aurc_epi", "eaurc_epi", "reliable_frac"]
+METHODS = ("proposed", "hb_full", "ebmap", "pooled", "indep", "gbt")
+FINAL = "final"          # pseudo-budget: the fold's whole context stream (t = n_ctx, differs per fold)
+
+
+def normalize_final(folds, regular_budgets, methods=METHODS):
+    """Map each fold's full-context budget (t == n_ctx) onto the shared key FINAL.
+
+    n_ctx differs per evaluator, so without this every fold's final budget becomes its own
+    single-fold column in the macro tables.  The numeric key is kept only when n_ctx also
+    happens to be one of the configured budgets.  Modifies `folds` in place.
+    """
+    for f in folds.values():
+        n_ctx = (f.get("info") or {}).get("n_ctx")
+        if n_ctx is None:
+            continue
+        key = str(n_ctx)
+        regular = {int(t) for t in (f.get("budgets_cfg") or regular_budgets)}
+        tables = [f[m] for m in methods if isinstance(f.get(m), dict)]
+        tables += [v for v in (f.get("lpd") or {}).values() if isinstance(v, dict)]
+        for d in tables:
+            if key in d:
+                d[FINAL] = d[key]
+                if int(n_ctx) not in regular:
+                    del d[key]
+
+
+def budget_keys(folds, method="proposed"):
+    """Sorted integer budgets present for `method`, plus FINAL last if any fold has it."""
+    ts = sorted({int(t) for f in folds.values() for t in f.get(method, {}) if t != FINAL})
+    if any(FINAL in f.get(method, {}) for f in folds.values()):
+        ts.append(FINAL)
+    return ts
 
 
 def write_json(obj, path):
@@ -91,6 +123,8 @@ def plot_curves(rows, methods, budgets, out_path, metric="mlpd", ylabel=None):
     for m in methods:
         xs, ys, es = [], [], []
         for t in budgets:
+            if not isinstance(t, (int, np.integer)):          # FINAL has no common x position
+                continue
             r = next((r for r in rows if r["method"] == m and r["t"] == t and r["metric"] == metric), None)
             if r and np.isfinite(r["mean"]):
                 xs.append(t); ys.append(r["mean"]); es.append(0 if not np.isfinite(r["se"]) else r["se"])
@@ -108,7 +142,7 @@ def plot_uncertainty(folds, budgets, out_path, method="proposed"):
     fig, ax = plt.subplots(figsize=(6.4, 4.2))
     for name, f in folds.items():
         r = f.get(method, {})
-        ts = [t for t in budgets if str(t) in r]
+        ts = [t for t in budgets if isinstance(t, (int, np.integer)) and str(t) in r]
         if not ts:
             continue
         ax.plot(ts, [r[str(t)]["epi_mean"] for t in ts], "-o", ms=3, label=f"{name} epi")

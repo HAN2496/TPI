@@ -1,7 +1,8 @@
 """Feature and sensor selection under the held-out ELPD criterion (paper Section V, claude_notes/02).
 
 * projection-predictive forward path on the fold's reference model gives the candidate order
-* every candidate size is refit (reduced Gibbs) and scored on the held-out evaluator (MLPD)
+* every candidate is a column subset of the fold's full pruned pipeline; it is refit with a
+  reduced Gibbs chain and scored on the held-out evaluator (MLPD only, `light` evaluation)
 * the one-standard-error rule picks the smallest size within 1 SE of the full bank
 * sensors: exhaustive non-empty channel subsets, same refit-and-score
 * stability: Nogueira et al. (2018) index of the per-fold selected sets
@@ -27,8 +28,7 @@ def size_grid(d_features, requested):
 
 def projpred_path(cfg, phi, pop, pop_data, unit="feature"):
     """Forward order of units on the reference model (bias excluded from counts)."""
-    order = projpred.select(cfg, phi, pop, pop_data, unit=unit)
-    return order        # list of rows with 'added', 'selected_features', 'cols', 'projection_kl', 'captured'
+    return projpred.select(cfg, phi, pop, pop_data, unit=unit)
 
 
 def path_subsets(order, ks):
@@ -52,25 +52,30 @@ def bank_from_features(bank, feature_names):
     return sub
 
 
-def refit_and_score(cfg, sub_bank, channels, fs, pop_data, names, held, budgets, seed):
-    """Fit the hierarchical model on `sub_bank` for the population and score the held-out evaluator.
+def features_of_channels(phi, channels_subset):
+    keep = set(channels_subset)
+    return [f for f, g in zip(phi.feature_names, phi.groups) if f != "bias" and g in keep]
 
-    Returns (metrics_by_budget, lpd_by_budget, timing, feature_names) where timing is a dict of
-    wall-clock seconds: 'features' (extraction + transform), 'gibbs' (reduced chain), 'eval'
-    (held-out protocol incl. metrics) and 'total'.
+
+def refit_and_score(cfg, phi_full, Z_pop, ys, names, Z_held, y_held, feature_names, budgets, seed):
+    """Refit the hierarchy on a column subset of the full pipeline and score the held-out evaluator.
+
+    Z_pop / Z_held are the *full* design matrices (already transformed once per fold); the subset
+    is taken by column selection, which is exact because standardization is per column.
+    Returns (metrics_by_budget, lpd_by_budget, timing, feature_names_with_bias).
     """
     tic = time.time()
-    phi = B.make_pipeline(sub_bank, channels, fs).fit([pop_data[n][0] for n in names], None)
-    t_feat = time.time() - tic
-    pop, _, _, stats = P.fit_population(cfg, phi, pop_data, names,
-                                        spike_slab=cfg.sel_spike_slab, reduced=True, seed=seed)
+    sub = B.ColumnSubset(phi_full, feature_names)
+    Zs = [sub.transform_Z(Z) for Z in Z_pop]
+    pop, stats = P.fit_population_Z(cfg, Zs, ys, sub.feature_names, names, sub.groups,
+                                    spike_slab=cfg.sel_spike_slab, reduced=True, seed=seed)
     tic_ev = time.time()
-    Z = phi.transform(held[0]).astype(np.float64)
-    res, lpd, info = P.evaluate_proposed(cfg, pop, Z, np.asarray(held[1]), seed, budgets=budgets)
+    res, lpd, info = P.evaluate_proposed(cfg, pop, sub.transform_Z(Z_held), np.asarray(y_held), seed,
+                                         budgets=budgets, light=True)
     t_eval = time.time() - tic_ev
     total = time.time() - tic
     timing = dict(features=total - stats["seconds"] - t_eval, gibbs=stats["seconds"], eval=t_eval, total=total)
-    return res, lpd, timing, phi.feature_names
+    return res, lpd, timing, sub.feature_names
 
 
 def sensor_subsets(channels, min_size=1):

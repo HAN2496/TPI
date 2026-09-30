@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03 · LOEO 실험 실행 안내</title>
+<style>
+  :root {
+    --bg: #fbfbf9; --fg: #1d1f24; --muted: #5d6270; --line: #e3e3dc;
+    --card: #ffffff; --accent: #1f5f8b; --accent-soft: #e4eef6;
+    --warn: #8a4b08; --warn-soft: #fbeedc; --ok: #2b6a3f; --ok-soft: #e3f1e6;
+    --code: #f1f1ec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14161a; --fg: #e6e6e1; --muted: #a0a4ad; --line: #2c3037;
+      --card: #1b1e24; --accent: #7fb3d9; --accent-soft: #1f2c39;
+      --warn: #e2a463; --warn-soft: #332614; --ok: #8fd19f; --ok-soft: #16301e;
+      --code: #23272e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --fg: #e6e6e1; --muted: #a0a4ad; --line: #2c3037;
+    --card: #1b1e24; --accent: #7fb3d9; --accent-soft: #1f2c39;
+    --warn: #e2a463; --warn-soft: #332614; --ok: #8fd19f; --ok-soft: #16301e;
+    --code: #23272e;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 16px/1.65 -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", Roboto, sans-serif; }
+  main { max-width: 920px; margin: 0 auto; padding: 32px 16px 64px; }
+  header { border-bottom: 1px solid var(--line); padding-bottom: 16px; margin-bottom: 28px; }
+  h1 { font-size: 1.7rem; margin: 0 0 6px; line-height: 1.3; }
+  .meta { color: var(--muted); font-size: 0.92rem; }
+  h2 { font-size: 1.25rem; margin: 40px 0 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+  h3 { font-size: 1.05rem; margin: 22px 0 8px; color: var(--accent); }
+  p { margin: 0 0 12px; }
+  ul, ol { margin: 0 0 12px; padding-left: 22px; }
+  li { margin-bottom: 6px; }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: 0.92em; }
+  pre { background: var(--code); padding: 12px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.9rem; line-height: 1.5; }
+  pre code { background: none; padding: 0; }
+  .note { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 10px 14px; border-radius: 0 6px 6px 0; margin: 14px 0; }
+  .warn { border-left: 3px solid var(--warn); background: var(--warn-soft); padding: 10px 14px; border-radius: 0 6px 6px 0; margin: 14px 0; }
+  .ok   { border-left: 3px solid var(--ok);   background: var(--ok-soft);   padding: 10px 14px; border-radius: 0 6px 6px 0; margin: 14px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 18px; font-size: 0.93rem; }
+  th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { background: var(--card); font-weight: 600; }
+  a { color: var(--accent); }
+  @media (max-width: 600px) { table { display: block; overflow-x: auto; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>03. LOEO 실험 실행 안내</h1>
+  <div class="meta">
+    작성 2026-09-30 · 코드: <code>run_loeo.py</code>, <code>reward/fully_bayesian/loeo/</code> ·
+    근거: <a href="01_evaluation_metrics_survey.html">01</a>, <a href="02_feature_selection_survey.html">02</a> ·
+    대상 논문 절: Section VI (Experiments)
+  </div>
+</header>
+
+<h2 id="s1">1. 무엇을 계산하는가</h2>
+<p>
+  적격 평가자 전원을 한 명씩 held-out하는 leave-one-evaluator-out(LOEO) 프로토콜이다. 한 폴드에서 하는 일은 다음과 같다.
+</p>
+<ol>
+  <li><strong>뱅크 정리.</strong> population 평가자 에피소드에서 전체 후보 뱅크를 계산하고, 채널 안에서 |r| 0.95 이상 쌍을 우선순위 규칙으로 제거한다.</li>
+  <li><strong>기준 모형 적합.</strong> 정리된 뱅크로 공유 spike-and-slab 계층 모형을 Gibbs로 적합한다. 시드마다 반복한다.</li>
+  <li><strong>Held-out 평가.</strong> 평가자의 에피소드를 시간순으로 앞 절반(문맥)과 뒤 절반(holdout)으로 나눈다. 예산 t = 0, 5, 10, 20, 최종(문맥 전체)에서 문맥 앞 t개로 개인화하고 holdout에서 지표를 계산한다. 작은 예산은 시작 오프셋 3개로 평균한다.</li>
+  <li><strong>지표.</strong> MLPD와 ELPD, Brier, AUROC, AUPRC, ECE, calibration slope와 intercept, epistemic과 aleatoric 평균, 두 성분의 Spearman 상관, epistemic으로 정답 여부를 예측하는 AUROC, risk-coverage AURC와 E-AURC, posterior x bootstrap AUROC 신뢰 구간과 신뢰 판정.</li>
+  <li><strong>비교 모형.</strong> HB-full(포함 사전분포 없음), EB-MAP(Laplace 근사 particle), pooled 로지스틱, independent 로지스틱, 선택 시 GBT.</li>
+  <li><strong>부가 산출.</strong> 기준 모형의 피처 역할표(PIP, q_j, S_j, 공통/개인/비활성), 센서 단위 PIP, prequential 누적 log score.</li>
+</ol>
+<p>
+  <strong>select</strong> 스테이지는 폴드마다 projpred forward 경로를 만들고, 경로 위의 크기 후보(1, 2, ..., 40, 전체)와 PIP 1/2 이상 집합을 열 부분집합으로 재적합(축소 Gibbs)해 held-out MLPD를 낸다. 리포트에서 폴드 평균과 전체 대비 paired 차이의 SE로 one-SE 규칙을 적용해 크기를 고르고, 폴드별 선택 집합의 Nogueira 안정성을 계산한다.
+  <strong>sensors</strong> 스테이지는 5채널의 31개 비공 부분집합 각각을 같은 방식으로 재적합해 MLPD 표와 leave-one-sensor-out 요약을 만든다.
+</p>
+
+<h2 id="s2">2. 실행 명령</h2>
+<p>저장소 루트에서 실행한다. Windows 데스크톱은 README 관례대로 <code>.venv\Scripts\python.exe</code>를 쓴다.</p>
+
+<h3>2.1 먼저 합성 데이터로 배선 확인 (1분 내)</h3>
+<pre><code>.venv\Scripts\python.exe run_loeo.py --data synthetic --fast --stage all</code></pre>
+<p>끝나면 <code>outputs/loeo/&lt;timestamp&gt;/report/</code>에 main.md, select.md, sensors.md와 그림이 생겨야 한다.</p>
+
+<h3>2.2 실제 데이터 전체 실행</h3>
+<pre><code>.venv\Scripts\python.exe run_loeo.py --stage all</code></pre>
+<p>이 한 줄이 main, select, sensors, report를 순서대로 돈다. 기본 설정: 채널 5개, 창 [-2, 2] s, 10 Hz 저역통과 후 2배 다운샘플, 적격 기준 라벨 10개 이상과 클래스별 3개 이상, 예산 (0, 5, 10, 20)+최종, 오프셋 3, 시드 42, Gibbs 500+1500, 선택용 Gibbs 200+400.</p>
+
+<h3>2.3 스테이지를 나눠 실행하거나 중단 후 재개</h3>
+<pre><code>.venv\Scripts\python.exe run_loeo.py --stage main
+.venv\Scripts\python.exe run_loeo.py --stage select  --timestamp 20261001_090000
+.venv\Scripts\python.exe run_loeo.py --stage sensors --timestamp 20261001_090000
+.venv\Scripts\python.exe run_loeo.py --stage report  --timestamp 20261001_090000</code></pre>
+<p>폴드 결과는 끝나는 즉시 <code>folds/&lt;evaluator&gt;*.json</code>으로 저장되므로, 같은 <code>--timestamp</code>로 다시 실행하면 끝난 폴드는 건너뛴다. select와 sensors는 main이 저장한 <code>&lt;evaluator&gt;_model.joblib</code>(기준 모형과 파이프라인)를 재사용하므로 main을 먼저 돌리는 편이 빠르다.</p>
+
+<h3>2.4 설정 바꾸기</h3>
+<p>모든 Config 필드를 <code>--set key=value</code>로 덮어쓸 수 있다. 값은 Python 리터럴로 해석된다.</p>
+<pre><code># 시드 3개로 반복, 예산 격자 변경
+.venv\Scripts\python.exe run_loeo.py --stage main --set seeds="(42,43,44)" --set budgets="(0,2,5,10,20)"
+
+# 특정 평가자만 held-out (디버그), GBT 베이스라인 추가
+.venv\Scripts\python.exe run_loeo.py --stage main --set folds="('강신길','김진명')" --set gbt=True
+
+# 선택 단계 정지 규칙에 쓰는 예산과 크기 격자
+.venv\Scripts\python.exe run_loeo.py --stage select --timestamp ... --set sel_budgets="(0,10)" --set sel_sizes="(2,4,6,8,10,15,20,30)"
+
+# 상관 임계값 민감도
+.venv\Scripts\python.exe run_loeo.py --stage all --set rho_max=0.90 --set run_name=loeo_rho090</code></pre>
+
+<div class="note">
+  <strong>실행 시간 추정.</strong> 합성 데이터 측정치(population 7명, d 28, 약 700 에피소드에서 Gibbs 2000회 8 s)를 실데이터 규모(population 약 15명, d 약 40, 약 2500 에피소드)로 외삽하면 population 적합 1회에 30~50 s다.
+  main은 폴드당 적합 3회(proposed, HB-full, 센서 PIP)와 베이스라인으로 3~5분, select는 projpred 경로 약 5분과 재적합 15회, sensors는 재적합 31회다. 폴드 15개 기준 전체 4~6시간을 예상한다. 시드를 3개로 늘리면 main이 그만큼 늘어난다.
+</div>
+
+<h2 id="s3">3. 산출물</h2>
+<table>
+  <thead><tr><th>파일</th><th>내용</th><th>논문 자리</th></tr></thead>
+  <tbody>
+    <tr><td><code>report/main.md</code>, <code>main_macro.csv</code></td><td>방법 x 예산별 macro 평균과 평가자 단위 SE, cold start 대비 paired ΔELPD, 피처 역할표, 센서 PIP</td><td>Table VI-F, VI-G, feature classes</td></tr>
+    <tr><td><code>report/curve_mlpd.png</code>, <code>curve_auroc.png</code></td><td>예산 t에 따른 개인화 곡선</td><td>Fig. sequential</td></tr>
+    <tr><td><code>report/uncertainty_decay.png</code></td><td>평가자별 epistemic, aleatoric 감쇠</td><td>Fig. uncertainty</td></tr>
+    <tr><td><code>report/prequential_cumulative.json</code></td><td>평가자별 one-step-ahead 누적 log score</td><td>long-stream 사례</td></tr>
+    <tr><td><code>report/select.md</code>, <code>select_sizes.csv</code>, <code>select_size_curve.png</code></td><td>크기별 MLPD, 전체 대비 Δ와 SE, one-SE 선택 크기, 선택 피처 빈도, 안정성</td><td>Fig. projpred, Table sensors 일부</td></tr>
+    <tr><td><code>report/sensors.md</code>, <code>sensor_subsets.csv</code></td><td>31개 채널 부분집합의 MLPD와 Δ, leave-one-sensor-out</td><td>Table sensors</td></tr>
+    <tr><td><code>folds/*.json</code></td><td>폴드별 원자료(지표, lpd 벡터, 역할표, 시간)</td><td>재분석용</td></tr>
+    <tr><td><code>cfg_&lt;stage&gt;.json</code></td><td>스테이지별 설정 스냅샷</td><td>재현성 부록</td></tr>
+  </tbody>
+</table>
+
+<div class="warn">
+  <strong>결과 공유.</strong> <code>outputs/</code>는 <code>.gitignore</code>에 있어 자동으로는 추적되지 않는다. 결과를 저장소로 넘길 때는 report 폴더와 폴드 json만 강제로 추가한다 (joblib 모델 파일은 크므로 제외).
+  <pre><code>git add -f outputs/loeo/&lt;timestamp&gt;/report outputs/loeo/&lt;timestamp&gt;/folds/*.json outputs/loeo/&lt;timestamp&gt;/cfg_*.json</code></pre>
+</div>
+
+<h2 id="s4">4. 확인해야 할 점과 알려진 한계</h2>
+<ul>
+  <li><strong>population 구성.</strong> held-out 적격 기준(라벨 10, 클래스별 3)은 누구를 시험할지에만 쓰이고, population에는 라벨이 있는 모든 평가자가 들어간다. 클래스가 하나뿐인 평가자는 <code>Population.fit</code>이 자동으로 제외한다.</li>
+  <li><strong>센서 단위 PIP의 고착.</strong> 합성 데이터에서 센서 단위 spike-and-slab은 0 또는 1로 굳는 경향이 있었다. 그룹이 한 번 빠지면 slab 계수가 사전분포로 흘러가 재포함이 어렵기 때문이다. 실데이터에서도 그렇다면 sensors 스테이지의 전수 비교표를 주 근거로 쓰고 센서 PIP는 보조로만 쓴다.</li>
+  <li><strong>공통 판정 임계값 q_min.</strong> population 평가자가 적으면 between-evaluator 분산이 사전분포에 끌려 과대 추정되어 공통(common) 판정이 잘 나오지 않는다. 실데이터 U를 보고 q_min 0.9의 민감도를 함께 보고한다.</li>
+  <li><strong>one-SE 규칙의 예산.</strong> 선택 점수는 sel_budgets(기본 0과 10)의 MLPD 평균이다. t = 0과 t = 10에서 순위가 뒤집힐 수 있으므로 두 예산 각각의 표도 함께 본다.</li>
+  <li><strong>선택 낙관 편향.</strong> 크기 k*는 모든 폴드의 held-out 점수로 정하므로 정수 하나에 대한 약한 낙관이 있다. 논문에는 이 점을 명시한다.</li>
+  <li><strong>재현성.</strong> 새 사용자 particle 시드는 폴드 시드와 오프셋에서 결정된다. 다중 체인 진단(Rhat)은 아직 자동화되지 않았고 <code>fit_stats</code>의 우도 trace만 저장된다.</li>
+</ul>
+</main>
+</body>
+</html>

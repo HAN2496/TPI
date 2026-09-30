@@ -199,6 +199,7 @@ def run_fold_main(cfg, run, name, data, channels, fs):
 
     fold = dict(name=name, n=int(len(y_held)), n_pos=int(y_held.sum()), d=len(phi.feature_names),
                 feature_names=phi.feature_names, pruned_bank=pruned, prune_report=prune_report,
+                budgets_cfg=list(cfg.budgets),
                 proposed={}, hb_full={}, lpd={}, roles=None, sensor_pip=None, prequential=None,
                 fit_stats={}, per_seed={})
     budgets = None
@@ -294,6 +295,9 @@ def run_fold_select(cfg, run, name, data, channels, fs):
         pop, _, _, _ = P.fit_population(cfg, phi, pop_data, pop_names, seed=cfg.seeds[0])
     d_feat = len(phi.feature_names) - 1
     budgets = list(cfg.sel_budgets)
+    Z_pop = [phi.transform(pop_data[n][0]).astype(np.float64) for n in pop_names]   # transform once per fold
+    ys = [np.asarray(pop_data[n][1]) for n in pop_names]
+    Z_held = phi.transform(held[0]).astype(np.float64)
     # projection-predictive path on the reference model
     tic_pp = time.time()
     order = S.projpred_path(cfg, phi, pop, pop_data, unit="feature")
@@ -309,8 +313,7 @@ def run_fold_select(cfg, run, name, data, channels, fs):
         candidates["pip"] = pip_set
     results = {}
     for label, feats in candidates.items():
-        sub_bank = S.bank_from_features(pruned, feats)
-        res, lpd, secs, fn = S.refit_and_score(cfg, sub_bank, channels, fs, pop_data, pop_names, held, budgets, cfg.seeds[0])
+        res, lpd, secs, fn = S.refit_and_score(cfg, phi, Z_pop, ys, pop_names, Z_held, held[1], feats, budgets, cfg.seeds[0])
         results[label] = dict(features=feats, n_features=len(feats), seconds=secs["total"], timing=secs,
                               metrics={str(t): v for t, v in res.items()},
                               lpd={str(t): v.tolist() for t, v in lpd.items()})
@@ -338,14 +341,22 @@ def run_fold_sensors(cfg, run, name, data, channels, fs):
     pop_names = [n for n in data if n != name]
     pop_data = {n: data[n] for n in pop_names}
     held = data[name]
-    bank = B.full_bank(channels)
-    pruned, _ = B.prune_bank([pop_data[n][0] for n in pop_names], channels, fs, bank, cfg.rho_max)
+    model_path = run.dir / "folds" / f"{name}_model.joblib"
+    if model_path.exists():                                     # reuse the fold's full pruned pipeline
+        phi = joblib.load(model_path)["phi"]
+    else:
+        bank = B.full_bank(channels)
+        pruned, _ = B.prune_bank([pop_data[n][0] for n in pop_names], channels, fs, bank, cfg.rho_max)
+        phi = B.make_pipeline(pruned, channels, fs).fit([pop_data[n][0] for n in pop_names], None)
     budgets = list(cfg.sel_budgets)
+    Z_pop = [phi.transform(pop_data[n][0]).astype(np.float64) for n in pop_names]
+    ys = [np.asarray(pop_data[n][1]) for n in pop_names]
+    Z_held = phi.transform(held[0]).astype(np.float64)
     results = {}
     for subset in S.sensor_subsets(channels, cfg.sensor_min_size):
         label = "+".join(subset)
-        sub_bank = B.restrict_bank(pruned, subset)
-        res, lpd, secs, fn = S.refit_and_score(cfg, sub_bank, channels, fs, pop_data, pop_names, held, budgets, cfg.seeds[0])
+        feats = S.features_of_channels(phi, subset)
+        res, lpd, secs, fn = S.refit_and_score(cfg, phi, Z_pop, ys, pop_names, Z_held, held[1], feats, budgets, cfg.seeds[0])
         results[label] = dict(channels=subset, n_features=len(fn) - 1, seconds=secs["total"], timing=secs,
                               metrics={str(t): v for t, v in res.items()},
                               lpd={str(t): v.tolist() for t, v in lpd.items()})
@@ -378,9 +389,9 @@ def stage_report(cfg, run, truth=None):
     # ---- main
     folds = _load_folds(run)
     if folds:
-        budgets = sorted({int(t) for f in folds.values() for t in f["proposed"]})
-        methods = [m for m in ("proposed", "hb_full", "ebmap", "pooled", "indep", "gbt")
-                   if any(m in f and f[m] for f in folds.values())]
+        R.normalize_final(folds, cfg.budgets)      # per-fold t = n_ctx -> shared pseudo-budget "final"
+        budgets = R.budget_keys(folds, "proposed")
+        methods = [m for m in R.METHODS if any(m in f and f[m] for f in folds.values())]
         rows = R.macro_table(folds, methods, budgets)
         R.write_csv(rows, rep / "main_macro.csv")
         md = ["# LOEO main results", f"folds: {len(folds)} evaluators: {', '.join(folds)}",
@@ -390,14 +401,14 @@ def stage_report(cfg, run, truth=None):
                               keys=("epi_mean", "ale_mean", "epi_ale_spearman", "correctness_auroc_epi", "aurc_epi", "eaurc_epi"))]
         # paired delta vs cold start
         md.append("\n## Paired ELPD change from cold start (proposed)\n")
-        md.append("| evaluator | " + " | ".join(f"t={t}" for t in budgets if t > 0) + " |")
-        md.append("|---|" + "---|" * len([t for t in budgets if t > 0]))
+        ts_pos = [t for t in budgets if t != 0]
+        md.append("| evaluator | " + " | ".join(f"t={t}" for t in ts_pos) + " |")
+        md.append("|---|" + "---|" * len(ts_pos))
+        deltas = {t: R.paired_delta(folds, "proposed", t) for t in ts_pos}
         for name in folds:
             cells = []
-            for t in budgets:
-                if t == 0:
-                    continue
-                dl = R.paired_delta(folds, "proposed", t).get(name)
+            for t in ts_pos:
+                dl = deltas[t].get(name)
                 cells.append("--" if dl is None else f"{dl['delta_elpd']:+.2f} ± {dl['se']:.2f}")
             md.append(f"| {name} | " + " | ".join(cells) + " |")
         # feature roles from the reference models
@@ -448,10 +459,15 @@ def stage_report(cfg, run, truth=None):
     # ---- select
     sel = _load_folds(run, "_select")
     if sel:
+        # the full size differs per fold (pruning is fold-specific): relabel each fold's full candidate
+        for f in sel.values():
+            fl = f"k={f['d_features']}"
+            if fl in f["candidates"]:
+                f["candidates"]["full"] = f["candidates"].pop(fl)
         labels = sorted({l for f in sel.values() for l in f["candidates"]},
-                        key=lambda l: (0, int(l[2:])) if l.startswith("k=") else (1, 0))
+                        key=lambda l: (0, int(l[2:])) if l.startswith("k=") else (1, l))
         budgets = sorted({int(t) for f in sel.values() for c in f["candidates"].values() for t in c["metrics"]})
-        full_label = max((l for l in labels if l.startswith("k=")), key=lambda l: int(l[2:]))
+        full_label = "full"
         mean, se_diff, table = {}, {}, []
         for l in labels:
             vals, diffs = [], []
@@ -471,10 +487,12 @@ def stage_report(cfg, run, truth=None):
         ks = [int(l[2:]) for l in labels if l.startswith("k=")]
         mean_k = {int(l[2:]): mean[l] for l in labels if l.startswith("k=")}
         se_k = {int(l[2:]): se_diff[l] for l in labels if l.startswith("k=")}
-        full_k = int(full_label[2:])
-        chosen = S.one_se_rule(ks, mean_k, se_k, full_k)
-        sets = [f["candidates"][f"k={chosen}"]["features"] for f in sel.values() if f"k={chosen}" in f["candidates"]]
-        universe = sorted({ft for f in sel.values() for ft in f["candidates"][full_label]["features"]})
+        full_k = max(f["d_features"] for f in sel.values())       # pseudo size for the per-fold full bank
+        mean_k[full_k], se_k[full_k] = mean["full"], 0.0
+        chosen = S.one_se_rule(ks + [full_k], mean_k, se_k, full_k)
+        chosen_label = "full" if chosen == full_k else f"k={chosen}"
+        sets = [f["candidates"][chosen_label]["features"] for f in sel.values() if chosen_label in f["candidates"]]
+        universe = sorted({ft for f in sel.values() for ft in f["candidates"]["full"]["features"]})
         stab = S.nogueira_stability(sets, universe)
         freq = {}
         for s in sets:
@@ -493,7 +511,7 @@ def stage_report(cfg, run, truth=None):
         if truth:
             md.append(f"\nsynthetic truth: common={truth['common']}, individual={truth['individual']}")
         (rep / "select.md").write_text("\n".join(md), encoding="utf-8")
-        R.plot_size_curve(ks, mean_k, se_k, chosen, full_k, rep / "select_size_curve.png")
+        R.plot_size_curve(ks + [full_k], mean_k, se_k, chosen, full_k, rep / "select_size_curve.png")
         summary["select"] = dict(chosen_size=chosen, full_size=full_k, stability=stab)
     # ---- sensors
     sen = _load_folds(run, "_sensors")
@@ -551,14 +569,18 @@ def main(cfg=None):
     log(cfg, f"[INFO] data={cfg.data} evaluators={len(data)} eligible={len(elig)} folds={len(names)} "
              f"channels={len(channels)} fs={fs} stage={cfg.stage} -> {run.dir}")
     stages = ["main", "select", "sensors", "report"] if cfg.stage == "all" else [cfg.stage]
+    # Run() overwrites cfg.json on every invocation; keep one snapshot per stage for provenance.
+    R.write_json(asdict(cfg), run.dir / f"cfg_{cfg.stage}.json")
+    # The population is every evaluator with labels (Population.fit drops single-class ones);
+    # eligibility (min_labels / min_per_class) only governs who is held out.
     for st in stages:
         tic = time.time()
         if st == "main":
-            stage_main(cfg, run, elig, channels, fs, names)
+            stage_main(cfg, run, data, channels, fs, names)
         elif st == "select":
-            stage_select(cfg, run, elig, channels, fs, names)
+            stage_select(cfg, run, data, channels, fs, names)
         elif st == "sensors":
-            stage_sensors(cfg, run, elig, channels, fs, names)
+            stage_sensors(cfg, run, data, channels, fs, names)
         elif st == "report":
             stage_report(cfg, run, truth)
         else:

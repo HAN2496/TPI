@@ -28,9 +28,21 @@ def sum_se(elpd_i):
     return float(elpd_i.sum()), float(np.sqrt(elpd_i.size * elpd_i.var(ddof=1)))
 
 
+def fast_auroc(y, s):
+    """Rank-based AUROC (Mann-Whitney), ~100x faster than sklearn for small n; ties get mid-ranks."""
+    from scipy.stats import rankdata
+    y = np.asarray(y).astype(bool)
+    n_pos = int(y.sum()); n_neg = len(y) - n_pos
+    if n_pos == 0 or n_neg == 0:
+        return float("nan")
+    r = rankdata(s)
+    return float((r[y].sum() - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg))
+
+
 def auroc_trust_interval(y, probs_M, seed, K=600, ci_lo_pct=2.5, ci_hi_pct=97.5,
                          width_max=0.15, lo_min=0.5):
     """Joint posterior x bootstrap 95% CI of AUROC. Trust iff CI_lo > 0.5 and width < width_max."""
+    y = np.asarray(y)
     n = len(y)
     n_pos = int(y.sum()); n_neg = n - n_pos
     base = dict(n=n, n_pos=n_pos, n_neg=n_neg)
@@ -43,9 +55,10 @@ def auroc_trust_interval(y, probs_M, seed, K=600, ci_lo_pct=2.5, ci_hi_pct=97.5,
     aurocs = []
     for _ in range(K):
         idx = rng.integers(0, N, size=N)
-        if len(np.unique(y[idx])) < 2:
+        yb = y[idx]
+        if yb.min() == yb.max():
             continue
-        aurocs.append(roc_auc_score(y[idx], probs_M[rng.integers(0, M)][idx]))
+        aurocs.append(fast_auroc(yb, probs_M[rng.integers(0, M)][idx]))
     if not aurocs:
         return {**nan, "reason": "no valid bootstrap resamples"}
     a = np.asarray(aurocs)

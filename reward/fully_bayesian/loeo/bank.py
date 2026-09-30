@@ -111,3 +111,29 @@ def make_pipeline(manual_stats, channels, fs, standardize=True, include_bias=Tru
 
 def restrict_bank(bank, channels_subset):
     return OrderedDict((ch, list(stats)) for ch, stats in bank.items() if ch in channels_subset)
+
+
+class ColumnSubset:
+    """A column subset of a fitted full pipeline, exposing the same feature_names / groups interface.
+
+    Selecting columns after the full transform is exact because standardization is per column
+    and the bias column is kept.  Used so that selection candidates do not re-extract features
+    from raw windows.
+    """
+
+    def __init__(self, phi_full, feature_names):
+        keep = set(feature_names)
+        self.idx = [j for j, f in enumerate(phi_full.feature_names) if f == "bias" or f in keep]
+        missing = keep - set(phi_full.feature_names)
+        if missing:
+            raise KeyError(f"features not in the full pipeline: {sorted(missing)}")
+        self.feature_names = [phi_full.feature_names[j] for j in self.idx]
+        self.groups = [phi_full.groups[j] for j in self.idx]
+        self.pairs = [(g, f.split("__", 1)[1]) for f, g in zip(self.feature_names, self.groups) if f != "bias"]
+        self._phi = phi_full
+
+    def transform_Z(self, Z_full):
+        return np.asarray(Z_full, np.float64)[:, self.idx]
+
+    def transform(self, X):
+        return self.transform_Z(self._phi.transform(X))

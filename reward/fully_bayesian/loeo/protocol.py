@@ -37,6 +37,20 @@ def offsets_for(cfg, n_ctx, t_max):
     return sorted(set(min(o, room) for o in range(0, room + 1, step)))[: cfg.n_offsets]
 
 
+def _budgets_and_offsets(cfg, ts, n_ctx):
+    """Keep budgets that the context can supply; offsets are sized for the largest *regular*
+    budget (a budget equal to n_ctx is the 'final' point and is always evaluated at offset 0)."""
+    ts = sorted(set(int(t) for t in ts if t <= n_ctx))
+    t_reg = max([t for t in ts if 0 < t < n_ctx], default=0)
+    offs = offsets_for(cfg, n_ctx, t_reg) if t_reg > 0 else [0]
+    return ts, offs
+
+
+def _nanmean(vals):
+    a = np.asarray(vals, float)
+    return float(np.nanmean(a)) if np.isfinite(a).any() else float("nan")
+
+
 def population_cfg(cfg, spike_slab=None, reduced=False, seed=None):
     return SimpleNamespace(
         n_samples=cfg.sel_n_samples if reduced else cfg.n_samples,
@@ -49,30 +63,37 @@ def population_cfg(cfg, spike_slab=None, reduced=False, seed=None):
     )
 
 
+def fit_population_Z(cfg, Zs, ys, feature_names, names, groups, spike_slab=None, reduced=False, seed=None):
+    """Fit the hierarchy on already-transformed design matrices."""
+    pop = Population(population_cfg(cfg, spike_slab, reduced, seed))
+    tic = time.time()
+    stats = pop.fit([np.asarray(Z, np.float64) for Z in Zs], [np.asarray(y, float) for y in ys],
+                    list(feature_names), list(names), list(groups))
+    stats["seconds"] = time.time() - tic
+    return pop, stats
+
+
 def fit_population(cfg, phi, pop_data, names, spike_slab=None, reduced=False, seed=None):
     Zs = [phi.transform(pop_data[n][0]).astype(np.float64) for n in names]
     ys = [np.asarray(pop_data[n][1], float) for n in names]
-    pop = Population(population_cfg(cfg, spike_slab, reduced, seed))
-    tic = time.time()
-    stats = pop.fit(Zs, ys, phi.feature_names, list(names), phi.groups)
-    stats["seconds"] = time.time() - tic
+    pop, stats = fit_population_Z(cfg, Zs, ys, phi.feature_names, names, phi.groups, spike_slab, reduced, seed)
     return pop, Zs, ys, stats
 
 
-def evaluate_proposed(cfg, pop, Z, y, seed, budgets=None):
-    """Proposed model on one held-out evaluator. Returns {budget: metrics} and lpd vectors."""
+def evaluate_proposed(cfg, pop, Z, y, seed, budgets=None, light=False):
+    """Proposed model on one held-out evaluator. Returns {budget: metrics} and lpd vectors.
+
+    light=True skips the bootstrap reliability interval (selection only reads MLPD).
+    """
     ctx_idx, hold_idx = split_stream(len(y), cfg.ctx_frac)
     Z_ctx, y_ctx, Z_hold, y_hold = Z[ctx_idx], y[ctx_idx], Z[hold_idx], y[hold_idx]
     n_ctx = len(y_ctx)
-    ts = budgets if budgets is not None else budget_grid(cfg, n_ctx)
-    t_small = max([t for t in ts if t > 0], default=0)
-    offs = offsets_for(cfg, n_ctx, min(t_small, cfg.budgets[-1] if cfg.budgets else t_small))
+    ts, offs = _budgets_and_offsets(cfg, budgets if budgets is not None else budget_grid(cfg, n_ctx), n_ctx)
     per_budget = {t: [] for t in ts}
     lpds = {t: [] for t in ts}
     rng = np.random.default_rng(seed)
     for o in offs:
         star = pop.new_user(seed=seed + o)
-        prev_t = 0
         for t in ts:
             if t == 0:
                 P = star.predict(Z_hold)[2]
@@ -82,17 +103,16 @@ def evaluate_proposed(cfg, pop, Z, y, seed, budgets=None):
                     continue
                 star.fit(Z_ctx[lo:hi], y_ctx[lo:hi], rng=rng)    # warm start from previous budget
                 P = star.predict(Z_hold)[2]
-            m, lpd = M.summarize(y_hold, P, seed=seed)
+            m, lpd = M.summarize(y_hold, P, seed=seed, light=light)
             m["t"], m["offset"] = int(t), int(o)
             per_budget[t].append(m)
             lpds[t].append(lpd)
-            prev_t = t
     out = {}
     for t in ts:
         if not per_budget[t]:
             continue
         keys = [k for k in per_budget[t][0] if isinstance(per_budget[t][0][k], (int, float, bool))]
-        agg = {k: float(np.nanmean([mm[k] for mm in per_budget[t]])) for k in keys}
+        agg = {k: _nanmean([mm[k] for mm in per_budget[t]]) for k in keys}
         agg["n_offsets"] = len(per_budget[t])
         agg["reliable_frac"] = float(np.mean([mm["reliable"] for mm in per_budget[t]]))
         out[t] = agg
@@ -104,9 +124,7 @@ def evaluate_baseline(cfg, model, Z, y, budgets, particles=False):
     ctx_idx, hold_idx = split_stream(len(y), cfg.ctx_frac)
     Z_ctx, y_ctx, Z_hold, y_hold = Z[ctx_idx], y[ctx_idx], Z[hold_idx], y[hold_idx]
     n_ctx = len(y_ctx)
-    ts = [t for t in budgets if t <= n_ctx]
-    t_small = max([t for t in ts if t > 0], default=0)
-    offs = offsets_for(cfg, n_ctx, min(t_small, cfg.budgets[-1] if cfg.budgets else t_small))
+    ts, offs = _budgets_and_offsets(cfg, budgets, n_ctx)
     out, lpds = {}, {}
     for t in ts:
         rows, lv = [], []
@@ -125,8 +143,10 @@ def evaluate_baseline(cfg, model, Z, y, budgets, particles=False):
             rows.append(m); lv.append(lpd)
         if rows:
             keys = [k for k in rows[0] if isinstance(rows[0][k], (int, float, bool))]
-            out[t] = {k: float(np.nanmean([r[k] for r in rows])) for k in keys}
+            out[t] = {k: _nanmean([r[k] for r in rows]) for k in keys}
             out[t]["n_offsets"] = len(rows)
+            if particles:                                    # same key as the proposed model
+                out[t]["reliable_frac"] = float(np.mean([r["reliable"] for r in rows]))
             lpds[t] = np.mean(np.stack(lv), axis=0)
     return out, lpds
 
