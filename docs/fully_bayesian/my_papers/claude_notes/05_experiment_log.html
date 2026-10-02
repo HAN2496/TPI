@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05 · 실험 가설 기록</title>
+<style>
+  :root {
+    --bg: #fbfbf9; --fg: #1d1f24; --muted: #5d6270; --line: #e3e3dc;
+    --card: #ffffff; --accent: #1f5f8b; --accent-soft: #e4eef6;
+    --warn: #8a4b08; --warn-soft: #fbeedc; --ok: #2b6a3f; --ok-soft: #e3f1e6;
+    --bad: #8b2b2b; --bad-soft: #f6e3e3; --code: #f1f1ec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14161a; --fg: #e6e6e1; --muted: #a0a4ad; --line: #2c3037;
+      --card: #1b1e24; --accent: #7fb3d9; --accent-soft: #1f2c39;
+      --warn: #e2a463; --warn-soft: #332614; --ok: #8fd19f; --ok-soft: #16301e;
+      --bad: #e08a8a; --bad-soft: #3a1f1f; --code: #23272e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --fg: #e6e6e1; --muted: #a0a4ad; --line: #2c3037;
+    --card: #1b1e24; --accent: #7fb3d9; --accent-soft: #1f2c39;
+    --warn: #e2a463; --warn-soft: #332614; --ok: #8fd19f; --ok-soft: #16301e;
+    --bad: #e08a8a; --bad-soft: #3a1f1f; --code: #23272e;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 16px/1.65 -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", Roboto, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 32px 16px 64px; }
+  header { border-bottom: 1px solid var(--line); padding-bottom: 16px; margin-bottom: 28px; }
+  h1 { font-size: 1.7rem; margin: 0 0 6px; line-height: 1.3; }
+  .meta { color: var(--muted); font-size: 0.92rem; }
+  h2 { font-size: 1.25rem; margin: 40px 0 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+  h3 { font-size: 1.05rem; margin: 22px 0 8px; color: var(--accent); }
+  h4 { font-size: 0.95rem; margin: 14px 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  p { margin: 0 0 12px; }
+  ul, ol { margin: 0 0 12px; padding-left: 22px; }
+  li { margin-bottom: 6px; }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: 0.92em; }
+  pre { background: var(--code); padding: 10px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.92rem; line-height: 1.55; }
+  pre.eq { border-left: 3px solid var(--accent); }
+  .exp { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 16px 20px; margin: 18px 0; }
+  .verdict { display: inline-block; font-size: 0.82rem; padding: 2px 9px; border-radius: 10px; font-weight: 600; margin-left: 6px; }
+  .ok-v { background: var(--ok-soft); color: var(--ok); }
+  .bad-v { background: var(--bad-soft); color: var(--bad); }
+  .mix-v { background: var(--warn-soft); color: var(--warn); }
+  .todo-v { background: var(--accent-soft); color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 14px; font-size: 0.9rem; }
+  th, td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  th { background: var(--card); font-weight: 600; }
+  .toc { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px; }
+  .toc ol { margin: 0; }
+  a { color: var(--accent); }
+  @media (max-width: 600px) { table { display: block; overflow-x: auto; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>05. 실험 가설 기록: 무엇을 왜 세웠고, 무엇이 맞고 틀렸는가</h1>
+  <div class="meta">
+    시작 2026-10-02 · 살아 있는 문서: 실험이 끝날 때마다 항목을 추가한다 ·
+    수치 출처: <a href="04_results_round1.html">04</a>, <code>outputs/*/report/</code> ·
+    실행법: <a href="03_loeo_run_guide.html">03</a>
+  </div>
+</header>
+
+<p>
+  각 항목은 같은 틀을 따른다. <strong>가설 H</strong>(검증 가능한 문장), <strong>근거</strong>(왜 그렇게 믿었는가),
+  <strong>설계</strong>(무엇을 어떻게 재는가, 판정 규칙), <strong>결과</strong>, <strong>해석</strong>, <strong>판정</strong>, <strong>후속</strong>.
+  수식은 모두 ASCII 한 줄로 쓴다.
+</p>
+
+<nav class="toc">
+  <strong>목차</strong>
+  <ol>
+    <li><a href="#notation">공통 표기와 판정 규칙</a></li>
+    <li><a href="#E1">E1 기본 LOEO 실행 (가설 H1~H3)</a></li>
+    <li><a href="#E2">E2 사전분포 척도 lambda0 민감도</a></li>
+    <li><a href="#E3">E3 선택 점수 예산에 t = 20 추가</a></li>
+    <li><a href="#E4">E4 확정 실행 (시드 3개) — 예정</a></li>
+    <li><a href="#E5">E5 소수 라벨 평가자의 무이득 원인 분리 — 예정</a></li>
+    <li><a href="#E6">E6 cold start 과소 확신의 원인 — 예정</a></li>
+    <li><a href="#E7">E7 신뢰 판정 규칙 재설계 — 예정</a></li>
+    <li><a href="#E8">E8 prequential 곡선과 long-stream 사례 — 예정</a></li>
+    <li><a href="#status">가설 현황표</a></li>
+  </ol>
+</nav>
+
+<h2 id="notation">0. 공통 표기와 판정 규칙</h2>
+<pre class="eq">
+u = 1..U  population 평가자,  * = held-out 평가자,  i = 에피소드
+z_ui in R^d (bias 포함),  y_ui in {0,1}
+y_ui ~ Bernoulli( sigma(theta_u^T z_ui) ),   theta_u = gamma (.) theta~_u,   theta~_u ~ N(mu, Sigma)
+(mu, Sigma) ~ NIW(m0 = 0, kappa0 = 1, nu0 = d + 2, Lambda0 = lambda0 * I)
+gamma_g ~ Bernoulli(pi),  pi ~ Beta(1, 1)
+
+LOEO: 평가자 *를 빼고 적합 -> 문맥 D_{*,t} (시간순 앞 절반의 첫 t개) -> holdout H_* (뒤 절반)
+p^(m)_{*j,t} = sigma(z_{*j}^T theta^(m)_{*,t}),   p^_{*j,t} = (1/M) sum_m p^(m)_{*j,t}
+
+주 지표 (01 문서):  MLPD_*(t) = (1/|H_*|) sum_{j in H_*} log p(y_{*j} | p^_{*j,t})
+macro: mean_* MLPD_*(t),  SE = sd_* / sqrt(n_folds)
+paired 차이: dELPD_*(t) = sum_j [ lpd_{*j}(t) - lpd_{*j}(0) ],  SE = sqrt(n * var_j)
+불확실성 분해:  p^(1-p^) = E_m[p^(m)(1-p^(m))] + Var_m(p^(m))  =  U_ale + U_epi
+</pre>
+<p>판정 규칙은 데이터를 보기 전에 다음으로 고정한다.</p>
+<ul>
+  <li><strong>우열</strong>: macro MLPD 차이가 평가자 단위 SE보다 크면 "다르다", 아니면 "같다". ELPD 차이는 4 미만이면 작다고 보고, 4 이상이면 SE와 비교한다(Vehtari).</li>
+  <li><strong>선택</strong>: 전체 뱅크 대비 paired 차이가 1 SE 이내인 가장 작은 크기(one-SE 규칙).</li>
+  <li><strong>분해의 분리</strong>: Spearman(U_epi, U_ale)의 절대값이 0.5 미만이면 분리된 것으로 본다(Mucsányi 벤치마크의 0.78~0.88과 대비).</li>
+  <li><strong>불확실성의 유용성</strong>: U_epi로 오답(1[p^ &gt; 1/2] != y)을 예측하는 AUROC가 0.5에서 SE 이상 떨어져 있으면 유용하다고 본다.</li>
+</ul>
+
+<!-- ===================================================================== E1 -->
+<div class="exp" id="E1">
+<h2>E1. 기본 LOEO 실행 <span class="verdict mix-v">부분 지지</span></h2>
+<div class="meta">실행 <code>outputs/loeo/20261001_170056</code> · lambda0 = 1 · 시드 42 · 예산 0/5/10/20/최종 · 선택 예산 (0, 10) · 70분</div>
+
+<h3>H1.1 cold start 전이</h3>
+<h4>가설</h4>
+<pre class="eq">
+H1.1:  MLPD_prop(0) &gt;= MLPD_pooled  (population posterior predictive가 pooled 로지스틱만큼은 전이된다)
+</pre>
+<h4>근거</h4>
+<p>pooled는 모든 평가자를 한 명으로 보고 theta를 하나 추정한다. 계층 모형의 cold start 예측은 p(theta_* | D_pop) = integral N(theta_*; mu, Sigma) p(mu, Sigma | D_pop) 로, pooled의 점 추정을 "평균 mu 주변의 분포"로 넓힌 것이다. 이질성이 실제로 있으면 넓힌 쪽이 log score에서 손해를 덜 본다.</p>
+<h4>결과</h4>
+<pre>
+MLPD(0):  proposed -0.698 +- 0.049   hb_full -0.694 +- 0.041   ebmap -0.720 +- 0.062   pooled -0.717 +- 0.057
+AUROC(0): proposed  0.734 +- 0.045   hb_full  0.688 +- 0.038   pooled  0.692 +- 0.043
+</pre>
+<h4>해석과 판정</h4>
+<p>MLPD는 pooled와 SE 안에서 같다("더 낫다"는 아니다). AUROC는 proposed가 0.04 높고, 이 차이는 포함 사전분포에서 온다(hb_full은 pooled와 같다). <span class="verdict ok-v">지지 (동등성)</span>. 다만 평가자 하나(김진명)는 pooled가 0.10 더 좋다. 이질성이 작은 평가자에게는 넓힌 예측이 손해라는 뜻이고, 이는 H1.3으로 이어진다.</p>
+
+<h3>H1.2 순차 개인화</h3>
+<h4>가설</h4>
+<pre class="eq">
+H1.2a:  MLPD_prop(t)가 t에 대해 증가하고,  MLPD_prop(20) - MLPD_pooled(20) &gt; SE
+H1.2b:  MLPD_indep(t) &lt; MLPD_prop(t)  for all t &lt;= 20   (사전분포 없는 개인화는 소수 라벨에서 실패)
+</pre>
+<h4>근거</h4>
+<p>라벨 t개의 로지스틱 우도는 d = 41차원에서 t &lt; d일 때 식별 불능이다. 사전분포 N(mu, Sigma)가 그 부족분을 채우므로 proposed는 t가 작아도 정의되고, indep는 정규화 L2에 의존해 사실상 pooled보다 못해야 한다.</p>
+<h4>결과</h4>
+<pre>
+t:          0       5       10      20      final
+proposed  -0.698  -0.624  -0.620  -0.547  -0.564
+pooled    -0.717  -0.714  -0.675  -0.692  -0.691
+indep       --    -0.824  -0.911  -0.839  -0.673
+dMLPD(20) = proposed - pooled = +0.145  (SE 0.02~0.03)
+</pre>
+<h4>해석과 판정</h4>
+<p>단조 증가하고(final은 평가자 구성이 달라 비교 불가), t = 20에서 pooled보다 0.145 좋다. indep는 모든 예산에서 pooled보다도 나쁘다. <span class="verdict ok-v">지지</span>.</p>
+
+<h3>H1.3 이득의 분포</h3>
+<h4>가설</h4>
+<pre class="eq">
+H1.3:  dMLPD_*(5) = MLPD_*(5) - MLPD_*(0) &gt;= 0  for every held-out evaluator *
+</pre>
+<h4>근거</h4>
+<p>Bayesian 갱신은 기대 log score를 낮추지 않는다(사전분포가 맞다면). 라벨 5개면 posterior가 자기 쪽으로 움직여야 한다.</p>
+<h4>결과</h4>
+<pre>
+dMLPD(5):  강신길 +0.018  김재호 -0.062  김진명 -0.031  김태근 -0.001  박재일 +0.119
+           신민철 +0.008  이강근 +0.504  이지환 +0.077  조현석 +0.056  한규택 +0.052
+</pre>
+<h4>해석과 판정</h4>
+<p>라벨 30개 안팎의 세 명(김재호, 김진명, 김태근)은 0 또는 음수다. holdout 15~18개에서 MLPD의 SE는 대략 sd(lpd)/sqrt(15) = 0.15 수준이라 음수가 통계적으로 유의하지는 않지만, 세 lambda0에서 같은 방향(E2)이라 잡음만은 아니다. <span class="verdict bad-v">기각 (보편성)</span>. 이득은 긴 스트림 다섯 명에 집중된다. 원인 후보는 E5에서 분리한다.</p>
+
+<h3>H2.1 분해의 거동</h3>
+<pre class="eq">
+H2.1a:  mean_j U_epi,j(t)가 t에 대해 감소        (epistemic은 피드백으로 줄어든다)
+H2.1b:  mean_j U_ale,j(t)가 t에 대해 거의 일정     (aleatoric은 피드백과 무관)
+H2.1c:  |Spearman_j(U_epi, U_ale)| &lt; 0.5          (두 성분이 같은 것을 재지 않는다)
+</pre>
+<h4>결과</h4>
+<pre>
+U_epi:   0.070  0.057  0.045  0.034  0.029    (t = 0, 5, 10, 20, final)
+U_ale:   0.145  0.154  0.161  0.160  0.162
+rho:    -0.37  -0.12  -0.02  +0.33  +0.20
+</pre>
+<p>세 조건 모두 성립. <span class="verdict ok-v">지지</span>. U_ale이 약간 오르는 것은 개인화로 p^가 0.5에서 멀어지며 p(1-p)가 아니라 E_m[p^(m)(1-p^(m))]이 재배치되는 효과로 보이며 크기는 작다.</p>
+
+<h3>H2.2 epistemic의 유용성</h3>
+<pre class="eq">
+H2.2:  AUROC( wrong_j = 1[p^_j &gt; 1/2] != y_j ;  score = U_epi,j ) &gt; 0.5 + SE   for all t
+</pre>
+<h4>근거</h4>
+<p>U_epi가 크면 particle들이 그 에피소드의 판단에 합의하지 못한 것이므로 틀릴 확률이 높아야 한다. 이것이 "posterior가 얼마나 믿을지 알려준다"의 조작적 정의다.</p>
+<h4>결과</h4>
+<pre>
+correctness AUROC(U_epi):  0.49  0.55  0.57  0.63  0.57   (t = 0, 5, 10, 20, final)
+correctness AUROC(|p^-1/2|): 0.58  0.63  0.65  0.67  0.66   (총 불확실성 기준, 참고)
+</pre>
+<h4>해석과 판정</h4>
+<p>cold start에서는 우연 수준이고 t = 20에서야 0.63이다. 총 불확실성 |p^ - 1/2|가 모든 t에서 더 낫다. 즉 cold start의 U_epi는 "어느 에피소드가 어려운가"가 아니라 "population이 얼마나 갈라지는가"를 재고 있고, 그 갈라짐은 해당 평가자의 오답과 무관하다. <span class="verdict mix-v">부분 지지 (t &gt;= 10에서만)</span>. 논문 주장 수위를 "개인화가 진행되면 epistemic이 오답을 가려낸다"로 낮춘다.</p>
+
+<h3>H2.3 신뢰 판정 규칙</h3>
+<pre class="eq">
+reliable(t) :=  AUROC_lo(t) &gt; 1/2  and  AUROC_hi(t) - AUROC_lo(t) &lt; w_max,   w_max = 0.15
+H2.3:  reliable 비율이 t에 대해 증가해 t = 20에서 과반
+</pre>
+<h4>결과</h4>
+<pre>
+AUROC_lo:  0.24  0.28  0.38  0.56  0.39      reliable 비율: 0  0  0  0  0.10
+</pre>
+<p>구간 하한은 t와 함께 오르지만(t = 20에서 0.5를 넘음) 폭이 0.27~0.65라 w_max = 0.15는 한 번도 만족되지 않는다. 구간은 particle 하나씩의 AUROC를 bootstrap하므로 population 이질성이 그대로 폭이 된다. <span class="verdict bad-v">기각 (규칙 설계)</span>. E7에서 재설계.</p>
+
+<h3>H3.1 피처 선택</h3>
+<pre class="eq">
+Q(S) = mean_* mean_{t in B} MLPD_*(t; S),   B = {0, 10}
+H3.1:  one-SE 규칙이 고르는 크기 k*가 1 &lt; k* &lt; d 이고, Q(S_k*) ≈ Q(full)
+</pre>
+<h4>근거</h4>
+<p>02 문서의 Riha 등(2026)에 따르면 선택은 예측을 개선하지 않으므로 Q(S_k)는 k에 대해 평평하거나 완만하게 오를 것이다. 다만 활성 피처가 여러 개(PIP 높은 것이 10개)이므로 k*는 5~10 사이일 것으로 예상했다.</p>
+<h4>결과</h4>
+<pre>
+k:      1       2       5       10      20      full(40~42)   pip(10)
+Q:    -0.657  -0.661  -0.657  -0.675  -0.671  -0.677       -0.682
+dQ vs full:  +0.019+-0.011  +0.016+-0.009  +0.020+-0.014  +0.002+-0.011  +0.006+-0.007   --   -0.005+-0.017
+k* = 1,  선택 피처 = IMU_VerAccelVal__p2p (10/10 폴드),  Nogueira 안정성 1.0
+</pre>
+<h4>해석과 판정</h4>
+<p>곡선이 평평하다는 예상은 맞았지만 k* = 1은 예상보다 작다. 피처 41개의 계층 모형이 피처 1개의 모형보다 held-out에서 나을 것이 없다. 이는 (a) population 수준에서 라벨을 설명하는 신호가 사실상 수직 가속도 크기 하나라는 뜻이거나, (b) 나머지 피처의 개인차가 t = 10까지의 피드백으로는 학습되지 않는다는 뜻이다. <span class="verdict mix-v">부분 지지 (평평함은 맞고 k*는 예상 밖)</span>. (b)는 E3이 검정한다.</p>
+
+<h3>H3.2 센서</h3>
+<pre class="eq">
+dQ_loso(c) = Q(all \ {c}) - Q(all)
+H3.2a:  dQ_loso(IMU_VerAccelVal) &lt; -SE      (수직 가속도는 필요)
+H3.2b:  dQ_loso(Bounce) &lt; -SE  또는  dQ_loso(Pitch) &lt; -SE   (6D 중 하나는 필요)
+</pre>
+<h4>근거</h4>
+<p>8월 예비 분석과 피처 역할표에서 bounce impulse의 PIP가 0.88로 높았으므로 6D bounce가 필요하리라 예상했다.</p>
+<h4>결과</h4>
+<pre>
+dQ_loso:  VerAccel -0.033+-0.023   Bounce +0.007+-0.007   Pitch -0.002+-0.006   LongAccel -0.003+-0.014   LatAccel +0.006+-0.007
+단독:     VerAccel -0.670 (전체 -0.677 대비 +0.007+-0.022)
+</pre>
+<h4>해석과 판정</h4>
+<p>H3.2a 지지, H3.2b 기각. PIP가 높은 피처를 빼도 held-out MLPD는 안 떨어진다. PIP는 "모형이 그 피처에 계수를 둔다"를, Q는 "그 피처가 새 평가자 예측에 기여한다"를 재므로 둘이 갈릴 수 있다는 02 문서의 경고가 그대로 나왔다. <span class="verdict mix-v">a 지지 / b 기각</span>. 배포 결론: IMU 수직 가속도 하나로 충분.</p>
+
+<h3>H3.3 공통 / 개인 / 비활성</h3>
+<pre class="eq">
+inactive_j :  PIP_j &lt; 1/2
+q_j = E_m[ Phi( |mu_j^(m)| / sqrt(Sigma_jj^(m)) ) ],   common_j : q_j &gt;= 0.9,  else specific
+H3.3:  수직/종방향 가속도 크기 피처는 common, 형태/주파수 피처는 specific, 횡가속도는 inactive
+</pre>
+<h4>결과</h4>
+<pre>
+common:   IMU_VerAccelVal__p2p (PIP 0.93, q 0.92, 7/10 폴드)                 -- 유일
+specific: Bounce impulse_abs (0.88), LongAccel band_low (0.84), Bounce p2p_deriv (0.80), LongAccel p2p (0.75), std (0.74)
+inactive: IMU_LatAccelVal 전부 (PIP &lt;= 0.02), Pitch 대부분
+</pre>
+<p>횡가속도 비활성과 수직 p2p 공통은 맞았다. "종방향 크기 피처가 common"은 q 0.83~0.84로 임계값 아래라 specific으로 분류되었다. <span class="verdict mix-v">부분 지지</span>. 분류가 사전분포에 얼마나 민감한지는 E2가 보여 준다.</p>
+</div>
+
+<!-- ===================================================================== E2 -->
+<div class="exp" id="E2">
+<h2>E2. 사전분포 척도 lambda0 민감도 <span class="verdict bad-v">주 가설 기각</span></h2>
+<div class="meta">실행 <code>outputs/loeo_lam01</code> (lambda0 = 0.1), <code>outputs/loeo_lam001</code> (0.01) · main만 · 각 36분</div>
+
+<h4>가설</h4>
+<pre class="eq">
+inverse-Wishart 사전 평균:  E[Sigma] = Lambda0 / (nu0 - d - 1) = lambda0 * I        (nu0 = d + 2)
+사후 평균 근사:             E[Sigma | .] ≈ (Lambda0 + S) / (nu0 + U - d - 1) = (lambda0 * I + S) / (U + 1)
+                           S = sum_u (theta~_u - theta_bar)(theta~_u - theta_bar)^T
+대각 성분:                 Sigma_jj ≈ (lambda0 + U * tau_j^2) / (U + 1),   tau_j^2 = 실제 평가자 간 분산
+U = 9, lambda0 = 1, tau_j = 0.2 이면  Sigma_jj ≈ (1 + 0.36) / 10 = 0.136,  sd 0.37  (실제 0.2의 거의 2배)
+
+H2a (예측):  lambda0를 0.1, 0.01로 줄이면 cold start 예측이 덜 평평해져 MLPD(0)와 ECE(0)가 개선된다
+H2b (개인화): 라벨 5개에서 posterior가 과하게 움직이는 현상이 줄어 소수 라벨 평가자의 dMLPD(5)가 0 이상이 된다
+H2c (선택):  피처가 많을수록 예측 분산만 커지던 효과가 줄어 Q(S_k) 곡선이 k에 대해 오른다
+</pre>
+<h4>근거</h4>
+<p>위 근사식에서 U가 작으면 Sigma 사후분포는 lambda0에 지배된다. 과대 추정된 Sigma는 (1) cold start particle을 넓게 퍼뜨려 평균 예측을 1/2로 수축시키고, (2) 사전 정밀도 Sigma^-1가 작아 라벨 몇 개가 posterior를 크게 움직이게 하며, (3) 피처마다 분산을 더해 d가 클수록 예측이 평평해진다. 셋 다 E1에서 관측된 현상이므로 한 원인으로 묶어 세웠다.</p>
+<h4>결과</h4>
+<pre>
+                   t=0              t=5              t=10             t=20
+MLPD  lam=1      -0.698+-0.049    -0.624+-0.021    -0.620+-0.027    -0.547+-0.020
+      lam=0.1    -0.705+-0.054    -0.626+-0.019    -0.606+-0.022    -0.543+-0.020
+      lam=0.01   -0.691+-0.046    -0.618+-0.017    -0.606+-0.020    -0.540+-0.019
+ECE(0):   0.272 / 0.243 / 0.264        cal_slope(0): 36+-34 / 2.0+-0.6 / 18+-17  (폴드 하나가 폭주, 신뢰 불가)
+U_epi(0): 0.070 / 0.051 / 0.044        (lambda0와 함께 줄어든다 — 근사식의 예측대로)
+dMLPD(5) 소수 라벨 3명:  lam=1: -0.062 -0.031 -0.001 | lam=0.1: -0.054 -0.044 -0.024 | lam=0.01: -0.056 -0.050 -0.033
+correctness AUROC(U_epi, t=0):  0.49 / 0.57 / 0.62
+공통 분류:  VerAccel p2p 7/10 -> 9/10,  Bounce impulse 0/10 -> 10/10,  LongAccel std 2/10 -> 5/10
+</pre>
+<h4>해석과 판정</h4>
+<ul>
+  <li><strong>H2a 기각.</strong> MLPD와 ECE는 모두 SE 안에서 같다. U_epi는 근사식대로 줄었으니 Sigma가 사전분포에 끌리는 것은 사실이지만, 그것이 예측 품질의 병목은 아니다. cold start의 평평함은 Sigma 척도가 아니라 다른 데서 온다(E6).</li>
+  <li><strong>H2b 기각.</strong> 소수 라벨 평가자의 dMLPD(5)는 세 설정에서 같은 부호, 같은 크기다. 사전 정밀도를 100배 키워도 안 바뀌므로 "posterior가 과하게 움직인다"가 원인이 아니다(E5).</li>
+  <li><strong>H2c 미검정.</strong> select 스테이지를 lambda0 변경으로 돌리지 않았다. 다만 main에서 hb_full과 proposed가 같다는 사실로 보아 결과가 바뀔 가능성은 낮다.</li>
+  <li><strong>부수 발견 두 가지.</strong> (i) epistemic의 오답 예측력이 lambda0가 작을수록 좋아진다(0.49 → 0.62). 좁은 사전분포에서 U_epi는 population 갈라짐이 아니라 데이터 희소성을 더 반영하게 되기 때문이다. (ii) 공통/개인 분류가 lambda0에 크게 의존한다. q_j의 분모 sqrt(Sigma_jj)가 사전분포에 좌우되므로 당연한 결과이고, 예측 성능으로는 lambda0를 고를 수 없으므로 <strong>분류는 사전분포 두 값에서 함께 보고하고 양쪽에서 같은 사실만 결론으로 쓴다</strong>.</li>
+</ul>
+<p><span class="verdict bad-v">H2a, H2b 기각</span> · lambda0 = 1을 기본으로 유지하고 0.01을 민감도로 보고. 예측 둔감성은 강건성 근거.</p>
+</div>
+
+<!-- ===================================================================== E3 -->
+<div class="exp" id="E3">
+<h2>E3. 선택 점수 예산에 t = 20 추가 <span class="verdict bad-v">기각</span></h2>
+<div class="meta">실행 <code>outputs/loeo_selb20</code> · B = {0, 10, 20} · all · 70분</div>
+<h4>가설</h4>
+<pre class="eq">
+H3:  B = {0, 10, 20}으로 Q를 정의하면 k* &gt; 1 이고 dQ_loso(Bounce) &lt; 0
+     (개인 피처 — Bounce impulse 등, PIP 0.8~0.9 — 는 cold start가 아니라 개인화 뒤에 기여한다)
+</pre>
+<h4>근거</h4>
+<p>E1에서 Bounce impulse는 "specific"(개인차가 큰 피처)로 분류됐다. 개인차가 큰 피처는 population 평균 mu_j가 작아 t = 0 예측에는 기여하지 못하고, 개인 posterior가 자리 잡은 뒤에야 기여해야 한다. B에 20을 넣으면 그 기여가 Q에 잡혀야 한다.</p>
+<h4>결과</h4>
+<pre>
+k* = 1 (IMU_VerAccelVal__p2p, 10/10),  dQ(k=1 vs full) = +0.020+-0.011,  dQ(k=10) = +0.003+-0.011
+dQ_loso(Bounce) = +0.004+-0.006,  dQ_loso(VerAccel) = -0.034+-0.023,  Pitch -0.004,  LongAccel -0.003,  LatAccel +0.005
+</pre>
+<h4>해석과 판정</h4>
+<p>E1과 수치까지 거의 같다. t = 20은 긴 스트림 다섯 명에서만 계산되므로 B의 평균에서 가중치가 1/3이지만, 그 다섯 명에서도 bounce 피처가 기여했다면 dQ_loso(Bounce)가 음수로 돌아섰을 것이다. 그렇지 않았다. <span class="verdict bad-v">기각</span>. 개인 피처의 높은 PIP는 "모형이 그 피처에 개인차를 부여한다"는 뜻이지 "그 개인차가 held-out 예측을 개선한다"는 뜻이 아니다. 선택 결론(수직 가속도 하나)은 B에 둔감하므로 B = {0, 10, 20}을 확정 설정으로 쓴다.</p>
+</div>
+
+<!-- ===================================================================== E4 -->
+<div class="exp" id="E4">
+<h2>E4. 확정 실행 (시드 3개) <span class="verdict todo-v">예정</span></h2>
+<h4>가설</h4>
+<pre class="eq">
+H4:  시드 간 변동 sd_seed(MLPD(t)) &lt; 평가자 간 SE  for all t        (Gibbs/particle 잡음이 결론을 바꾸지 않는다)
+</pre>
+<h4>근거</h4>
+<p>E1~E3은 시드 하나다. 논문 수치로 쓰려면 MCMC 잡음이 평가자 변동보다 작음을 보여야 한다. 시드가 바꾸는 것은 Gibbs 체인, cold start particle, 오프셋별 새 사용자 particle이다.</p>
+<h4>설계</h4>
+<pre>
+.venv\Scripts\python.exe run_loeo.py --stage all --set seeds="(42,43,44)" --set sel_budgets="(0,10,20)" --set reliable_w_max=0.3 --set run_name=loeo_final
+</pre>
+<p>리포트는 시드 평균을 쓰고, 폴드 json의 <code>per_seed</code>에서 sd_seed를 따로 계산한다. 선택과 센서는 시드 42 하나(결정적 projpred, 축소 Gibbs). 끝나면 lambda0 = 0.01도 같은 시드로 main만 반복해 민감도 표를 확정한다.</p>
+<h4>판정</h4>
+<p>sd_seed가 SE의 절반 이하이면 "시드 잡음 무시 가능"으로 기록하고 모든 수치를 이 실행에서 논문으로 옮긴다.</p>
+</div>
+
+<!-- ===================================================================== E5 -->
+<div class="exp" id="E5">
+<h2>E5. 소수 라벨 평가자의 무이득 원인 분리 <span class="verdict todo-v">예정</span></h2>
+<h4>배경</h4>
+<p>E1 H1.3에서 라벨 30개 안팎 세 명은 개인화 이득이 없거나 음수였고, E2에서 사전 정밀도는 원인이 아님이 밝혀졌다. 남은 후보 가설은 셋이다.</p>
+<pre class="eq">
+H5a (차원):  d = 41에서 라벨 5개의 우도는 거의 모든 방향에서 평평하므로, posterior는 사전분포 방향으로 머물고
+             그 방향이 holdout과 맞지 않을 수 있다. 피처 1개 모형(k* = 1)으로 개인화하면 dMLPD_*(5) &gt;= 0 이 된다.
+H5b (라벨 잡음): 그 평가자들의 라벨은 어느 모형으로도 예측 불가능하다. 근거: cold start AUROC 0.60~0.69, pooled도 비슷.
+             검정: 평가자별로 자기 라벨 전체(문맥+holdout)에 K-fold 재적합 ELPD를 내서 "최대 달성 가능 MLPD"를 추정.
+H5c (표본 잡음): holdout 15~18개에서 dMLPD의 SE ≈ 0.1~0.15 이므로 -0.06은 1 SE 이내.
+             검정: 평가자별 paired dELPD_*(5)와 SE를 표로 (이미 리포트에 있음: 김재호 -1.05+-0.70, 김진명 -0.47+-0.56, 김태근 -0.02+-1.35).
+</pre>
+<h4>설계</h4>
+<pre>
+# H5a: k = 1 피처 집합으로 main만 재실행 (약 15분)
+.venv\Scripts\python.exe run_loeo.py --stage main --set feature_subset="('IMU_VerAccelVal__p2p',)" --set hb_full=False --set sensor_pip=False --set run_name=loeo_k1
+.venv\Scripts\python.exe run_loeo.py --stage report --set run_name=loeo_k1 --timestamp &lt;ts&gt;
+# 비교
+.venv\Scripts\python.exe run_loeo.py --stage compare --set run_name=loeo_compare --set compare_runs="('outputs/loeo/20261001_170056','outputs/loeo_k1/&lt;ts&gt;')"
+</pre>
+<h4>판정</h4>
+<ul>
+  <li>k = 1에서 세 명의 dMLPD(5)가 0 이상으로 바뀌면 H5a 지지: 소수 라벨 개인화에는 저차원 모형이 맞고, 논문에 "피처 선택이 개인화의 데이터 효율을 높인다"는 부가 결과가 생긴다.</li>
+  <li>바뀌지 않고 K-fold 재적합 MLPD도 cold start와 같으면 H5b: 라벨 자체가 예측 불가능. 논문에서는 "이득은 예측 가능한 평가자에게 집중된다"로 쓴다.</li>
+  <li>H5c는 이미 수치로 확인됐다(모두 1 SE 이내). 논문에는 "유의한 악화는 없다, 다만 이득도 없다"로 쓴다.</li>
+</ul>
+</div>
+
+<!-- ===================================================================== E6 -->
+<div class="exp" id="E6">
+<h2>E6. cold start 과소 확신의 원인 <span class="verdict todo-v">예정</span></h2>
+<h4>배경</h4>
+<p>E1에서 cold start의 ECE가 0.27이고 calibration slope가 1을 크게 넘는다(예측이 1/2 근처로 몰림). E2에서 Sigma 척도는 원인이 아니었다.</p>
+<pre class="eq">
+posterior mean 예측:  p^_j = (1/M) sum_m sigma(z_j^T theta^(m))
+plug-in 예측:         p~_j = sigma( z_j^T theta_bar ),   theta_bar = (1/M) sum_m theta^(m)
+Jensen:  theta^(m)가 퍼져 있으면  |p^_j - 1/2| &lt;= |p~_j - 1/2|   (sigmoid 평균은 항상 1/2 쪽으로 수축)
+
+H6a (수축):  slope(p~) ≈ 1 이고 slope(p^) &gt; 1 이면 과소 확신은 particle 이질성에 의한 Jensen 수축이다
+H6b (신호):  slope(p~)도 1보다 크면 population 평균 theta_bar 자체가 holdout에서 약한 것이고, 수축이 아니라 신호 부족이다
+</pre>
+<h4>근거</h4>
+<p>01 문서 5.6의 임상 예측 연구는 posterior mean 예측이 plug-in보다 slope가 1에 가깝다고 보고했다. 우리 데이터에서 반대라면 cold start particle의 이질성이 비정상적으로 크다는 뜻이다.</p>
+<h4>설계</h4>
+<p>코드에 <code>mlpd_plugin</code>, <code>ece_plugin</code>, <code>cal_slope_plugin</code>이 추가되어 E4 이후 모든 실행의 리포트 csv에서 바로 읽을 수 있다(p~는 logit 평균의 sigmoid로 계산하며 이는 sigma(z^T theta_bar)와 정확히 같다). 추가 실행은 필요 없다.</p>
+<h4>판정</h4>
+<p>H6a이면 cold start에서는 p~로 결정하고 p^로 불확실성을 보고하는 "분리 보고"를 Discussion에 제안한다. H6b이면 과소 확신은 데이터 한계이며 그대로 보고한다. 어느 쪽이든 posterior mean을 주 예측으로 유지한다(log score 기준에서는 p^가 p~보다 나쁠 수 없다는 보장은 없지만, 01 문서의 근거로 기본값은 p^).</p>
+</div>
+
+<!-- ===================================================================== E7 -->
+<div class="exp" id="E7">
+<h2>E7. 신뢰 판정 규칙 재설계 <span class="verdict todo-v">예정</span></h2>
+<h4>배경</h4>
+<p>E1 H2.3에서 폭 기준 0.15는 한 번도 만족되지 않았다. 구간 폭이 population 이질성을 그대로 반영하기 때문이다.</p>
+<pre class="eq">
+현재:  replicate r:  m_r ~ Unif{1..M},  idx_r ~ bootstrap,  A_r = AUROC(y[idx_r], p^(m_r)[idx_r])
+       구간 = [pct_2.5(A), pct_97.5(A)],   폭에는 particle 분산 + bootstrap 분산이 모두 들어간다
+
+대안 1 (폭 완화):   w_max = 0.3,  하한 조건 유지                                 -- 설정값으로 이미 가능
+대안 2 (평균 예측): A_r = AUROC(y[idx_r], p^[idx_r])  (bootstrap만) + 별도로 particle 분산 보고
+대안 3 (확률):      P(AUROC &gt; 1/2 | data) = (1/R) sum_r 1[A_r &gt; 1/2]  &gt;= 0.95 를 신뢰 기준으로
+</pre>
+<h4>가설</h4>
+<pre class="eq">
+H7:  대안 3의 P(AUROC &gt; 1/2)는 t에 대해 단조 증가하고, 긴 스트림 평가자에서 t = 20에 0.95를 넘는다
+</pre>
+<h4>근거</h4>
+<p>폭 기준은 holdout 크기에 좌우되어 평가자 간 비교가 불공정하다. "우연보다 낫다는 사후 확률"은 크기에 덜 민감하고 Bayesian 해석이 직접적이다. 하한 0.5 조건은 사실상 대안 3의 0.975 기준과 같다.</p>
+<h4>설계</h4>
+<p>E4 실행에 w_max = 0.3을 쓰고, 리포트에 <code>auroc_ci_width</code>와 함께 P(AUROC &gt; 1/2)를 추가한다(코드 추가 필요, replicate A_r을 이미 계산하므로 비용 없음). 판정은 E4 결과로 한다.</p>
+</div>
+
+<!-- ===================================================================== E8 -->
+<div class="exp" id="E8">
+<h2>E8. prequential 곡선과 long-stream 사례 <span class="verdict todo-v">예정</span></h2>
+<pre class="eq">
+prequential 누적 점수:  C_*(n) = sum_{i=1}^{n} log p( y_{*i} | D_{*,i-1}, D_pop )      (one-step-ahead, holdout 불필요)
+비교 기준선:            C_pooled(n) = sum_i log p_pooled(y_{*i})
+H8:  C_*(n) - C_pooled(n) 이 n에 대해 증가하는 기울기를 갖고, 긴 스트림 평가자에서 n ≈ 20 이후 양수로 유지된다
+</pre>
+<h4>근거</h4>
+<p>01 문서 6절. 문맥/holdout 분할 없이 전체 스트림을 쓰므로 라벨이 적은 평가자에서도 정의되고, 누적 차이의 기울기가 "라벨 하나당 평균 이득"이다. 긴 스트림 다섯 명의 궤적은 논문 Fig. trajectory의 재료다.</p>
+<h4>설계</h4>
+<p>점수는 이미 <code>report/prequential_cumulative.json</code>에 저장된다(최대 120 스텝). pooled 기준선과 그림(평가자별 C_* - C_pooled vs n)을 리포트에 추가한다(코드 추가 필요). 추가 실행 불필요.</p>
+</div>
+
+<h2 id="status">가설 현황표</h2>
+<table>
+  <thead><tr><th>ID</th><th>가설</th><th>판정</th><th>근거 실행</th><th>논문 반영</th></tr></thead>
+  <tbody>
+    <tr><td>H1.1</td><td>cold start가 pooled 이상</td><td>지지 (동등)</td><td>E1</td><td>VI-F 표, "동등" 표현</td></tr>
+    <tr><td>H1.2</td><td>개인화 이득, indep 열세</td><td>지지</td><td>E1</td><td>VI-F 표와 곡선</td></tr>
+    <tr><td>H1.3</td><td>모든 평가자에게 이득</td><td>기각</td><td>E1, E2</td><td>평가자별 ΔMLPD 표, Limitations</td></tr>
+    <tr><td>H2.1</td><td>분해 거동 (감소/일정/분리)</td><td>지지</td><td>E1, E2</td><td>VI-G 그림</td></tr>
+    <tr><td>H2.2</td><td>epistemic이 오답 예측</td><td>부분 지지 (t ≥ 10)</td><td>E1, E2</td><td>주장 수위 조정</td></tr>
+    <tr><td>H2.3</td><td>신뢰 판정 규칙</td><td>기각 (설계)</td><td>E1</td><td>E7로 재설계</td></tr>
+    <tr><td>H3.1</td><td>선택 곡선 평평, k* 중간</td><td>부분 지지 (k* = 1)</td><td>E1, E3</td><td>VI-H 곡선</td></tr>
+    <tr><td>H3.2</td><td>수직 가속도 필요 / 6D 필요</td><td>a 지지 / b 기각</td><td>E1, E3</td><td>VI-H 센서 표, 배포 결론</td></tr>
+    <tr><td>H3.3</td><td>공통/개인/비활성 분류</td><td>부분 지지, 사전분포 민감</td><td>E1, E2</td><td>두 lambda0 병기</td></tr>
+    <tr><td>H2a,b</td><td>Sigma 과대 추정이 원인</td><td>기각</td><td>E2</td><td>강건성 표</td></tr>
+    <tr><td>H3</td><td>개인 피처가 t = 20에 기여</td><td>기각</td><td>E3</td><td>Discussion</td></tr>
+    <tr><td>H4</td><td>시드 잡음 &lt; 평가자 SE</td><td>예정</td><td>E4</td><td>모든 수치의 출처</td></tr>
+    <tr><td>H5a,b</td><td>무이득 원인: 차원 / 라벨 잡음</td><td>예정</td><td>E5</td><td>Discussion 또는 부가 결과</td></tr>
+    <tr><td>H6a,b</td><td>과소 확신: Jensen 수축 / 신호 부족</td><td>예정</td><td>E4 (추가 실행 불필요)</td><td>Discussion</td></tr>
+    <tr><td>H7</td><td>P(AUROC &gt; 1/2) 기반 신뢰 판정</td><td>예정</td><td>E4 + 코드</td><td>V-E 규칙 교체</td></tr>
+    <tr><td>H8</td><td>prequential 기울기 양수</td><td>예정</td><td>저장된 점수 + 코드</td><td>long-stream 사례 그림</td></tr>
+  </tbody>
+</table>
+</main>
+</body>
+</html>

@@ -59,6 +59,7 @@ class Config:
     min_per_class: int = 3
     # ---- bank
     rho_max: float = 0.95
+    feature_subset: tuple = ()                 # () = full pruned bank; else only these 'channel__stat' names (main stage)
     # ---- protocol
     budgets: tuple = (0, 5, 10, 20)
     include_final: bool = True
@@ -195,6 +196,8 @@ def run_fold_main(cfg, run, name, data, channels, fs):
     bank = B.full_bank(channels)
     pruned, prune_report = B.prune_bank([pop_data[n][0] for n in pop_names], channels, fs, bank, cfg.rho_max)
     phi = B.make_pipeline(pruned, channels, fs).fit([pop_data[n][0] for n in pop_names], None)
+    if cfg.feature_subset:                                      # e.g. the k=1 model of the selection stage
+        phi = B.ColumnSubset(phi, list(cfg.feature_subset))
     Z_held = phi.transform(X_held).astype(np.float64)
     y_held = np.asarray(y_held)
     log(cfg, f"[main] {name}: d={len(phi.feature_names)} (pruned {len(prune_report)}), "

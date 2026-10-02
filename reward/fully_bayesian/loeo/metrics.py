@@ -115,6 +115,11 @@ def summarize(y, P, seed=0, trust_K=600, light=False, width_max=0.15):
     lpd = pointwise_lpd(y, p)
     aurc, eaurc, _, _ = risk_coverage(y, p, epi)
     slope, intercept = calibration_slope_intercept(y, p)
+    # plug-in counterpart: sigmoid of the mean logit = sigmoid(z^T mean(theta)); isolates the
+    # shrinkage toward 1/2 that averaging sigmoid over heterogeneous particles produces
+    Pc = np.clip(P, 1e-9, 1 - 1e-9)
+    p_plug = 1.0 / (1.0 + np.exp(-np.log(Pc / (1 - Pc)).mean(axis=0)))
+    slope_plug, _ = calibration_slope_intercept(y, p_plug)
     if light:
         trust = {"ci_lo": float("nan"), "ci_hi": float("nan"), "trustworthy": False}
     else:
@@ -124,6 +129,8 @@ def summarize(y, P, seed=0, trust_K=600, light=False, width_max=0.15):
         "mlpd": float(lpd.mean()), "elpd": float(lpd.sum()),
         "brier": brier(y, p), "auroc": auroc(y, p), "auprc": auprc(y, p),
         "ece": ece(y, p), "cal_slope": slope, "cal_intercept": intercept,
+        "mlpd_plugin": float(pointwise_lpd(y, p_plug).mean()), "ece_plugin": ece(y, p_plug),
+        "cal_slope_plugin": slope_plug,
         "epi_mean": float(epi.mean()), "ale_mean": float(ale.mean()),
         "epi_ale_spearman": spearman(epi, ale),
         "correctness_auroc_epi": correctness_auroc(y, p, epi),
