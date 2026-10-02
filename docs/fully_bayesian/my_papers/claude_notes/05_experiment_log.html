@@ -627,6 +627,49 @@ C_\star(n)-C^{\text{pooled}}_\star(n)\ \text{의 기울기가 양수이고, 긴 
 <p>점수는 <code>report/prequential_cumulative.json</code>에 이미 저장된다(최대 120 스텝). pooled 기준선과 평가자별 \(C_\star-C^{\text{pooled}}_\star\) 대 \(n\) 그림을 리포트에 추가한다. 추가 실행은 필요 없다.</p>
 
 <!-- ===================================================================== status -->
+<!-- ===================================================================== E9 -->
+<h2 id="E9">E9. population 구성 민감도 <span class="verdict todo-v">예정</span></h2>
+<p class="label">배경</p>
+<p>
+  지금까지의 population은 라벨이 두 클래스 다 있는 17명 전원이다. 그중 7명은 라벨이 10개 미만이라 평가 대상은 아니지만 사전분포 학습에는 들어간다. 전문가와 일반인이 섞여 있고 일부는 라벨이 적고 noisy할 수 있다는 우려가 있다.
+  모형 쪽 기대는 "영향이 작다"이다. 라벨이 \(N_u\le 9\)인 평가자의 \(\boldsymbol\theta_u\)는 우도가 거의 평평해서 \(\mathcal N(\boldsymbol\mu,\boldsymbol\Sigma)\)에서 다시 뽑히는 것과 비슷하므로 \(\boldsymbol\mu\)를 거의 움직이지 않는다. 다만 NIW 갱신에서 사용자 수가 \(U-1=16\)에서 \(9\)로 줄면 \(\boldsymbol\Sigma\)의 사후분포가 사전분포 쪽으로 더 끌리므로 epistemic 항은 바뀔 수 있다.
+</p>
+<p class="label">가설</p>
+<p>
+  <strong>H9a (예측 불변).</strong> population을 적격 10명으로 제한해도 held-out MLPD는 바뀌지 않는다.
+</p>
+\[
+\big|\mathrm{MLPD}^{(\text{pop}=10)}_\star(t)-\mathrm{MLPD}^{(\text{pop}=17)}_\star(t)\big|\le \mathrm{SE}_{\text{paired}}(t)\quad\forall t\in\{0,5,10,20,n_{\text{ctx}}\}
+\]
+<p>
+  <strong>H9b (불확실성 변화).</strong> 사용자 수가 줄면 \(\boldsymbol\Sigma\)가 사전분포에 더 가까워져 cold start의 \(\bar U^{\text{epi}}(0)\)가 커지고, epistemic의 오답 예측 AUROC는 E2/E5의 방향(사전분포 분산이 클수록 나쁨)대로 0.5 쪽으로 내려간다.
+</p>
+<p>
+  <strong>H9c (대안: 잡음 제거 효과).</strong> 소수 라벨 평가자가 \(\boldsymbol\mu\)를 흐리고 있었다면 제한 population의 cold start MLPD가 SE 이상 오른다. H9a와 양립할 수 없으므로 둘 중 하나만 성립한다.
+</p>
+<p class="label">설계</p>
+<p>코드에 <code>pop_min_labels</code>, <code>pop_min_per_class</code> 옵션을 추가했다. 데이터 로드 직후 조건 미달 평가자를 데이터에서 제거하므로 population과 적격 집합이 모두 그 안에서 결정된다. 적격 기준(10, 3)과 같은 값을 주면 "population = 적격 10명"이 되고, 각 폴드의 학습 인원은 9명이다.</p>
+<pre># E9a (주): population을 적격 10명으로 제한, 시드 3개, 약 40분
+.venv\Scripts\python.exe run_loeo.py --stage main --set pop_min_labels=10 --set pop_min_per_class=3 --set seeds="(42,43,44)" --set reliable_w_max=0.3 --set hb_full=False --set sensor_pip=False --set run_name=loeo_pop10
+.venv\Scripts\python.exe run_loeo.py --stage report --set run_name=loeo_pop10
+.venv\Scripts\python.exe run_loeo.py --stage compare --set run_name=loeo_compare --set compare_runs="('outputs/loeo_final/20261002_165129','outputs/loeo_pop10/&lt;ts&gt;')"
+
+# E9b (선택): population을 라벨 100개 이상 5명으로 제한. 평가 대상도 그 5명뿐이므로 긴 스트림에 대해서만 비교된다
+.venv\Scripts\python.exe run_loeo.py --stage main --set pop_min_labels=100 --set seeds="(42,43,44)" --set reliable_w_max=0.3 --set hb_full=False --set sensor_pip=False --set run_name=loeo_pop100
+.venv\Scripts\python.exe run_loeo.py --stage report --set run_name=loeo_pop100
+
+git add outputs
+git commit -m "Add loeo_pop10 (and loeo_pop100) runs (E9)"
+git push origin claude_session</pre>
+<p>비교는 <code>loeo_final</code>의 proposed(시드 3개 평균)와 같은 폴드, 같은 holdout, 같은 오프셋이므로 에피소드 단위 paired \(\Delta\mathrm{ELPD}\)와 평가자 단위 paired \(\Delta\mathrm{MLPD}\)를 모두 낼 수 있다. baseline(pooled, indep, ebmap)은 자동으로 같이 돌아가므로 pooled도 population 제한의 영향을 받는지 함께 본다.</p>
+<p class="label">판정</p>
+<ul>
+  <li>H9a 성립이면 논문 Limitations의 "자연스러운 다음 확인" 문장을 결과 문장으로 바꾼다: "population을 적격 10명으로 제한해도 결과는 SE 안에서 같다(부록 C 표에 행 추가)". 전원 사용이 정당화된다.</li>
+  <li>H9c 성립이면 소수 라벨 평가자가 사전분포를 해치는 것이므로 주 결과를 제한 population으로 바꾸고, 제한 기준(라벨 10개, 클래스별 3개)을 사전 등록된 적격 기준과 동일하다고 서술한다. 이 경우 E4~E7 수치를 다시 뽑아야 한다.</li>
+  <li>H9b는 어느 쪽이든 부록 C(\(\lambda_0\) 민감도)와 같은 맥락에서 "사용자 수가 적으면 \(\boldsymbol\Sigma\)의 식별이 약하다"의 추가 근거로 적는다.</li>
+  <li>E9b는 긴 스트림 5명에서 cold start가 전원 population과 같으면 "소수의 긴 스트림만으로도 사전분포가 충분하다"는 부수 결과가 된다.</li>
+</ul>
+
 <h2 id="status">가설 현황표</h2>
 <table>
   <thead><tr><th>ID</th><th>가설</th><th>판정</th><th>근거</th><th>논문 반영</th></tr></thead>
@@ -647,6 +690,7 @@ C_\star(n)-C^{\text{pooled}}_\star(n)\ \text{의 기울기가 양수이고, 긴 
     <tr><td>H6a, H6b</td><td>과소 확신: Jensen 수축 / 신호 부족</td><td>H6a 지지, H6b 부분 지지; 수축은 유익</td><td>E4</td><td>Discussion</td></tr>
     <tr><td>H7</td><td>신뢰 판정 규칙</td><td>\(w_{\max}=0.3\) 지지; 사후 확률 판정은 미구현</td><td>E4</td><td>IV-E 규칙의 \(w_{\max}\) 수정</td></tr>
     <tr><td>H8</td><td>prequential 기울기 양수</td><td>예정</td><td>저장된 점수 + 코드</td><td>long-stream 사례 그림</td></tr>
+    <tr><td>H9a, H9b, H9c</td><td>population 제한: 예측 불변 / epistemic 변화 / 잡음 제거</td><td>예정</td><td>E9</td><td>Limitations 문장 교체, 부록 C 표에 행 추가</td></tr>
   </tbody>
 </table>
 

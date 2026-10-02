@@ -94,6 +94,7 @@
 .venv\Scripts\python.exe run_loeo.py --stage select  --timestamp 20261001_090000
 .venv\Scripts\python.exe run_loeo.py --stage sensors --timestamp 20261001_090000
 .venv\Scripts\python.exe run_loeo.py --stage report  --timestamp 20261001_090000</code></pre>
+<p>population 구성을 바꾸려면 <code>--set pop_min_labels=N --set pop_min_per_class=M</code>을 준다. 조건 미달 평가자는 데이터에서 제거되어 사전분포 학습과 적격 판정 모두에서 빠진다(기본 0, 0 = 라벨 있는 전원). 적격 기준 <code>min_labels</code>, <code>min_per_class</code>는 누가 held-out이 되는지만 정한다.</p>
 <p>select, sensors, report에서 <code>--timestamp</code>를 생략하면 같은 <code>run_name</code> 아래 가장 최근 폴더(<code>folds/</code>가 있는 것)를 자동으로 쓴다. 폴더가 여러 개라면 명시하는 편이 안전하다. main은 타임스탬프가 없으면 항상 새 폴더를 만든다.</p>
 <p>폴드 결과는 끝나는 즉시 <code>folds/&lt;evaluator&gt;*.json</code>으로 저장되므로, 같은 <code>--timestamp</code>로 다시 실행하면 끝난 폴드는 건너뛴다. select와 sensors는 main이 저장한 <code>&lt;evaluator&gt;_model.joblib</code>(기준 모형과 파이프라인)를 재사용하므로 main을 먼저 돌리는 편이 빠르다.</p>
 

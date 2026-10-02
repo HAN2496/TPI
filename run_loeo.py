@@ -57,6 +57,8 @@ class Config:
     smooth: tuple = (10.0, 2)
     min_labels: int = 10                       # eligibility for the held-out role
     min_per_class: int = 3
+    pop_min_labels: int = 0                    # population membership: evaluators with fewer labels are
+    pop_min_per_class: int = 0                 # dropped from the data entirely (0 = keep everyone with labels)
     # ---- bank
     rho_max: float = 0.95
     feature_subset: tuple = ()                 # () = full pruned bank; else only these 'channel__stat' names (main stage)
@@ -134,6 +136,11 @@ def load_data(cfg):
     else:
         data, channels, fs = D.load_real(cfg)
         truth = None
+    if cfg.pop_min_labels or cfg.pop_min_per_class:
+        before = len(data)
+        data = D.eligible(data, cfg.pop_min_labels, cfg.pop_min_per_class)
+        log(cfg, f"[INFO] population restricted to evaluators with >= {cfg.pop_min_labels} labels and "
+                 f">= {cfg.pop_min_per_class} per class: {before} -> {len(data)}")
     return data, channels, fs, truth
 
 
