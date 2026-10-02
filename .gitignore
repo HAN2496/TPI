@@ -1,5 +1,10 @@
 artifacts/
-outputs/
+outputs/**
+# LOEO experiment runs are tracked (reports, fold json, configs); fitted models are not
+!outputs/loeo*/
+!outputs/loeo*/*/
+!outputs/loeo*/*/**
+outputs/loeo*/*/folds/*.joblib
 datasets/
 
 .claude/

@@ -1,0 +1,11 @@
+{
+  "method": "loeo",
+  "metrics": {
+    "stages": {
+      "done": [
+        "report"
+      ]
+    }
+  },
+  "completed_at": "2026-10-02T05:39:46.882156"
+}

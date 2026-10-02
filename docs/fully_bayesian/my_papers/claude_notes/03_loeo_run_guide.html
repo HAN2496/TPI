@@ -131,8 +131,11 @@
 </table>
 
 <div class="warn">
-  <strong>결과 공유.</strong> <code>outputs/</code>는 <code>.gitignore</code>에 있어 자동으로는 추적되지 않는다. 결과를 저장소로 넘길 때는 report 폴더와 폴드 json만 강제로 추가한다 (joblib 모델 파일은 크므로 제외).
-  <pre><code>git add -f outputs/loeo/&lt;timestamp&gt;/report outputs/loeo/&lt;timestamp&gt;/folds/*.json outputs/loeo/&lt;timestamp&gt;/cfg_*.json</code></pre>
+  <strong>결과 공유.</strong> <code>.gitignore</code>가 <code>outputs/loeo*/</code> 아래의 리포트, 폴드 json, 설정 파일을 추적하고 모델 파일(<code>*_model.joblib</code>)만 제외하도록 되어 있다 (2026-10-02 이후). 실행이 끝나면 세 줄로 올린다.
+  <pre><code>git add outputs
+git commit -m "Add: LOEO results &lt;run_name&gt;"
+git push origin claude_session</code></pre>
+  <code>run_name</code>이 <code>loeo</code>로 시작하지 않으면 추적되지 않으므로 이름을 그렇게 짓는다. main만 돌린 실행은 <code>--stage report</code>를 먼저 돌려 report 폴더를 만든다.
 </div>
 
 <h2 id="s4">4. 확인해야 할 점과 알려진 한계</h2>
