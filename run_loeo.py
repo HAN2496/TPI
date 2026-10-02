@@ -634,9 +634,9 @@ def main(cfg=None):
         # these stages only read fold results; default to the latest run folder of this run_name
         # instead of creating an empty new one
         existing = sorted(p.name for p in (Path("outputs") / cfg.run_name).glob("*")
-                          if p.is_dir() and (p / "folds").is_dir() and p.name != "test")
+                          if p.is_dir() and any((p / "folds").glob("*.json")) and p.name != "test")
         if not existing:
-            raise SystemExit(f"no finished run under outputs/{cfg.run_name}; run --stage main first")
+            raise SystemExit(f"no fold results under outputs/{cfg.run_name}/*/folds; run --stage main first")
         cfg = replace(cfg, timestamp=existing[-1])
         print(f"[INFO] --timestamp not given; using latest run outputs/{cfg.run_name}/{cfg.timestamp}")
     run = Run(cfg.run_name, cfg)
