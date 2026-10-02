@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04 · LOEO 1차 결과 분석</title>
+<style>
+  :root {
+    --bg: #fbfbf9; --fg: #1d1f24; --muted: #5d6270; --line: #e3e3dc;
+    --card: #ffffff; --accent: #1f5f8b; --accent-soft: #e4eef6;
+    --warn: #8a4b08; --warn-soft: #fbeedc; --ok: #2b6a3f; --ok-soft: #e3f1e6;
+    --code: #f1f1ec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14161a; --fg: #e6e6e1; --muted: #a0a4ad; --line: #2c3037;
+      --card: #1b1e24; --accent: #7fb3d9; --accent-soft: #1f2c39;
+      --warn: #e2a463; --warn-soft: #332614; --ok: #8fd19f; --ok-soft: #16301e;
+      --code: #23272e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --fg: #e6e6e1; --muted: #a0a4ad; --line: #2c3037;
+    --card: #1b1e24; --accent: #7fb3d9; --accent-soft: #1f2c39;
+    --warn: #e2a463; --warn-soft: #332614; --ok: #8fd19f; --ok-soft: #16301e;
+    --code: #23272e;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 16px/1.65 -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", Roboto, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 32px 16px 64px; }
+  header { border-bottom: 1px solid var(--line); padding-bottom: 16px; margin-bottom: 28px; }
+  h1 { font-size: 1.7rem; margin: 0 0 6px; line-height: 1.3; }
+  .meta { color: var(--muted); font-size: 0.92rem; }
+  h2 { font-size: 1.25rem; margin: 40px 0 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+  h3 { font-size: 1.05rem; margin: 22px 0 8px; color: var(--accent); }
+  p { margin: 0 0 12px; }
+  ul, ol { margin: 0 0 12px; padding-left: 22px; }
+  li { margin-bottom: 6px; }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: 0.92em; }
+  pre { background: var(--code); padding: 12px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.9rem; }
+  .note { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 10px 14px; border-radius: 0 6px 6px 0; margin: 14px 0; }
+  .warn { border-left: 3px solid var(--warn); background: var(--warn-soft); padding: 10px 14px; border-radius: 0 6px 6px 0; margin: 14px 0; }
+  .ok   { border-left: 3px solid var(--ok);   background: var(--ok-soft);   padding: 10px 14px; border-radius: 0 6px 6px 0; margin: 14px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 18px; font-size: 0.9rem; }
+  th, td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { background: var(--card); font-weight: 600; }
+  a { color: var(--accent); }
+  @media (max-width: 600px) { table { display: block; overflow-x: auto; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>04. LOEO 1차 결과 분석: 기본 실행과 민감도 세 실행</h1>
+  <div class="meta">
+    작성 2026-10-02 · 데이터: 실차, 평가자 18명 중 적격 10명 held-out, population은 라벨이 있는 전원 ·
+    실행: <code>outputs/loeo/20261001_170056</code> (기본, lambda0 = 1), <code>outputs/loeo_lam01</code> (lambda0 = 0.1),
+    <code>outputs/loeo_lam001</code> (lambda0 = 0.01), <code>outputs/loeo_selb20</code> (선택 예산 0, 10, 20) ·
+    비교표 원본: <code>outputs/loeo_compare/*/compare.md</code>
+  </div>
+</header>
+
+<h2 id="s0">0. 한 줄 결론</h2>
+<div class="ok">
+  <strong>기여 1은 성립</strong>(cold start는 pooled와 같고, 피드백 20개면 MLPD가 0.145 좋아지며 independent는 모든 예산에서 크게 뒤진다).
+  <strong>기여 2는 절반 성립</strong>(epistemic은 단조 감소하고 두 성분은 분리되지만, epistemic이 오답을 예측하는 힘은 cold start에서 우연 수준이고 피드백 20개 뒤에야 0.63).
+  <strong>기여 3은 뚜렷하지만 방향이 예상과 다르다</strong>(수직 가속도 peak-to-peak 하나가 피처 41개와 같은 held-out MLPD를 내고, 6D 채널을 빼도 손실이 없다).
+  사전분포 척도 lambda0는 예측 성능을 바꾸지 않지만 공통/개인 분류와 epistemic의 유용성은 바꾼다.
+</div>
+
+<h2 id="s1">1. 실행 조건과 시간</h2>
+<table>
+  <thead><tr><th>실행</th><th>lambda0</th><th>선택 예산</th><th>스테이지</th><th>시간</th></tr></thead>
+  <tbody>
+    <tr><td>기본</td><td>1.0</td><td>0, 10</td><td>all</td><td>main 36분, select 23분, sensors 10분</td></tr>
+    <tr><td>lam01</td><td>0.1</td><td>--</td><td>main</td><td>약 36분</td></tr>
+    <tr><td>lam001</td><td>0.01</td><td>--</td><td>main</td><td>약 36분</td></tr>
+    <tr><td>selb20</td><td>1.0</td><td>0, 10, 20</td><td>all</td><td>약 70분 (main은 기본과 동일 결과)</td></tr>
+  </tbody>
+</table>
+<p>공통 설정: 채널 5개, 창 [-2, 2] s, 상관 0.95 정리 후 d = 40~42, Gibbs 500 + 1500, 시드 42 하나, 오프셋 3, 예산 0/5/10/20/최종.
+평가자별 (전체 라벨, 문맥, holdout): 강신길 (205, 102, 103), 김재호 (34, 17, 17), 김진명 (30, 15, 15), 김태근 (35, 17, 18), 박재일 (591, 295, 296), 신민철 (10, 5, 5), 이강근 (18, 9, 9), 이지환 (1056, 528, 528), 조현석 (279, 139, 140), 한규택 (369, 184, 185).
+예산 20은 문맥이 20 이상인 다섯 명(강신길, 박재일, 이지환, 조현석, 한규택)에서만 계산된다.</p>
+
+<h2 id="s2">2. 기여 1: cold start와 개인화</h2>
+<h3>2.1 macro MLPD (평가자 평균 ± 평가자 단위 SE)</h3>
+<table>
+  <thead><tr><th>실행 / 방법</th><th>t = 0</th><th>t = 5</th><th>t = 10</th><th>t = 20</th><th>최종</th></tr></thead>
+  <tbody>
+    <tr><td>기본 proposed</td><td>-0.698 ± 0.049</td><td>-0.624 ± 0.021</td><td>-0.620 ± 0.027</td><td>-0.547 ± 0.020</td><td>-0.564 ± 0.030</td></tr>
+    <tr><td>기본 hb_full</td><td>-0.694 ± 0.041</td><td>-0.630 ± 0.017</td><td>-0.628 ± 0.020</td><td>-0.560 ± 0.017</td><td>-0.560 ± 0.031</td></tr>
+    <tr><td>기본 ebmap</td><td>-0.720 ± 0.062</td><td>-0.641 ± 0.014</td><td>-0.636 ± 0.022</td><td>-0.566 ± 0.020</td><td>-0.570 ± 0.027</td></tr>
+    <tr><td>기본 pooled</td><td>-0.717 ± 0.057</td><td>-0.714 ± 0.056</td><td>-0.675 ± 0.023</td><td>-0.692 ± 0.023</td><td>-0.691 ± 0.054</td></tr>
+    <tr><td>기본 indep</td><td>--</td><td>-0.824 ± 0.050</td><td>-0.911 ± 0.043</td><td>-0.839 ± 0.042</td><td>-0.673 ± 0.073</td></tr>
+    <tr><td>lam01 proposed</td><td>-0.705 ± 0.054</td><td>-0.626 ± 0.019</td><td>-0.606 ± 0.022</td><td>-0.543 ± 0.020</td><td>-0.562 ± 0.027</td></tr>
+    <tr><td>lam001 proposed</td><td>-0.691 ± 0.046</td><td>-0.618 ± 0.017</td><td>-0.606 ± 0.020</td><td>-0.540 ± 0.019</td><td>-0.562 ± 0.027</td></tr>
+  </tbody>
+</table>
+<h3>2.2 macro AUROC</h3>
+<table>
+  <thead><tr><th>실행 / 방법</th><th>t = 0</th><th>t = 5</th><th>t = 10</th><th>t = 20</th><th>최종</th></tr></thead>
+  <tbody>
+    <tr><td>기본 proposed</td><td>0.734 ± 0.045</td><td>0.698 ± 0.040</td><td>0.709 ± 0.045</td><td>0.782 ± 0.036</td><td>0.710 ± 0.041</td></tr>
+    <tr><td>기본 hb_full</td><td>0.688 ± 0.038</td><td>0.679 ± 0.030</td><td>0.706 ± 0.033</td><td>0.765 ± 0.032</td><td>0.713 ± 0.033</td></tr>
+    <tr><td>기본 pooled</td><td>0.692 ± 0.043</td><td>0.691 ± 0.043</td><td>0.712 ± 0.029</td><td>0.718 ± 0.024</td><td>0.695 ± 0.044</td></tr>
+    <tr><td>lam001 proposed</td><td>0.744 ± 0.043</td><td>0.738 ± 0.045</td><td>0.730 ± 0.035</td><td>0.778 ± 0.039</td><td>0.739 ± 0.045</td></tr>
+  </tbody>
+</table>
+<h3>2.3 읽기</h3>
+<ul>
+  <li>Cold start MLPD는 pooled와 SE 안에서 같고, AUROC는 proposed가 0.04 높다. 포함 사전분포(proposed vs hb_full)는 MLPD를 바꾸지 않지만 cold start AUROC를 0.69에서 0.73으로 올린다.</li>
+  <li>개인화 이득은 t = 20에서 pooled 대비 0.145, 최종에서 0.127이다. independent는 라벨 20개로도 pooled보다 나쁘다. 즉 "population 사전분포 없이 소수 라벨로 개인화"는 작동하지 않고, 사전분포가 있으면 작동한다.</li>
+  <li>lambda0를 1에서 0.01로 100배 줄여도 MLPD 변화는 모두 SE 안이다. 예측 성능 면에서 사전분포에 둔감하다. 이는 강건성 근거가 되지만, 아래 4절의 분류에는 민감하다.</li>
+</ul>
+<h3>2.4 평가자별 MLPD 변화 (t = 5 대비 t = 0, 기본 실행)</h3>
+<table>
+  <thead><tr><th>평가자</th><th>holdout</th><th>t = 0</th><th>Δ t = 5</th><th>Δ t = 10</th><th>Δ t = 20</th><th>Δ 최종</th></tr></thead>
+  <tbody>
+    <tr><td>강신길</td><td>103</td><td>-0.581</td><td>+0.018</td><td>-0.000</td><td>+0.042</td><td>+0.061</td></tr>
+    <tr><td>김재호</td><td>17</td><td>-0.669</td><td>-0.062</td><td>-0.091</td><td>--</td><td>-0.020</td></tr>
+    <tr><td>김진명</td><td>15</td><td>-0.648</td><td>-0.031</td><td>-0.032</td><td>--</td><td>-0.049</td></tr>
+    <tr><td>김태근</td><td>18</td><td>-0.685</td><td>-0.001</td><td>+0.047</td><td>--</td><td>+0.031</td></tr>
+    <tr><td>박재일</td><td>296</td><td>-0.652</td><td>+0.119</td><td>+0.137</td><td>+0.150</td><td>+0.180</td></tr>
+    <tr><td>신민철</td><td>5</td><td>-0.560</td><td>+0.008</td><td>--</td><td>--</td><td>+0.008</td></tr>
+    <tr><td>이강근</td><td>9</td><td>-1.119</td><td>+0.504</td><td>--</td><td>--</td><td>+0.593</td></tr>
+    <tr><td>이지환</td><td>528</td><td>-0.653</td><td>+0.077</td><td>+0.072</td><td>+0.047</td><td>+0.101</td></tr>
+    <tr><td>조현석</td><td>140</td><td>-0.725</td><td>+0.056</td><td>+0.165</td><td>+0.213</td><td>+0.327</td></tr>
+    <tr><td>한규택</td><td>185</td><td>-0.690</td><td>+0.052</td><td>+0.044</td><td>+0.113</td><td>+0.110</td></tr>
+  </tbody>
+</table>
+<div class="warn">
+  라벨 30개 안팎인 세 평가자(김재호, 김진명, 김태근)는 개인화로 좋아지지 않거나 약간 나빠진다. 세 lambda0에서 모두 같은 방향이다(-0.03 ~ -0.06).
+  holdout이 15~18개라 MLPD 하나의 SE가 0.1 수준이므로 통계적으로 "해롭다"고 말하기는 어렵지만, "라벨이 적은 사람에게 이득이 없다"는 사실은 논문에서 숨기지 말고
+  다뤄야 한다. 긴 스트림 평가자 다섯 명이 이득을 거의 전부 가져간다. 이것이 02 문서가 예고한 HB-PVI식 "평가자별 이득 분포" 보고의 이유다.
+</div>
+
+<h2 id="s3">3. 기여 2: 불확실성</h2>
+<table>
+  <thead><tr><th>지표 (proposed)</th><th>실행</th><th>t = 0</th><th>t = 5</th><th>t = 10</th><th>t = 20</th><th>최종</th></tr></thead>
+  <tbody>
+    <tr><td rowspan="3">epistemic 평균</td><td>기본</td><td>0.070</td><td>0.057</td><td>0.045</td><td>0.034</td><td>0.029</td></tr>
+    <tr><td>lam01</td><td>0.051</td><td>0.039</td><td>0.031</td><td>0.024</td><td>0.020</td></tr>
+    <tr><td>lam001</td><td>0.044</td><td>0.030</td><td>0.024</td><td>0.017</td><td>0.014</td></tr>
+    <tr><td rowspan="2">aleatoric 평균</td><td>기본</td><td>0.145</td><td>0.154</td><td>0.161</td><td>0.160</td><td>0.162</td></tr>
+    <tr><td>lam001</td><td>0.170</td><td>0.178</td><td>0.182</td><td>0.182</td><td>0.179</td></tr>
+    <tr><td rowspan="2">Spearman(epi, ale)</td><td>기본</td><td>-0.37</td><td>-0.12</td><td>-0.02</td><td>+0.33</td><td>+0.20</td></tr>
+    <tr><td>lam001</td><td>-0.41</td><td>-0.07</td><td>-0.06</td><td>+0.30</td><td>+0.29</td></tr>
+    <tr><td rowspan="3">오답 예측 AUROC (epistemic)</td><td>기본</td><td>0.49</td><td>0.55</td><td>0.57</td><td>0.63</td><td>0.57</td></tr>
+    <tr><td>lam01</td><td>0.57</td><td>0.56</td><td>0.58</td><td>0.62</td><td>0.60</td></tr>
+    <tr><td>lam001</td><td>0.62</td><td>0.61</td><td>0.58</td><td>0.61</td><td>0.66</td></tr>
+    <tr><td rowspan="2">ECE</td><td>기본</td><td>0.27</td><td>0.20</td><td>0.19</td><td>0.15</td><td>0.16</td></tr>
+    <tr><td>lam001</td><td>0.26</td><td>0.20</td><td>0.18</td><td>0.14</td><td>0.15</td></tr>
+    <tr><td>AUROC 신뢰구간 하한</td><td>기본</td><td>0.24</td><td>0.28</td><td>0.38</td><td>0.56</td><td>0.39</td></tr>
+    <tr><td>신뢰 판정 비율</td><td>기본</td><td>0.00</td><td>0.00</td><td>0.00</td><td>0.00</td><td>0.10</td></tr>
+  </tbody>
+</table>
+<ul>
+  <li><strong>분해의 거동은 이론대로다.</strong> epistemic은 모든 실행에서 단조 감소하고 aleatoric은 거의 일정하다. 두 성분의 순위 상관은 -0.4 ~ +0.3으로 Mucsányi 등이 지적한 0.8 이상 상관과 거리가 멀다.</li>
+  <li><strong>epistemic의 유용성은 cold start에서 없다.</strong> 기본 실행의 오답 예측 AUROC가 t = 0에서 0.49다. 사전분포를 좁히면(lam001) 0.62로 올라가고 피드백이 쌓이면 0.6 초반에 수렴한다. "얼마나 믿어도 되는지를 posterior가 알려준다"는 주장은 (a) 피드백이 쌓인 뒤, 또는 (b) 좁은 사전분포에서만 성립한다고 써야 한다.</li>
+  <li><strong>보정.</strong> cold start 예측은 0.5 근처에 몰려 과소 확신이다(ECE 0.27, calibration slope가 1보다 크고 폴드에 따라 폭주). 개인화되면 slope 1.3~1.5, ECE 0.15로 개선되지만 여전히 과소 확신이다. lambda0를 줄여도 거의 바뀌지 않는다. 원인은 사전분포 척도가 아니라 particle 간 이질성으로 예측 평균이 0.5로 수축되는 효과와 데이터 자체의 난이도로 보인다.</li>
+  <li><strong>신뢰 판정 규칙은 거의 발동하지 않는다.</strong> 하한 0.5, 폭 0.15 기준은 holdout 15~500에서 비현실적이다. 폭 기준을 설정값으로 뺐으니(<code>reliable_w_max</code>) 0.25~0.3으로 보고하거나 하한 조건만 쓰는 쪽으로 바꿔야 한다.</li>
+</ul>
+
+<h2 id="s4">4. 기여 3: 피처와 센서</h2>
+<h3>4.1 피처 수 대 held-out MLPD (selb20, 예산 0/10/20 평균)</h3>
+<table>
+  <thead><tr><th>후보</th><th>피처 수</th><th>MLPD</th><th>Δ vs 전체</th><th>SE(Δ)</th></tr></thead>
+  <tbody>
+    <tr><td>k = 1</td><td>1</td><td>-0.651</td><td>+0.020</td><td>0.011</td></tr>
+    <tr><td>k = 2</td><td>2</td><td>-0.656</td><td>+0.016</td><td>0.009</td></tr>
+    <tr><td>k = 5</td><td>5</td><td>-0.650</td><td>+0.021</td><td>0.013</td></tr>
+    <tr><td>k = 10</td><td>10</td><td>-0.668</td><td>+0.003</td><td>0.011</td></tr>
+    <tr><td>k = 20</td><td>20</td><td>-0.666</td><td>+0.006</td><td>0.007</td></tr>
+    <tr><td>전체</td><td>40~42</td><td>-0.671</td><td>0</td><td>--</td></tr>
+    <tr><td>PIP 1/2 이상</td><td>10</td><td>-0.677</td><td>-0.006</td><td>0.017</td></tr>
+  </tbody>
+</table>
+<p>one-SE 규칙은 k = 1을 고르고, 10개 폴드 모두 <code>IMU_VerAccelVal__p2p</code>를 고른다(Nogueira 안정성 1.0). 기본 실행(예산 0, 10)과 selb20(예산 0, 10, 20)의 결론이 같다. 곡선은 평평해서 피처를 더해도 held-out MLPD가 오르지 않는다. Riha 등(2026)이 말한 "선택은 예측을 개선하지 않는다"가 그대로 나왔고, 반대로 "하나로 충분하다"는 더 강한 결과다.</p>
+
+<h3>4.2 센서 부분집합 (selb20)</h3>
+<table>
+  <thead><tr><th>부분집합</th><th>MLPD</th><th>Δ vs 전체</th><th>SE(Δ)</th></tr></thead>
+  <tbody>
+    <tr><td>Pitch + VerAccel + LongAccel</td><td>-0.657</td><td>+0.015</td><td>0.012</td></tr>
+    <tr><td>Pitch + VerAccel</td><td>-0.664</td><td>+0.008</td><td>0.019</td></tr>
+    <tr><td>VerAccel + LongAccel + LatAccel (IMU만)</td><td>-0.664</td><td>+0.007</td><td>0.012</td></tr>
+    <tr><td>VerAccel 단독</td><td>-0.665</td><td>+0.006</td><td>0.022</td></tr>
+    <tr><td>전체 5채널</td><td>-0.671</td><td>0</td><td>--</td></tr>
+    <tr><td>Pitch + Bounce (6D만)</td><td>-0.701</td><td>-0.025</td><td>0.012</td></tr>
+    <tr><td>Pitch 단독</td><td>-0.705</td><td>-0.028</td><td>0.017</td></tr>
+  </tbody>
+</table>
+<p>Leave-one-sensor-out: VerAccel 제거 -0.034 ± 0.023, Pitch 제거 -0.004 ± 0.005, LongAccel 제거 -0.003 ± 0.014, Bounce 제거 +0.004 ± 0.006, LatAccel 제거 +0.005 ± 0.007.</p>
+<div class="ok">
+  <strong>배포 결론.</strong> population 수준 예측과 피드백 20개까지의 개인화에서 필요한 센서는 IMU 수직 가속도 하나다. 6D 채널(bounce, pitch)을 빼도 손실이 없고, 6D만으로는 0.025 나빠진다.
+  이것이 기여 3의 가장 명확한 문장이다. 단, 선택 재적합은 포함 사전분포 없이 축소 Gibbs(200 + 400)로 했고, t = 20은 긴 스트림 다섯 명만 포함한다.
+</div>
+
+<h3>4.3 피처 역할표의 사전분포 민감도</h3>
+<table>
+  <thead><tr><th>피처</th><th>PIP (lam 1 / 0.01)</th><th>q (1 / 0.01)</th><th>between sd (1 / 0.01)</th><th>공통 비율 (1 / 0.01)</th></tr></thead>
+  <tbody>
+    <tr><td>IMU_VerAccelVal__p2p</td><td>0.93 / 0.97</td><td>0.92 / 0.95</td><td>0.54 / 0.32</td><td>0.70 / 0.90</td></tr>
+    <tr><td>Bounce_rate_6D__impulse_abs</td><td>0.88 / 1.00</td><td>0.87 / 0.96</td><td>0.43 / 0.26</td><td>0.00 / 1.00</td></tr>
+    <tr><td>IMU_LongAccelVal__std</td><td>0.74 / 0.74</td><td>0.84 / 0.87</td><td>0.41 / 0.17</td><td>0.20 / 0.50</td></tr>
+    <tr><td>IMU_LongAccelVal__p2p</td><td>0.75 / 0.70</td><td>0.83 / 0.89</td><td>0.37 / 0.15</td><td>0.10 / 0.60</td></tr>
+    <tr><td>IMU_LongAccelVal__band_low</td><td>0.84 / 1.00</td><td>0.73 / 0.82</td><td>0.37 / 0.20</td><td>0.00 / 0.00</td></tr>
+    <tr><td>IMU_LongAccelVal__p95_abs</td><td>0.06 / 1.00</td><td>0.72 / 0.62</td><td>0.02 / 0.46</td><td>0.00 / 0.00</td></tr>
+    <tr><td>IMU_LatAccelVal__* (전부)</td><td>0.00~0.02 / 동일</td><td>--</td><td>--</td><td>비활성</td></tr>
+  </tbody>
+</table>
+<ul>
+  <li>안정적인 사실: 수직 가속도 p2p가 가장 강한 공통 피처, 횡가속도는 전부 비활성, pitch rate는 대부분 비활성, bounce impulse와 longitudinal std/p2p/band_low가 활성.</li>
+  <li>사전분포에 민감한 것: between-evaluator 표준편차가 lambda0에 비례해 줄어 공통/개인 분류가 바뀐다(bounce impulse가 lam 1에서는 "개인" 90%, lam 0.01에서는 "공통" 100%). population 9명으로는 Sigma가 데이터로 식별되지 않으므로, 예측 성능으로는 lambda0를 고를 수 없다(2.1). 논문에는 분류를 lambda0 두 값에서 함께 보여 주고 "안정적인 사실"만 결론으로 쓴다.</li>
+  <li><code>IMU_LongAccelVal__p95_abs</code>가 lam 0.01에서만 PIP 1.0이 되는 것은 상관 피처 간 표 나눔이 사전분포에 따라 달라지는 예다. 02 문서 3.1의 dilution 현상.</li>
+  <li>센서 단위 spike-and-slab PIP는 세 lambda0 모두에서 폴드마다 0 또는 1로 굳어 쓸 수 없다. 전수 비교표(4.2)가 센서 결론을 대신한다.</li>
+</ul>
+
+<h2 id="s5">5. 결정과 다음 실행</h2>
+<ol>
+  <li><strong>기본 사전분포는 lambda0 = 1을 유지</strong>하고 0.1, 0.01을 민감도 표로 보고한다. 예측 성능이 둔감하다는 것이 강건성 주장이고, 분류 민감도는 한계로 명시한다.</li>
+  <li><strong>선택 점수 예산은 (0, 10, 20)</strong>으로 확정한다. 결과가 (0, 10)과 같아 안정적이다.</li>
+  <li><strong>신뢰 판정 폭 기준</strong>은 0.15 대신 0.3을 기본으로 두고 하한 조건을 주로 쓴다. 코드에 <code>reliable_w_max</code> 설정이 추가되었다.</li>
+  <li><strong>확정 실행</strong>은 시드 3개로 main을 반복한 뒤 select, sensors를 돌린다. 약 2.5시간.
+    <pre><code>.venv\Scripts\python.exe run_loeo.py --stage all --set seeds="(42,43,44)" --set sel_budgets="(0,10,20)" --set reliable_w_max=0.3 --set run_name=loeo_final</code></pre>
+    끝나면 lambda0 0.01 민감도도 같은 시드로 main만 다시 돌린다.
+    <pre><code>.venv\Scripts\python.exe run_loeo.py --stage main --set seeds="(42,43,44)" --set niw_lambda0_scale=0.01 --set reliable_w_max=0.3 --set run_name=loeo_final_lam001
+.venv\Scripts\python.exe run_loeo.py --stage report --set run_name=loeo_final_lam001 --timestamp &lt;ts&gt;</code></pre></li>
+  <li><strong>논문 서술 방향.</strong> 기여 1은 그대로. 기여 2는 "분해는 작동하고 epistemic의 오답 예측력은 개인화 뒤에 생긴다"로 수위를 조정. 기여 3은 "수직 가속도 하나로 충분, 6D 불필요"를 전면에 두고 피처 역할표는 안정적인 사실만 결론으로 쓴다.</li>
+</ol>
+
+<h2 id="s6">6. 남은 의문</h2>
+<ul>
+  <li>라벨 30개 안팎 평가자에게 이득이 없는 이유. (a) 라벨 자체가 예측 불가능(cold start AUROC 0.6~0.68), (b) d = 41차원에서 라벨 5개로 posterior가 과하게 움직임, (c) holdout 15개의 잡음. k = 1 모형으로 개인화 곡선을 다시 그리면 (b)를 분리할 수 있다. 다음 라운드에 <code>sel_budgets</code> 대신 main을 k = 1 피처 집합으로 돌리는 옵션을 추가할 가치가 있다.</li>
+  <li>cold start의 과소 확신. particle 평균 대신 다른 요약(예: 중위 particle)을 쓰거나, 예측 온도 보정을 베이스라인으로 두어 비교할 수 있다. 다만 posterior mean 예측의 slope 이점(01 문서 5.6)과 상충하므로 보고만 한다.</li>
+  <li>prequential 누적 점수는 저장되어 있으나 아직 그림으로 그리지 않았다. long-stream 사례 소절에 쓸 재료다.</li>
+</ul>
+</main>
+</body>
+</html>

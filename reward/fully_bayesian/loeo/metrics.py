@@ -102,7 +102,7 @@ def spearman(a, b):
     return float(spearmanr(a, b).correlation)
 
 
-def summarize(y, P, seed=0, trust_K=600, light=False):
+def summarize(y, P, seed=0, trust_K=600, light=False, width_max=0.15):
     """All holdout metrics for particle predictions P (M, N).
 
     light=True skips the posterior x bootstrap reliability interval, which is the only
@@ -118,7 +118,7 @@ def summarize(y, P, seed=0, trust_K=600, light=False):
     if light:
         trust = {"ci_lo": float("nan"), "ci_hi": float("nan"), "trustworthy": False}
     else:
-        trust = auroc_trust_interval(np.asarray(y), P, seed, K=trust_K)
+        trust = auroc_trust_interval(np.asarray(y), P, seed, K=trust_K, width_max=width_max)
     return {
         "n": int(len(y)), "n_pos": int(np.sum(y)),
         "mlpd": float(lpd.mean()), "elpd": float(lpd.sum()),
@@ -130,6 +130,7 @@ def summarize(y, P, seed=0, trust_K=600, light=False):
         "correctness_auroc_total": correctness_auroc(y, p, -np.abs(p - 0.5)),
         "aurc_epi": aurc, "eaurc_epi": eaurc,
         "auroc_ci_lo": trust["ci_lo"], "auroc_ci_hi": trust["ci_hi"],
+        "auroc_ci_width": float(trust["ci_hi"] - trust["ci_lo"]),
         "reliable": bool(trust["trustworthy"]),
     }, lpd
 

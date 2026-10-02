@@ -103,7 +103,7 @@ def evaluate_proposed(cfg, pop, Z, y, seed, budgets=None, light=False):
                     continue
                 star.fit(Z_ctx[lo:hi], y_ctx[lo:hi], rng=rng)    # warm start from previous budget
                 P = star.predict(Z_hold)[2]
-            m, lpd = M.summarize(y_hold, P, seed=seed, light=light)
+            m, lpd = M.summarize(y_hold, P, seed=seed, light=light, width_max=getattr(cfg, "reliable_w_max", 0.15))
             m["t"], m["offset"] = int(t), int(o)
             per_budget[t].append(m)
             lpds[t].append(lpd)
@@ -134,7 +134,7 @@ def evaluate_baseline(cfg, model, Z, y, budgets, particles=False):
                 continue
             if particles:
                 P = model.predict_particles(Z_ctx[lo:hi], y_ctx[lo:hi], Z_hold)
-                m, lpd = M.summarize(y_hold, P, seed=cfg.seed)
+                m, lpd = M.summarize(y_hold, P, seed=cfg.seed, width_max=getattr(cfg, "reliable_w_max", 0.15))
             else:
                 p = model.predict(Z_ctx[lo:hi], y_ctx[lo:hi], Z_hold)
                 if np.any(np.isnan(p)):

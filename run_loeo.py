@@ -80,6 +80,7 @@ class Config:
     sensor_pip: bool = True                    # also fit with sensor-level inclusion groups
     pip_threshold: float = 0.5
     q_min: float = 0.9
+    reliable_w_max: float = 0.15               # width criterion of the AUROC reliability interval
     # ---- baselines
     baseline_C: float = 1.0
     ebmap_M: int = 400
@@ -98,6 +99,8 @@ class Config:
     projpred_max_iter: int = 50
     projpred_ridge: float = 1e-6
     sensor_min_size: int = 1
+    # ---- compare (stage "compare": side-by-side tables of finished runs)
+    compare_runs: tuple = ()                   # run folders, e.g. ("outputs/loeo/2026...", "outputs/loeo_lam01/2026...")
     # ---- synthetic
     syn_n_evaluators: int = 8
     syn_min_episodes: int = 30
@@ -411,6 +414,18 @@ def stage_report(cfg, run, truth=None):
                 dl = deltas[t].get(name)
                 cells.append("--" if dl is None else f"{dl['delta_elpd']:+.2f} ± {dl['se']:.2f}")
             md.append(f"| {name} | " + " | ".join(cells) + " |")
+        # per-evaluator MLPD change (ELPD sums scale with holdout size; MLPD does not)
+        md.append("\n## Per-evaluator MLPD change from cold start (proposed; n_hold in parentheses)\n")
+        md.append("| evaluator | t=0 MLPD | " + " | ".join(f"Δ t={t}" for t in ts_pos) + " |")
+        md.append("|---|---|" + "---|" * len(ts_pos))
+        for name, f in folds.items():
+            pr = f["proposed"]
+            base0 = pr.get("0", {}).get("mlpd")
+            cells = ["--" if base0 is None else f"{base0:.3f} ({f['info']['n_hold']})"]
+            for t in ts_pos:
+                v = pr.get(str(t), {}).get("mlpd")
+                cells.append("--" if v is None or base0 is None else f"{v - base0:+.3f}")
+            md.append(f"| {name} | " + " | ".join(cells) + " |")
         # feature roles from the reference models
         role_rows = []
         for name, f in folds.items():
@@ -554,6 +569,59 @@ def stage_report(cfg, run, truth=None):
     return summary
 
 
+# ----------------------------------------------------------------------------- stage: compare
+def stage_compare(cfg, run):
+    """Side-by-side tables of finished runs (prior sensitivity, budget settings, seeds)."""
+    import csv
+    runs = {Path(p).parent.name + "/" + Path(p).name: Path(p) for p in cfg.compare_runs}
+    if not runs:
+        raise SystemExit("--set compare_runs=\"('outputs/loeo/<ts>', ...)\" is required for stage compare")
+    macros = {}
+    for label, p in runs.items():
+        f = p / "report" / "main_macro.csv"
+        if not f.exists():
+            log(cfg, f"[compare] {label}: no report/main_macro.csv, skipped"); continue
+        macros[label] = {(r["method"], r["t"], r["metric"]): (float(r["mean"]), float(r["se"]) if r["se"] not in ("nan", "") else float("nan"))
+                         for r in csv.DictReader(open(f, encoding="utf-8")) if r["mean"] not in ("nan", "")}
+    ts = sorted({t for m in macros.values() for (_, t, _) in m}, key=lambda t: (t == "final", int(t) if t != "final" else 0))
+    md = ["# Run comparison", "runs: " + ", ".join(macros)]
+    for metric, methods in [("mlpd", ("proposed", "hb_full", "ebmap", "pooled")), ("auroc", ("proposed", "hb_full")),
+                            ("ece", ("proposed",)), ("cal_slope", ("proposed",)), ("epi_mean", ("proposed",)),
+                            ("ale_mean", ("proposed",)), ("correctness_auroc_epi", ("proposed",)),
+                            ("epi_ale_spearman", ("proposed",)), ("auroc_ci_lo", ("proposed",)), ("reliable_frac", ("proposed",))]:
+        md.append(f"\n## {metric}\n")
+        md.append("| run | method | " + " | ".join(f"t={t}" for t in ts) + " |")
+        md.append("|---|---|" + "---|" * len(ts))
+        for label, m in macros.items():
+            for meth in methods:
+                cells = []
+                for t in ts:
+                    v = m.get((meth, t, metric))
+                    cells.append("--" if v is None else (f"{v[0]:.3f} ± {v[1]:.3f}" if np.isfinite(v[1]) else f"{v[0]:.3f}"))
+                md.append(f"| {label} | {meth} | " + " | ".join(cells) + " |")
+    md.append("\n## Per-evaluator MLPD change t=5 vs t=0 (proposed)\n")
+    for label, p in runs.items():
+        cells = []
+        for fj in sorted((p / "folds").glob("*.json")):
+            if fj.stem.endswith("_select") or fj.stem.endswith("_sensors"):
+                continue
+            f = json.loads(fj.read_text(encoding="utf-8")); pr = f["proposed"]
+            if "0" in pr and "5" in pr:
+                cells.append(f"{f['name']} {pr['5']['mlpd'] - pr['0']['mlpd']:+.3f}")
+        md.append(f"- {label}: " + ", ".join(cells))
+    for name in ("select.md", "sensors.md"):
+        md.append(f"\n## {name} headers\n")
+        for label, p in runs.items():
+            f = p / "report" / name
+            if f.exists():
+                head = [l for l in f.read_text(encoding="utf-8").splitlines()[:3] if l.strip()]
+                md.append(f"- {label}: " + " / ".join(head[1:]))
+    out = run.dir / "compare.md"
+    out.write_text("\n".join(md), encoding="utf-8")
+    log(cfg, f"[compare] written to {out}")
+    return md
+
+
 # ----------------------------------------------------------------------------- main
 def main(cfg=None):
     cfg = cfg or Config()
@@ -583,6 +651,8 @@ def main(cfg=None):
             stage_sensors(cfg, run, data, channels, fs, names)
         elif st == "report":
             stage_report(cfg, run, truth)
+        elif st == "compare":
+            stage_compare(cfg, run)
         else:
             raise ValueError(f"unknown stage {st!r}")
         log(cfg, f"[{st}] finished in {(time.time() - tic) / 60:.1f} min")
@@ -592,7 +662,7 @@ def main(cfg=None):
 
 def parse_args():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--stage", default=None, choices=["main", "select", "sensors", "report", "all"])
+    ap.add_argument("--stage", default=None, choices=["main", "select", "sensors", "report", "all", "compare"])
     ap.add_argument("--data", default=None, choices=["real", "synthetic"])
     ap.add_argument("--timestamp", default=None, help="reuse an existing run folder (resume / report)")
     ap.add_argument("--fast", action="store_true", help="tiny Gibbs chains and grids for a smoke test")
