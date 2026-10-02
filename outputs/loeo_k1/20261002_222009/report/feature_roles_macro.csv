@@ -1,0 +1,2 @@
+feature,group,pip,q,S,mu_mean,between_sd,role_common,role_specific,role_inactive
+IMU_VerAccelVal__p2p,IMU_VerAccelVal,1.0,0.9418990364031892,1.5845945917462465,-1.0514602833895232,0.6386682101603129,1.0,0.0,0.0
