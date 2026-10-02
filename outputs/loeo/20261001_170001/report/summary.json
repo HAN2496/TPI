@@ -1,0 +1,26 @@
+{
+  "main": {
+    "n_folds": 5,
+    "budgets": [
+      0,
+      5,
+      10,
+      "final"
+    ],
+    "methods": [
+      "proposed",
+      "hb_full",
+      "ebmap",
+      "pooled",
+      "indep"
+    ]
+  },
+  "select": {
+    "chosen_size": 2,
+    "full_size": 29,
+    "stability": 0.037931034482758585
+  },
+  "sensors": {
+    "n_subsets": 31
+  }
+}

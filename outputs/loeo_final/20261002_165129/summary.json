@@ -1,0 +1,14 @@
+{
+  "method": "loeo_final",
+  "metrics": {
+    "stages": {
+      "done": [
+        "main",
+        "select",
+        "sensors",
+        "report"
+      ]
+    }
+  },
+  "completed_at": "2026-10-02T18:22:39.091077"
+}

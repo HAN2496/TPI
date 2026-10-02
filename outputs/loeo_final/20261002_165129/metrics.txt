@@ -1,0 +1,2 @@
+stages
+  done                : ['main', 'select', 'sensors', 'report']

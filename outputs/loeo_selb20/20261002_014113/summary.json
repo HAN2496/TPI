@@ -1,0 +1,14 @@
+{
+  "method": "loeo_selb20",
+  "metrics": {
+    "stages": {
+      "done": [
+        "main",
+        "select",
+        "sensors",
+        "report"
+      ]
+    }
+  },
+  "completed_at": "2026-10-02T02:43:34.949299"
+}
