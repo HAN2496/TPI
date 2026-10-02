@@ -649,6 +649,45 @@ C_\star(n)-C^{\text{pooled}}_\star(n)\ \text{의 기울기가 양수이고, 긴 
     <tr><td>H8</td><td>prequential 기울기 양수</td><td>예정</td><td>저장된 점수 + 코드</td><td>long-stream 사례 그림</td></tr>
   </tbody>
 </table>
+
+<h2 id="paper">논문 반영 기록 (2026-10-02)</h2>
+<p><code>main.tex</code>의 VI장 전체, 초록, V-A 피처 수, V-C 선택 절차, V-D 민감도 문장, Discussion, Conclusion, 부록 B(피처 bank), C(수렴과 \(\lambda_0\) 민감도), D(재현)을 <code>loeo_final/20261002_165129</code> 수치로 채웠다. 그림 4장은 <code>figures/</code>에 리포트 CSV와 폴드 json에서 다시 그렸다(<code>fig_sequential</code>, <code>fig_uncertainty</code>, <code>fig_selection</code>, <code>fig_pip</code>). 수치 출처는 부록 D에 실행 식별자로 적었다.</p>
+<p class="label">평가자 가명 매핑 (논문에는 가명만 쓴다)</p>
+<table>
+  <thead><tr><th>가명</th><th>평가자</th><th class="num">라벨 수</th><th class="num">양성(True)</th><th class="num">\(n_{\text{ctx}}\)</th><th class="num">\(n_{\text{hold}}\)</th></tr></thead>
+  <tbody>
+    <tr><td>E1</td><td>이지환</td><td class="num">1056</td><td class="num">436</td><td class="num">528</td><td class="num">528</td></tr>
+    <tr><td>E2</td><td>박재일</td><td class="num">591</td><td class="num">452</td><td class="num">295</td><td class="num">296</td></tr>
+    <tr><td>E3</td><td>한규택</td><td class="num">369</td><td class="num">280</td><td class="num">184</td><td class="num">185</td></tr>
+    <tr><td>E4</td><td>조현석</td><td class="num">279</td><td class="num">66</td><td class="num">139</td><td class="num">140</td></tr>
+    <tr><td>E5</td><td>강신길</td><td class="num">205</td><td class="num">128</td><td class="num">102</td><td class="num">103</td></tr>
+    <tr><td>E6</td><td>김태근</td><td class="num">35</td><td class="num">18</td><td class="num">17</td><td class="num">18</td></tr>
+    <tr><td>E7</td><td>김재호</td><td class="num">34</td><td class="num">16</td><td class="num">17</td><td class="num">17</td></tr>
+    <tr><td>E8</td><td>김진명</td><td class="num">30</td><td class="num">14</td><td class="num">15</td><td class="num">15</td></tr>
+    <tr><td>E9</td><td>이강근</td><td class="num">18</td><td class="num">15</td><td class="num">9</td><td class="num">9</td></tr>
+    <tr><td>E10</td><td>신민철</td><td class="num">10</td><td class="num">6</td><td class="num">5</td><td class="num">5</td></tr>
+  </tbody>
+</table>
+<p class="label">논문에 남은 빈칸 (데이터/장비 정보, 코드로 채울 수 없는 것)</p>
+<ul>
+  <li>차량 모델, 도로 설명, 센서 모델과 장착 위치, 샘플링 주파수.</li>
+  <li>전체 카탈로그 크기: 총 에피소드 수, 총 평가자 수, 라벨 있는 에피소드 수 (population 17명과 적격 10명은 채웠다). 라벨 <code>True</code>가 "good"이라는 가정 확인.</li>
+  <li>모집, 인구통계, 피드백 인터페이스, 동의와 윤리 심의 번호.</li>
+  <li>하드웨어와 패키지 버전 (부록 D).</li>
+  <li>plate diagram (IV-A), 수렴 trace 그림 (부록 C), 부록 B의 제거된 중복 피처 목록.</li>
+  <li>부록 A(CMI)는 실행하지 않았다. 돌리거나 제출 전에 삭제.</li>
+</ul>
+<p class="label">주장 수위 조정 (05 문서 판정에 따라 본문에 반영된 것)</p>
+<ul>
+  <li>H1.3 기각: 이득은 긴 스트림 5명에 집중, 짧은 5명은 SE 안. 표 VI-2와 Discussion에 명시.</li>
+  <li>H2.2: epistemic의 오답 예측은 \(t=0\)에서 우연 수준(0.52), \(t=20\)에서 0.62. "after twenty labels"로 한정.</li>
+  <li>H3.2(b) 기각: 6D 채널은 held-out 이득 없음. 배포 결론은 "수직 가속도계 하나".</li>
+  <li>H3.3: common/specific 분류는 \(\lambda_0\)에 민감. 표 각주와 부록 C에 두 \(\lambda_0\) 병기.</li>
+  <li>E5: "선택은 해석과 센서 결정용, 예측은 전체 bank" (Riha et al. 인용). E7(김재호) 1명만 차원 효과.</li>
+  <li>E6: cold start 과소 확신은 보호적 수축으로 서술, posterior mean 유지.</li>
+  <li>E7: \(w_{\max}=0.3\); 하한 조건이 실질 판정자.</li>
+  <li>GBT와 \(K\)-fold refit ELPD는 실행하지 않았으므로 본문에서 제거하고 Limitations에 적었다.</li>
+</ul>
 </main>
 </body>
 </html>

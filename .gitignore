@@ -46,6 +46,7 @@ docs/fully_bayesian/my_papers/*
 !docs/fully_bayesian/my_papers/*.cls
 !docs/fully_bayesian/my_papers/*.bib
 !docs/fully_bayesian/my_papers/claude_notes/
+!docs/fully_bayesian/my_papers/figures/
 
 # LaTeX compile artifacts
 *.aux
