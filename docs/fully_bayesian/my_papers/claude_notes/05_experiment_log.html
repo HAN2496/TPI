@@ -470,7 +470,8 @@ s_{\text{seed}}\big[\mathrm{MLPD}_\star(t)\big]<\mathrm{SE}_{\text{evaluator}}(t
 </p>
 
 <!-- ===================================================================== E5 -->
-<h2 id="E5">E5. 소수 라벨 평가자의 무이득 원인 <span class="verdict todo-v">예정</span></h2>
+<h2 id="E5">E5. 소수 라벨 평가자의 무이득 원인 <span class="verdict mix-v">H5a 1/3 지지, H5b 간접 지지</span></h2>
+<p class="meta">실행 <code>outputs/loeo_k1/20261002_222009</code> (\(k=1\), <code>IMU_VerAccelVal__p2p</code>, 시드 42, main+report) · 비교 대상 <code>loeo_final</code> 시드 42 및 3시드 평균</p>
 <p class="label">배경</p>
 <p>E1 H1.3에서 라벨 30개 안팎 세 명은 개인화 이득이 없거나 음수였고, E2에서 사전 정밀도는 원인이 아님이 밝혀졌다. 남은 후보는 셋이다.</p>
 <p class="label">가설</p>
@@ -497,6 +498,37 @@ s_{\text{seed}}\big[\mathrm{MLPD}_\star(t)\big]<\mathrm{SE}_{\text{evaluator}}(t
   <li>바뀌지 않고 \(\mathrm{MLPD}^{\max}_\star\approx\mathrm{MLPD}_\star(0)\)이면 H5b. 논문에서는 "이득은 예측 가능한 평가자에게 집중된다"로 쓴다.</li>
   <li>H5c는 이미 수치로 확인됐다. 논문에는 "유의한 악화는 없다, 다만 이득도 없다"로 쓴다.</li>
 </ul>
+<p class="label">결과 1: 소수 라벨 세 명의 \(\mathrm{MLPD}_\star(t)-\mathrm{MLPD}_{\text{pooled}}\)</p>
+<table>
+  <thead><tr><th>평가자 (\(n\), holdout)</th><th>모형</th><th class="num">\(t=0\)</th><th class="num">5</th><th class="num">10</th><th class="num">최종</th></tr></thead>
+  <tbody>
+    <tr><td rowspan="2">김재호 (34, 17)</td><td>전체 bank (\(d=41\))</td><td class="num">−0.079</td><td class="num">−0.142</td><td class="num">−0.170</td><td class="num">−0.100</td></tr>
+    <tr><td>\(k=1\)</td><td class="num">+0.013</td><td class="num">−0.015</td><td class="num">+0.013</td><td class="num">+0.036</td></tr>
+    <tr><td rowspan="2">김진명 (30, 15)</td><td>전체 bank</td><td class="num">+0.008</td><td class="num">−0.023</td><td class="num">−0.024</td><td class="num">−0.041</td></tr>
+    <tr><td>\(k=1\)</td><td class="num">−0.011</td><td class="num">−0.052</td><td class="num">−0.034</td><td class="num">−0.051</td></tr>
+    <tr><td rowspan="2">김태근 (35, 18)</td><td>전체 bank</td><td class="num">−0.024</td><td class="num">−0.025</td><td class="num">+0.023</td><td class="num">+0.007</td></tr>
+    <tr><td>\(k=1\)</td><td class="num">−0.019</td><td class="num">−0.048</td><td class="num">+0.005</td><td class="num">+0.008</td></tr>
+  </tbody>
+</table>
+<p>최종 예산에서 \(k=1\)의 indep 대 proposed 대 pooled: 김진명 −0.715 / −0.707 / −0.656, 김태근 −0.678 / −0.653 / −0.661. 어느 모형도 pooled를 유의하게 넘지 못한다.</p>
+<p class="label">결과 2: 전체 평가자에서 \(k=1\) 대 전체 bank (paired)</p>
+<table>
+  <thead><tr><th>\(\mathrm{MLPD}^{(k=1)}-\mathrm{MLPD}^{(\text{full})}\)</th><th class="num">\(t=0\)</th><th class="num">5</th><th class="num">10</th><th class="num">20</th><th class="num">최종</th></tr></thead>
+  <tbody>
+    <tr><td>평가자 단위 평균 ± paired SE (시드 42 대 시드 42)</td><td class="num">+0.013 ± 0.014</td><td class="num">0.000 ± 0.016</td><td class="num">+0.014 ± 0.024</td><td class="num">−0.017 ± 0.003</td><td class="num">−0.001 ± 0.017</td></tr>
+    <tr><td>에피소드 단위 \(\Delta\mathrm{ELPD}\) ± SE (\(N\approx1300\))</td><td class="num">−20.1 ± 5.5</td><td class="num">−9.8 ± 6.1</td><td class="num">−9.7 ± 6.2</td><td class="num">−18.8 ± 6.0</td><td class="num">−18.1 ± 8.3</td></tr>
+    <tr><td>cold start AUROC (\(k=1\) / full)</td><td class="num">0.740 / 0.707</td><td colspan="4"></td></tr>
+    <tr><td>epistemic 오답 예측 AUROC (\(k=1\) / full)</td><td class="num">0.60 / 0.52</td><td class="num">0.67 / 0.57</td><td class="num">0.56 / 0.56</td><td class="num">0.59 / 0.62</td><td class="num">0.68 / —</td></tr>
+  </tbody>
+</table>
+<p class="label">해석과 판정</p>
+<ul>
+  <li><strong>H5a는 세 명 중 한 명(김재호)에서만 성립.</strong> 전체 bank에서 −0.10~−0.17이던 손실이 \(k=1\)에서는 0 근처 또는 소폭 이득으로 바뀐다. 김진명과 김태근은 차원을 줄여도 변화가 없다. "저차원이 소수 라벨 개인화를 구한다"는 일반 주장은 할 수 없고, 고차원에서 생기는 과적합 손실을 막아 준다는 정도로만 쓴다.</li>
+  <li><strong>H5b 간접 지지.</strong> 김진명, 김태근은 \(k=1\)에서 indep, proposed, pooled가 모두 pooled 수준에 머문다. 자기 라벨 15~17개로도 pooled를 넘지 못하므로, 이들의 holdout은 어떤 모형으로도 pooled 이상 예측되지 않는다. 계획했던 \(K\)-fold 상한 추정은 하지 않았으나 결론은 같다. 논문에는 "이득은 예측 가능한 평가자에게 집중된다"로 쓴다.</li>
+  <li><strong>부수: 예측에는 전체 bank가 조금 낫다.</strong> E3의 선택 단계(축소 Gibbs, \(B=\{0,10\}\))에서는 \(k^\ast=1\)이 전체와 one-SE 안이었지만, 완전 Gibbs의 main 단계에서 에피소드 단위 paired로 보면 전체 bank가 \(t=0\)과 \(t=20\)에서 약 3 SE 차이로 낫다(에피소드당 0.015 nat). \(t=20\)에서는 긴 스트림 다섯 명 모두 음수다. 크기는 작아서 E3 결론(센서는 VerAccel 하나로 충분)은 유지되지만, "선택이 예측을 개선한다"가 아니라 "선택은 해석과 센서 결정을 위한 것이고 예측은 전체 bank로 한다"로 적는다. Riha et al.의 결론과 일치한다.</li>
+  <li><strong>부수: 저차원이 epistemic의 순위를 좋게 한다.</strong> \(k=1\)의 cold start 오답 예측 AUROC는 0.60으로 전체 bank 0.52, \(\lambda_0=0.01\) 0.61과 같은 수준이다. E2의 해석(고차원 사전분포의 분산이 epistemic을 흐린다)과 맞는다.</li>
+</ul>
+<p><span class="verdict mix-v">H5a 1/3, H5b 간접 지지, H5c 확인</span>. 추가 실행 불필요.</p>
 
 <!-- ===================================================================== E6 -->
 <h2 id="E6">E6. cold start 과소 확신의 원인 <span class="verdict mix-v">H6a 지지, 그러나 수축이 유익</span></h2>
@@ -611,7 +643,7 @@ C_\star(n)-C^{\text{pooled}}_\star(n)\ \text{의 기울기가 양수이고, 긴 
     <tr><td>H2a, H2b</td><td>\(\boldsymbol\Sigma\) 과대 추정이 원인</td><td>기각</td><td>E2</td><td>강건성 표</td></tr>
     <tr><td>H3</td><td>개인 피처가 \(t=20\)에 기여</td><td>기각</td><td>E3</td><td>Discussion</td></tr>
     <tr><td>H4</td><td>시드 잡음 &lt; 평가자 SE</td><td>지지</td><td>E4</td><td>모든 수치의 출처 = <code>loeo_final</code></td></tr>
-    <tr><td>H5a, H5b</td><td>무이득 원인: 차원 / 라벨 잡음</td><td>예정 (k = 1 실행 대기)</td><td>E5</td><td>Discussion 또는 부가 결과</td></tr>
+    <tr><td>H5a, H5b</td><td>무이득 원인: 차원 / 라벨 잡음</td><td>H5a 1/3 지지, H5b 간접 지지; 예측은 전체 bank가 소폭 우세</td><td>E5</td><td>Discussion; VI-C 서술 수정</td></tr>
     <tr><td>H6a, H6b</td><td>과소 확신: Jensen 수축 / 신호 부족</td><td>H6a 지지, H6b 부분 지지; 수축은 유익</td><td>E4</td><td>Discussion</td></tr>
     <tr><td>H7</td><td>신뢰 판정 규칙</td><td>\(w_{\max}=0.3\) 지지; 사후 확률 판정은 미구현</td><td>E4</td><td>IV-E 규칙의 \(w_{\max}\) 수정</td></tr>
     <tr><td>H8</td><td>prequential 기울기 양수</td><td>예정</td><td>저장된 점수 + 코드</td><td>long-stream 사례 그림</td></tr>
