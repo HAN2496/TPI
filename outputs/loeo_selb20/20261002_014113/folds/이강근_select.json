@@ -1,0 +1,1375 @@
+{
+  "name": "이강근",
+  "d_features": 41,
+  "sizes": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    8,
+    10,
+    12,
+    15,
+    20,
+    25,
+    30,
+    40,
+    41
+  ],
+  "path": [
+    {
+      "added": "(bias)",
+      "kl": 0.13056955542046497,
+      "captured": 0.0,
+      "n": 0
+    },
+    {
+      "added": "IMU_VerAccelVal__p2p",
+      "kl": 0.047347170566388,
+      "captured": 0.6373797060584385,
+      "n": 1
+    },
+    {
+      "added": "Bounce_rate_6D__band_mid",
+      "kl": 0.038553349667474895,
+      "captured": 0.7047294099813395,
+      "n": 2
+    },
+    {
+      "added": "IMU_LongAccelVal__abs_peak",
+      "kl": 0.03108334945613304,
+      "captured": 0.7619402979811237,
+      "n": 3
+    },
+    {
+      "added": "IMU_LongAccelVal__band_low",
+      "kl": 0.02560256494612447,
+      "captured": 0.8039162738689112,
+      "n": 4
+    },
+    {
+      "added": "Bounce_rate_6D__impulse_abs",
+      "kl": 0.019723070930097033,
+      "captured": 0.8489458674605725,
+      "n": 5
+    },
+    {
+      "added": "IMU_VerAccelVal__rms",
+      "kl": 0.015857881780678623,
+      "captured": 0.8785483972154728,
+      "n": 6
+    },
+    {
+      "added": "Bounce_rate_6D__p2p_deriv",
+      "kl": 0.012617261282182093,
+      "captured": 0.9033675098184143,
+      "n": 7
+    },
+    {
+      "added": "IMU_LongAccelVal__std",
+      "kl": 0.010983302194344489,
+      "captured": 0.9158815992060657,
+      "n": 8
+    },
+    {
+      "added": "IMU_LongAccelVal__p2p",
+      "kl": 0.006814581126625685,
+      "captured": 0.9478088050106235,
+      "n": 9
+    },
+    {
+      "added": "IMU_LongAccelVal__wrms_xy",
+      "kl": 0.0046108775520274535,
+      "captured": 0.9646864268076939,
+      "n": 10
+    },
+    {
+      "added": "Bounce_rate_6D__wrms_z_deriv",
+      "kl": 0.003260943468238363,
+      "captured": 0.9750252387875769,
+      "n": 11
+    },
+    {
+      "added": "Pitch_rate_6D__abs_peak",
+      "kl": 0.00211809598962163,
+      "captured": 0.9837780255680517,
+      "n": 12
+    },
+    {
+      "added": "IMU_VerAccelVal__mtvv",
+      "kl": 0.0014715952137488919,
+      "captured": 0.9887294154520937,
+      "n": 13
+    },
+    {
+      "added": "IMU_VerAccelVal__std",
+      "kl": 0.0009537205948852461,
+      "captured": 0.9926956893449316,
+      "n": 14
+    },
+    {
+      "added": "Pitch_rate_6D__band_low",
+      "kl": 0.000483438061016418,
+      "captured": 0.9962974672046663,
+      "n": 15
+    },
+    {
+      "added": "IMU_LongAccelVal__band_mid",
+      "kl": 0.00021911782883509546,
+      "captured": 0.9983218306279018,
+      "n": 16
+    },
+    {
+      "added": "IMU_VerAccelVal__vdv",
+      "kl": 8.09619841619713e-05,
+      "captured": 0.9993799321449686,
+      "n": 17
+    },
+    {
+      "added": "Bounce_rate_6D__crest",
+      "kl": 4.588226388079001e-13,
+      "captured": 0.999999999996486,
+      "n": 18
+    },
+    {
+      "added": "IMU_VerAccelVal__band_mid",
+      "kl": 3.248665591914747e-13,
+      "captured": 0.9999999999975119,
+      "n": 19
+    },
+    {
+      "added": "IMU_LatAccelVal__p2p",
+      "kl": 2.134316862520555e-13,
+      "captured": 0.9999999999983654,
+      "n": 20
+    },
+    {
+      "added": "IMU_LatAccelVal__rms",
+      "kl": 2.0063782840209505e-13,
+      "captured": 0.9999999999984633,
+      "n": 21
+    },
+    {
+      "added": "IMU_LongAccelVal__rms",
+      "kl": 1.944047488107192e-13,
+      "captured": 0.9999999999985111,
+      "n": 22
+    },
+    {
+      "added": "IMU_VerAccelVal__abs_peak",
+      "kl": 1.9319966831314543e-13,
+      "captured": 0.9999999999985203,
+      "n": 23
+    },
+    {
+      "added": "Bounce_rate_6D__p2p",
+      "kl": 1.9469361062331436e-13,
+      "captured": 0.9999999999985089,
+      "n": 24
+    },
+    {
+      "added": "IMU_LatAccelVal__abs_peak",
+      "kl": 2.0004833861472921e-13,
+      "captured": 0.9999999999984679,
+      "n": 25
+    },
+    {
+      "added": "Pitch_rate_6D__band_mid",
+      "kl": 2.0605318750885378e-13,
+      "captured": 0.9999999999984219,
+      "n": 26
+    },
+    {
+      "added": "IMU_VerAccelVal__p95_abs",
+      "kl": 2.1507099825966433e-13,
+      "captured": 0.9999999999983529,
+      "n": 27
+    },
+    {
+      "added": "Pitch_rate_6D__crest",
+      "kl": 2.281213061147296e-13,
+      "captured": 0.9999999999982528,
+      "n": 28
+    },
+    {
+      "added": "IMU_LatAccelVal__band_mid",
+      "kl": 2.5786809854851083e-13,
+      "captured": 0.999999999998025,
+      "n": 29
+    },
+    {
+      "added": "IMU_LongAccelVal__crest",
+      "kl": 2.395513372090552e-13,
+      "captured": 0.9999999999981654,
+      "n": 30
+    },
+    {
+      "added": "IMU_LatAccelVal__band_low",
+      "kl": 2.5268392396525404e-13,
+      "captured": 0.9999999999980648,
+      "n": 31
+    },
+    {
+      "added": "Pitch_rate_6D__wrms_rot",
+      "kl": 2.8008602072781484e-13,
+      "captured": 0.9999999999978549,
+      "n": 32
+    },
+    {
+      "added": "IMU_LatAccelVal__crest",
+      "kl": 5.249146556533513e-13,
+      "captured": 0.9999999999959798,
+      "n": 33
+    },
+    {
+      "added": "Bounce_rate_6D__rms_deriv",
+      "kl": 6.75988889412955e-13,
+      "captured": 0.9999999999948228,
+      "n": 34
+    },
+    {
+      "added": "IMU_LatAccelVal__sigma_sd",
+      "kl": 4.4199735169320264e-13,
+      "captured": 0.9999999999966148,
+      "n": 35
+    },
+    {
+      "added": "IMU_VerAccelVal__band_low",
+      "kl": 3.921417370503621e-13,
+      "captured": 0.9999999999969967,
+      "n": 36
+    },
+    {
+      "added": "IMU_LatAccelVal__std",
+      "kl": 3.5698362122619705e-13,
+      "captured": 0.999999999997266,
+      "n": 37
+    },
+    {
+      "added": "IMU_VerAccelVal__impulse_abs",
+      "kl": 3.290057200726369e-13,
+      "captured": 0.9999999999974802,
+      "n": 38
+    },
+    {
+      "added": "Pitch_rate_6D__p2p_deriv",
+      "kl": 3.19058388417738e-13,
+      "captured": 0.9999999999975564,
+      "n": 39
+    },
+    {
+      "added": "Bounce_rate_6D__band_low",
+      "kl": 2.7780911577090004e-13,
+      "captured": 0.9999999999978724,
+      "n": 40
+    },
+    {
+      "added": "Pitch_rate_6D__impulse_abs",
+      "kl": 2.9714947704974326e-13,
+      "captured": 0.9999999999977242,
+      "n": 41
+    }
+  ],
+  "pip_set": [
+    "Pitch_rate_6D__abs_peak",
+    "Bounce_rate_6D__p2p_deriv",
+    "Bounce_rate_6D__wrms_z_deriv",
+    "Bounce_rate_6D__impulse_abs",
+    "Bounce_rate_6D__band_mid",
+    "IMU_VerAccelVal__p2p",
+    "IMU_VerAccelVal__vdv",
+    "IMU_LongAccelVal__p2p",
+    "IMU_LongAccelVal__abs_peak",
+    "IMU_LongAccelVal__std",
+    "IMU_LongAccelVal__wrms_xy",
+    "IMU_LongAccelVal__band_low"
+  ],
+  "candidates": {
+    "k=1": {
+      "features": [
+        "IMU_VerAccelVal__p2p"
+      ],
+      "n_features": 1,
+      "seconds": 1.0878901481628418,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.0778911113739014,
+        "eval": 0.00999903678894043,
+        "total": 1.0878901481628418
+      },
+      "metrics": {
+        "0": {
+          "n": 9.0,
+          "n_pos": 8.0,
+          "mlpd": -1.0285645235026475,
+          "elpd": -9.257080711523827,
+          "brier": 0.3914697962566674,
+          "auroc": 0.5,
+          "auprc": 0.9317956349206349,
+          "ece": 0.5268982670455028,
+          "cal_slope": 1.0737830936312753,
+          "cal_intercept": 3.0544714465158425,
+          "epi_mean": 0.04183082241538072,
+          "ale_mean": 0.14799011792524835,
+          "epi_ale_spearman": -0.35,
+          "correctness_auroc_epi": 0.7222222222222223,
+          "correctness_auroc_total": 0.2777777777777778,
+          "aurc_epi": 0.45621693121693124,
+          "eaurc_epi": 0.12142857142857144,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.31980308247256156,
+          -0.7145229543755182,
+          -0.2801048737070847,
+          -1.558673046347141,
+          -1.287330913581992,
+          -1.5431833684671359,
+          -1.4839526348365613,
+          -1.6946348615623945,
+          -0.37487497617343785
+        ]
+      }
+    },
+    "k=2": {
+      "features": [
+        "IMU_VerAccelVal__p2p",
+        "Bounce_rate_6D__band_mid"
+      ],
+      "n_features": 2,
+      "seconds": 1.0453734397888184,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.0333738327026367,
+        "eval": 0.01199960708618164,
+        "total": 1.0453734397888184
+      },
+      "metrics": {
+        "0": {
+          "n": 9.0,
+          "n_pos": 8.0,
+          "mlpd": -1.0374516501564905,
+          "elpd": -9.337064851408416,
+          "brier": 0.3944173449071255,
+          "auroc": 0.5,
+          "auprc": 0.9317956349206349,
+          "ece": 0.5280521173525037,
+          "cal_slope": 0.8832795145573373,
+          "cal_intercept": 2.854862701103161,
+          "epi_mean": 0.049695314423092087,
+          "ale_mean": 0.13990501193040894,
+          "epi_ale_spearman": -0.09999999999999999,
+          "correctness_auroc_epi": 0.7777777777777779,
+          "correctness_auroc_total": 0.2777777777777778,
+          "aurc_epi": 0.44034391534391526,
+          "eaurc_epi": 0.10555555555555546,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.3181629035916788,
+          -0.7305249492384589,
+          -0.2893981043917905,
+          -1.5713058122927694,
+          -1.2528065293762132,
+          -1.564717796073586,
+          -1.5015019956409001,
+          -1.729240839869952,
+          -0.3794059209330675
+        ]
+      }
+    },
+    "k=3": {
+      "features": [
+        "IMU_VerAccelVal__p2p",
+        "Bounce_rate_6D__band_mid",
+        "IMU_LongAccelVal__abs_peak"
+      ],
+      "n_features": 3,
+      "seconds": 1.2938382625579834,
+      "timing": {
+        "features": 0.0009999275207519531,
+        "gibbs": 1.27699875831604,
+        "eval": 0.015839576721191406,
+        "total": 1.2938382625579834
+      },
+      "metrics": {
+        "0": {
+          "n": 9.0,
+          "n_pos": 8.0,
+          "mlpd": -1.0690016128466258,
+          "elpd": -9.621014515619631,
+          "brier": 0.40544962431372333,
+          "auroc": 0.5,
+          "auprc": 0.9317956349206349,
+          "ece": 0.538302563299001,
+          "cal_slope": 1.0300650033175665,
+          "cal_intercept": 3.0931960695603804,
+          "epi_mean": 0.049741870633910966,
+          "ale_mean": 0.13413602076812586,
+          "epi_ale_spearman": -0.11666666666666665,
+          "correctness_auroc_epi": 0.7777777777777779,
+          "correctness_auroc_total": 0.2222222222222222,
+          "aurc_epi": 0.44034391534391526,
+          "eaurc_epi": 0.10555555555555546,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.3157735597380839,
+          -0.7552916315573501,
+          -0.2601352473530072,
+          -1.6474076410302345,
+          -1.3343540852696827,
+          -1.6239056282378486,
+          -1.5504924588229403,
+          -1.763321205573856,
+          -0.3703330580366287
+        ]
+      }
+    },
+    "k=4": {
+      "features": [
+        "IMU_VerAccelVal__p2p",
+        "Bounce_rate_6D__band_mid",
+        "IMU_LongAccelVal__abs_peak",
+        "IMU_LongAccelVal__band_low"
+      ],
+      "n_features": 4,
+      "seconds": 1.0798251628875732,
+      "timing": {
+        "features": 0.0010001659393310547,
+        "gibbs": 1.0628256797790527,
+        "eval": 0.015999317169189453,
+        "total": 1.0798251628875732
+      },
+      "metrics": {
+        "0": {
+          "n": 9.0,
+          "n_pos": 8.0,
+          "mlpd": -1.0687764639383355,
+          "elpd": -9.61898817544502,
+          "brier": 0.40418688411342035,
+          "auroc": 0.5,
+          "auprc": 0.9317956349206349,
+          "ece": 0.5338777919924732,
+          "cal_slope": 0.6148646472969155,
+          "cal_intercept": 2.609211787925846,
+          "epi_mean": 0.05310740850077514,
+          "ale_mean": 0.13433086191766777,
+          "epi_ale_spearman": 0.0,
+          "correctness_auroc_epi": 0.5,
+          "correctness_auroc_total": 0.1,
+          "aurc_epi": 0.4835537918871251,
+          "eaurc_epi": 0.2593915343915343,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.3157338130995081,
+          -0.6895624181043101,
+          -0.3001132511480143,
+          -1.6218742077540587,
+          -1.2873752910326106,
+          -1.8281289736637554,
+          -1.516334205396473,
+          -1.6398243891480357,
+          -0.4200416260982541
+        ]
+      }
+    },
+    "k=5": {
+      "features": [
+        "IMU_VerAccelVal__p2p",
+        "Bounce_rate_6D__band_mid",
+        "IMU_LongAccelVal__abs_peak",
+        "IMU_LongAccelVal__band_low",
+        "Bounce_rate_6D__impulse_abs"
+      ],
+      "n_features": 5,
+      "seconds": 1.2758212089538574,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.2648141384124756,
+        "eval": 0.011007070541381836,
+        "total": 1.2758212089538574
+      },
+      "metrics": {
+        "0": {
+          "n": 9.0,
+          "n_pos": 8.0,
+          "mlpd": -0.9998257541586069,
+          "elpd": -8.998431787427462,
+          "brier": 0.3820375060124025,
+          "auroc": 0.375,
+          "auprc": 0.9067956349206349,
+          "ece": 0.5187037713143904,
+          "cal_slope": 1.0865562521518435,
+          "cal_intercept": 2.99262223496867,
+          "epi_mean": 0.058339870635517425,
+          "ale_mean": 0.13625879905124094,
+          "epi_ale_spearman": -0.38333333333333336,
+          "correctness_auroc_epi": 0.6,
+          "correctness_auroc_total": 0.05,
+          "aurc_epi": 0.40947971781305115,
+          "eaurc_epi": 0.18531746031746033,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.2954396118686652,
+          -0.682247305844186,
+          -0.3011584674337521,
+          -1.5183588752789496,
+          -1.3628629058912174,
+          -1.5647248540182277,
+          -1.368044453294597,
+          -1.4850843124423736,
+          -0.4205110013554941
+        ]
+      }
+    },
+    "k=6": {
+      "features": [
+        "IMU_VerAccelVal__p2p",
+        "Bounce_rate_6D__band_mid",
+        "IMU_LongAccelVal__abs_peak",
+        "IMU_LongAccelVal__band_low",
+        "Bounce_rate_6D__impulse_abs",
+        "IMU_VerAccelVal__rms"
+      ],
+      "n_features": 6,
+      "seconds": 1.2484495639801025,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.23744535446167,
+        "eval": 0.011004209518432617,
+        "total": 1.2484495639801025
+      },
+      "metrics": {
+        "0": {
+          "n": 9.0,
+          "n_pos": 8.0,
+          "mlpd": -1.0030441014857263,
+          "elpd": -9.027396913371536,
+          "brier": 0.38313381948565506,
+          "auroc": 0.5,
+          "auprc": 0.9317956349206349,
+          "ece": 0.5180797335119673,
+          "cal_slope": 1.3087569568890023,
+          "cal_intercept": 3.2647997895544,
+          "epi_mean": 0.061727691882293656,
+          "ale_mean": 0.1278704717380146,
+          "epi_ale_spearman": -0.26666666666666666,
+          "correctness_auroc_epi": 0.8333333333333334,
+          "correctness_auroc_total": 0.33333333333333337,
+          "aurc_epi": 0.4218253968253968,
+          "eaurc_epi": 0.08703703703703702,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.25736343166469594,
+          -0.7029538724297498,
+          -0.2813563708082624,
+          -1.5324932763836805,
+          -1.3622531719584208,
+          -1.5021111474194626,
+          -1.4529631264705007,
+          -1.55665945319171,
+          -0.3792430630450532
+        ]
+      }
+    },
+    "k=8": {
+      "features": [
+        "IMU_VerAccelVal__p2p",
+        "Bounce_rate_6D__band_mid",
+        "IMU_LongAccelVal__abs_peak",
+        "IMU_LongAccelVal__band_low",
+        "Bounce_rate_6D__impulse_abs",
+        "IMU_VerAccelVal__rms",
+        "Bounce_rate_6D__p2p_deriv",
+        "IMU_LongAccelVal__std"
+      ],
+      "n_features": 8,
+      "seconds": 1.1504521369934082,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.1394541263580322,
+        "eval": 0.010998010635375977,
+        "total": 1.1504521369934082
+      },
+      "metrics": {
+        "0": {
+          "n": 9.0,
+          "n_pos": 8.0,
+          "mlpd": -1.0661599110037063,
+          "elpd": -9.595439199033358,
+          "brier": 0.4043461552319973,
+          "auroc": 0.375,
+          "auprc": 0.9067956349206349,
+          "ece": 0.528579331304226,
+          "cal_slope": 0.4007405524471864,
+          "cal_intercept": 2.3898574426089074,
+          "epi_mean": 0.06965469328586506,
+          "ale_mean": 0.11830658666849,
+          "epi_ale_spearman": 0.03333333333333333,
+          "correctness_auroc_epi": 0.5555555555555556,
+          "correctness_auroc_total": 0.2222222222222222,
+          "aurc_epi": 0.708862433862434,
+          "eaurc_epi": 0.37407407407407417,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.28835008055861855,
+          -0.7037817403241416,
+          -0.33686230572641945,
+          -1.6292505470439553,
+          -1.3001864110439085,
+          -1.6888098834848593,
+          -1.5710572463824095,
+          -1.6650834666391332,
+          -0.41205751782991085
+        ]
+      }
+    },
+    "k=10": {
+      "features": [
+        "IMU_VerAccelVal__p2p",
+        "Bounce_rate_6D__band_mid",
+        "IMU_LongAccelVal__abs_peak",
+        "IMU_LongAccelVal__band_low",
+        "Bounce_rate_6D__impulse_abs",
+        "IMU_VerAccelVal__rms",
+        "Bounce_rate_6D__p2p_deriv",
+        "IMU_LongAccelVal__std",
+        "IMU_LongAccelVal__p2p",
+        "IMU_LongAccelVal__wrms_xy"
+      ],
+      "n_features": 10,
+      "seconds": 1.2841277122497559,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.2751281261444092,
+        "eval": 0.00899958610534668,
+        "total": 1.2841277122497559
+      },
+      "metrics": {
+        "0": {
+          "n": 9.0,
+          "n_pos": 8.0,
+          "mlpd": -1.1155123984876356,
+          "elpd": -10.039611586388721,
+          "brier": 0.4198830038673427,
+          "auroc": 0.5,
+          "auprc": 0.9317956349206349,
+          "ece": 0.5394464595483396,
+          "cal_slope": 0.2291759667316359,
+          "cal_intercept": 2.260973116584673,
+          "epi_mean": 0.07308838034640536,
+          "ale_mean": 0.11152693075637894,
+          "epi_ale_spearman": 0.6666666666666667,
+          "correctness_auroc_epi": 0.5,
+          "correctness_auroc_total": 0.2777777777777778,
+          "aurc_epi": 0.5988095238095239,
+          "eaurc_epi": 0.2640211640211641,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.26803714420829144,
+          -0.7070784318297324,
+          -0.3451856354288118,
+          -1.7374713835592508,
+          -1.206046396965849,
+          -1.7244121531387309,
+          -1.7939064625977779,
+          -1.7485737783242292,
+          -0.508900200336049
+        ]
+      }
+    },
+    "k=12": {
+      "features": [
+        "IMU_VerAccelVal__p2p",
+        "Bounce_rate_6D__band_mid",
+        "IMU_LongAccelVal__abs_peak",
+        "IMU_LongAccelVal__band_low",
+        "Bounce_rate_6D__impulse_abs",
+        "IMU_VerAccelVal__rms",
+        "Bounce_rate_6D__p2p_deriv",
+        "IMU_LongAccelVal__std",
+        "IMU_LongAccelVal__p2p",
+        "IMU_LongAccelVal__wrms_xy",
+        "Bounce_rate_6D__wrms_z_deriv",
+        "Pitch_rate_6D__abs_peak"
+      ],
+      "n_features": 12,
+      "seconds": 1.2202155590057373,
+      "timing": {
+        "features": 0.0010008811950683594,
+        "gibbs": 1.2082147598266602,
+        "eval": 0.010999917984008789,
+        "total": 1.2202155590057373
+      },
+      "metrics": {
+        "0": {
+          "n": 9.0,
+          "n_pos": 8.0,
+          "mlpd": -1.183397392065579,
+          "elpd": -10.65057652859021,
+          "brier": 0.44000009336387275,
+          "auroc": 0.5,
+          "auprc": 0.9317956349206349,
+          "ece": 0.5562551930144766,
+          "cal_slope": 0.1881500525048515,
+          "cal_intercept": 2.2469125717361127,
+          "epi_mean": 0.07349217322458511,
+          "ale_mean": 0.10378822831617006,
+          "epi_ale_spearman": 0.6666666666666667,
+          "correctness_auroc_epi": 0.3888888888888889,
+          "correctness_auroc_total": 0.2777777777777778,
+          "aurc_epi": 0.7654761904761905,
+          "eaurc_epi": 0.43068783068783073,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.2795971174683532,
+          -0.744054663183571,
+          -0.31991201729188246,
+          -1.824601253234313,
+          -1.2539772910089033,
+          -1.9130520293785196,
+          -1.9418757592879847,
+          -1.8528756563481104,
+          -0.5206307413885726
+        ]
+      }
+    },
+    "k=15": {
+      "features": [
+        "IMU_VerAccelVal__p2p",
+        "Bounce_rate_6D__band_mid",
+        "IMU_LongAccelVal__abs_peak",
+        "IMU_LongAccelVal__band_low",
+        "Bounce_rate_6D__impulse_abs",
+        "IMU_VerAccelVal__rms",
+        "Bounce_rate_6D__p2p_deriv",
+        "IMU_LongAccelVal__std",
+        "IMU_LongAccelVal__p2p",
+        "IMU_LongAccelVal__wrms_xy",
+        "Bounce_rate_6D__wrms_z_deriv",
+        "Pitch_rate_6D__abs_peak",
+        "IMU_VerAccelVal__mtvv",
+        "IMU_VerAccelVal__std",
+        "Pitch_rate_6D__band_low"
+      ],
+      "n_features": 15,
+      "seconds": 1.2971456050872803,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.2813782691955566,
+        "eval": 0.015767335891723633,
+        "total": 1.2971456050872803
+      },
+      "metrics": {
+        "0": {
+          "n": 9.0,
+          "n_pos": 8.0,
+          "mlpd": -1.09998406202378,
+          "elpd": -9.899856558214019,
+          "brier": 0.41931446223549074,
+          "auroc": 0.5,
+          "auprc": 0.9317956349206349,
+          "ece": 0.5487158890738695,
+          "cal_slope": 0.46284714502829927,
+          "cal_intercept": 2.4769289773445573,
+          "epi_mean": 0.08497999088008784,
+          "ale_mean": 0.10484749373713592,
+          "epi_ale_spearman": 0.38333333333333336,
+          "correctness_auroc_epi": 0.6111111111111112,
+          "correctness_auroc_total": 0.2777777777777778,
+          "aurc_epi": 0.5488095238095237,
+          "eaurc_epi": 0.21402116402116395,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.302613037267647,
+          -0.749398922965452,
+          -0.3160283729515794,
+          -1.7146459213016714,
+          -1.287655347208121,
+          -1.7314215489367148,
+          -1.626044388253912,
+          -1.5508797238724301,
+          -0.6211692954564905
+        ]
+      }
+    },
+    "k=20": {
+      "features": [
+        "IMU_VerAccelVal__p2p",
+        "Bounce_rate_6D__band_mid",
+        "IMU_LongAccelVal__abs_peak",
+        "IMU_LongAccelVal__band_low",
+        "Bounce_rate_6D__impulse_abs",
+        "IMU_VerAccelVal__rms",
+        "Bounce_rate_6D__p2p_deriv",
+        "IMU_LongAccelVal__std",
+        "IMU_LongAccelVal__p2p",
+        "IMU_LongAccelVal__wrms_xy",
+        "Bounce_rate_6D__wrms_z_deriv",
+        "Pitch_rate_6D__abs_peak",
+        "IMU_VerAccelVal__mtvv",
+        "IMU_VerAccelVal__std",
+        "Pitch_rate_6D__band_low",
+        "IMU_LongAccelVal__band_mid",
+        "IMU_VerAccelVal__vdv",
+        "Bounce_rate_6D__crest",
+        "IMU_VerAccelVal__band_mid",
+        "IMU_LatAccelVal__p2p"
+      ],
+      "n_features": 20,
+      "seconds": 1.3931968212127686,
+      "timing": {
+        "features": 0.00052642822265625,
+        "gibbs": 1.375669240951538,
+        "eval": 0.01700115203857422,
+        "total": 1.3931968212127686
+      },
+      "metrics": {
+        "0": {
+          "n": 9.0,
+          "n_pos": 8.0,
+          "mlpd": -1.0353140933334515,
+          "elpd": -9.317826840001063,
+          "brier": 0.394563303066449,
+          "auroc": 0.5,
+          "auprc": 0.9317956349206349,
+          "ece": 0.5337075166334666,
+          "cal_slope": 1.0592689659105985,
+          "cal_intercept": 3.035108743384724,
+          "epi_mean": 0.09130017873901636,
+          "ale_mean": 0.10310535564142517,
+          "epi_ale_spearman": 0.5499999999999999,
+          "correctness_auroc_epi": 0.35,
+          "correctness_auroc_total": 0.1,
+          "aurc_epi": 0.6475749559082892,
+          "eaurc_epi": 0.42341269841269835,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.3070901538535495,
+          -0.6005381204332524,
+          -0.2845520649062777,
+          -1.6759255981546255,
+          -1.1713316069319197,
+          -1.6656252500075617,
+          -1.4961043768638163,
+          -1.4733968489963476,
+          -0.6432628198537113
+        ]
+      }
+    },
+    "k=25": {
+      "features": [
+        "IMU_VerAccelVal__p2p",
+        "Bounce_rate_6D__band_mid",
+        "IMU_LongAccelVal__abs_peak",
+        "IMU_LongAccelVal__band_low",
+        "Bounce_rate_6D__impulse_abs",
+        "IMU_VerAccelVal__rms",
+        "Bounce_rate_6D__p2p_deriv",
+        "IMU_LongAccelVal__std",
+        "IMU_LongAccelVal__p2p",
+        "IMU_LongAccelVal__wrms_xy",
+        "Bounce_rate_6D__wrms_z_deriv",
+        "Pitch_rate_6D__abs_peak",
+        "IMU_VerAccelVal__mtvv",
+        "IMU_VerAccelVal__std",
+        "Pitch_rate_6D__band_low",
+        "IMU_LongAccelVal__band_mid",
+        "IMU_VerAccelVal__vdv",
+        "Bounce_rate_6D__crest",
+        "IMU_VerAccelVal__band_mid",
+        "IMU_LatAccelVal__p2p",
+        "IMU_LatAccelVal__rms",
+        "IMU_LongAccelVal__rms",
+        "IMU_VerAccelVal__abs_peak",
+        "Bounce_rate_6D__p2p",
+        "IMU_LatAccelVal__abs_peak"
+      ],
+      "n_features": 25,
+      "seconds": 1.697342872619629,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.6793298721313477,
+        "eval": 0.01801300048828125,
+        "total": 1.697342872619629
+      },
+      "metrics": {
+        "0": {
+          "n": 9.0,
+          "n_pos": 8.0,
+          "mlpd": -1.1020815362921366,
+          "elpd": -9.918733826629229,
+          "brier": 0.4168583380765631,
+          "auroc": 0.5,
+          "auprc": 0.9317956349206349,
+          "ece": 0.5516660171923559,
+          "cal_slope": 1.2838502057398913,
+          "cal_intercept": 3.498355013948533,
+          "epi_mean": 0.09339945560338352,
+          "ale_mean": 0.08757996943906764,
+          "epi_ale_spearman": 0.3,
+          "correctness_auroc_epi": 0.6111111111111112,
+          "correctness_auroc_total": 0.2777777777777778,
+          "aurc_epi": 0.5488095238095237,
+          "eaurc_epi": 0.21402116402116395,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.2674688715112237,
+          -0.7043842938424094,
+          -0.2315816935041571,
+          -1.7718279701983064,
+          -1.2889545268243734,
+          -1.7451810086955488,
+          -1.701758605281705,
+          -1.6535489786920674,
+          -0.5540278780794384
+        ]
+      }
+    },
+    "k=30": {
+      "features": [
+        "IMU_VerAccelVal__p2p",
+        "Bounce_rate_6D__band_mid",
+        "IMU_LongAccelVal__abs_peak",
+        "IMU_LongAccelVal__band_low",
+        "Bounce_rate_6D__impulse_abs",
+        "IMU_VerAccelVal__rms",
+        "Bounce_rate_6D__p2p_deriv",
+        "IMU_LongAccelVal__std",
+        "IMU_LongAccelVal__p2p",
+        "IMU_LongAccelVal__wrms_xy",
+        "Bounce_rate_6D__wrms_z_deriv",
+        "Pitch_rate_6D__abs_peak",
+        "IMU_VerAccelVal__mtvv",
+        "IMU_VerAccelVal__std",
+        "Pitch_rate_6D__band_low",
+        "IMU_LongAccelVal__band_mid",
+        "IMU_VerAccelVal__vdv",
+        "Bounce_rate_6D__crest",
+        "IMU_VerAccelVal__band_mid",
+        "IMU_LatAccelVal__p2p",
+        "IMU_LatAccelVal__rms",
+        "IMU_LongAccelVal__rms",
+        "IMU_VerAccelVal__abs_peak",
+        "Bounce_rate_6D__p2p",
+        "IMU_LatAccelVal__abs_peak",
+        "Pitch_rate_6D__band_mid",
+        "IMU_VerAccelVal__p95_abs",
+        "Pitch_rate_6D__crest",
+        "IMU_LatAccelVal__band_mid",
+        "IMU_LongAccelVal__crest"
+      ],
+      "n_features": 30,
+      "seconds": 1.9230926036834717,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.9050910472869873,
+        "eval": 0.018001556396484375,
+        "total": 1.9230926036834717
+      },
+      "metrics": {
+        "0": {
+          "n": 9.0,
+          "n_pos": 8.0,
+          "mlpd": -1.0827715930380721,
+          "elpd": -9.74494433734265,
+          "brier": 0.4062994177977155,
+          "auroc": 0.5,
+          "auprc": 0.9317956349206349,
+          "ece": 0.5883712315760256,
+          "cal_slope": 0.9104500555145056,
+          "cal_intercept": 2.9913271563080555,
+          "epi_mean": 0.09631863653248983,
+          "ale_mean": 0.08599397383715156,
+          "epi_ale_spearman": 0.35,
+          "correctness_auroc_epi": 0.45,
+          "correctness_auroc_total": 0.1,
+          "aurc_epi": 0.49942680776014103,
+          "eaurc_epi": 0.2752645502645502,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.2540939182159486,
+          -0.6129268346963819,
+          -0.2506435800454616,
+          -1.707257225012938,
+          -1.0945789278243927,
+          -1.7689330608760088,
+          -1.7948718865624165,
+          -1.7084791385813418,
+          -0.55315976552776
+        ]
+      }
+    },
+    "k=40": {
+      "features": [
+        "IMU_VerAccelVal__p2p",
+        "Bounce_rate_6D__band_mid",
+        "IMU_LongAccelVal__abs_peak",
+        "IMU_LongAccelVal__band_low",
+        "Bounce_rate_6D__impulse_abs",
+        "IMU_VerAccelVal__rms",
+        "Bounce_rate_6D__p2p_deriv",
+        "IMU_LongAccelVal__std",
+        "IMU_LongAccelVal__p2p",
+        "IMU_LongAccelVal__wrms_xy",
+        "Bounce_rate_6D__wrms_z_deriv",
+        "Pitch_rate_6D__abs_peak",
+        "IMU_VerAccelVal__mtvv",
+        "IMU_VerAccelVal__std",
+        "Pitch_rate_6D__band_low",
+        "IMU_LongAccelVal__band_mid",
+        "IMU_VerAccelVal__vdv",
+        "Bounce_rate_6D__crest",
+        "IMU_VerAccelVal__band_mid",
+        "IMU_LatAccelVal__p2p",
+        "IMU_LatAccelVal__rms",
+        "IMU_LongAccelVal__rms",
+        "IMU_VerAccelVal__abs_peak",
+        "Bounce_rate_6D__p2p",
+        "IMU_LatAccelVal__abs_peak",
+        "Pitch_rate_6D__band_mid",
+        "IMU_VerAccelVal__p95_abs",
+        "Pitch_rate_6D__crest",
+        "IMU_LatAccelVal__band_mid",
+        "IMU_LongAccelVal__crest",
+        "IMU_LatAccelVal__band_low",
+        "Pitch_rate_6D__wrms_rot",
+        "IMU_LatAccelVal__crest",
+        "Bounce_rate_6D__rms_deriv",
+        "IMU_LatAccelVal__sigma_sd",
+        "IMU_VerAccelVal__band_low",
+        "IMU_LatAccelVal__std",
+        "IMU_VerAccelVal__impulse_abs",
+        "Pitch_rate_6D__p2p_deriv",
+        "Bounce_rate_6D__band_low"
+      ],
+      "n_features": 40,
+      "seconds": 2.5935301780700684,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 2.5805296897888184,
+        "eval": 0.01300048828125,
+        "total": 2.5935301780700684
+      },
+      "metrics": {
+        "0": {
+          "n": 9.0,
+          "n_pos": 8.0,
+          "mlpd": -1.1082554776734028,
+          "elpd": -9.974299299060625,
+          "brier": 0.4193448089043115,
+          "auroc": 0.5,
+          "auprc": 0.9317956349206349,
+          "ece": 0.6031968723154988,
+          "cal_slope": 1.2337603780739874,
+          "cal_intercept": 3.4316091146407035,
+          "epi_mean": 0.1028383757713307,
+          "ale_mean": 0.08127078357928495,
+          "epi_ale_spearman": 0.39999999999999997,
+          "correctness_auroc_epi": 0.5555555555555557,
+          "correctness_auroc_total": 0.2777777777777778,
+          "aurc_epi": 0.6367724867724868,
+          "eaurc_epi": 0.30198412698412697,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.3041581576285331,
+          -0.6261512720043689,
+          -0.23415817784295354,
+          -1.7349026160788266,
+          -1.168990639792252,
+          -1.7651613535778194,
+          -1.7528127398845958,
+          -1.67022635822946,
+          -0.7177379840218165
+        ]
+      }
+    },
+    "k=41": {
+      "features": [
+        "Pitch_rate_6D__p2p_deriv",
+        "Pitch_rate_6D__wrms_rot",
+        "Pitch_rate_6D__abs_peak",
+        "Pitch_rate_6D__impulse_abs",
+        "Pitch_rate_6D__crest",
+        "Pitch_rate_6D__band_low",
+        "Pitch_rate_6D__band_mid",
+        "Bounce_rate_6D__p2p_deriv",
+        "Bounce_rate_6D__rms_deriv",
+        "Bounce_rate_6D__wrms_z_deriv",
+        "Bounce_rate_6D__p2p",
+        "Bounce_rate_6D__impulse_abs",
+        "Bounce_rate_6D__crest",
+        "Bounce_rate_6D__band_low",
+        "Bounce_rate_6D__band_mid",
+        "IMU_VerAccelVal__p2p",
+        "IMU_VerAccelVal__abs_peak",
+        "IMU_VerAccelVal__rms",
+        "IMU_VerAccelVal__std",
+        "IMU_VerAccelVal__p95_abs",
+        "IMU_VerAccelVal__impulse_abs",
+        "IMU_VerAccelVal__vdv",
+        "IMU_VerAccelVal__mtvv",
+        "IMU_VerAccelVal__band_low",
+        "IMU_VerAccelVal__band_mid",
+        "IMU_LongAccelVal__p2p",
+        "IMU_LongAccelVal__abs_peak",
+        "IMU_LongAccelVal__rms",
+        "IMU_LongAccelVal__std",
+        "IMU_LongAccelVal__crest",
+        "IMU_LongAccelVal__wrms_xy",
+        "IMU_LongAccelVal__band_low",
+        "IMU_LongAccelVal__band_mid",
+        "IMU_LatAccelVal__p2p",
+        "IMU_LatAccelVal__abs_peak",
+        "IMU_LatAccelVal__rms",
+        "IMU_LatAccelVal__std",
+        "IMU_LatAccelVal__crest",
+        "IMU_LatAccelVal__sigma_sd",
+        "IMU_LatAccelVal__band_low",
+        "IMU_LatAccelVal__band_mid"
+      ],
+      "n_features": 41,
+      "seconds": 2.629758596420288,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 2.61675763130188,
+        "eval": 0.013000965118408203,
+        "total": 2.629758596420288
+      },
+      "metrics": {
+        "0": {
+          "n": 9.0,
+          "n_pos": 8.0,
+          "mlpd": -1.0716907218573677,
+          "elpd": -9.645216496716309,
+          "brier": 0.4067484383870086,
+          "auroc": 0.5,
+          "auprc": 0.9317956349206349,
+          "ece": 0.5475064253697192,
+          "cal_slope": 1.1975799894311887,
+          "cal_intercept": 3.2845849298627687,
+          "epi_mean": 0.11079413651609817,
+          "ale_mean": 0.08051783852663215,
+          "epi_ale_spearman": 0.39999999999999997,
+          "correctness_auroc_epi": 0.35000000000000003,
+          "correctness_auroc_total": 0.1,
+          "aurc_epi": 0.6594797178130511,
+          "eaurc_epi": 0.4353174603174603,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.3726455428917653,
+          -0.5705831653040505,
+          -0.2565019473802852,
+          -1.6979229810947052,
+          -1.1501551159455348,
+          -1.687690470903331,
+          -1.653669223335837,
+          -1.5850864521544068,
+          -0.6709615977063933
+        ]
+      }
+    },
+    "pip": {
+      "features": [
+        "Pitch_rate_6D__abs_peak",
+        "Bounce_rate_6D__p2p_deriv",
+        "Bounce_rate_6D__wrms_z_deriv",
+        "Bounce_rate_6D__impulse_abs",
+        "Bounce_rate_6D__band_mid",
+        "IMU_VerAccelVal__p2p",
+        "IMU_VerAccelVal__vdv",
+        "IMU_LongAccelVal__p2p",
+        "IMU_LongAccelVal__abs_peak",
+        "IMU_LongAccelVal__std",
+        "IMU_LongAccelVal__wrms_xy",
+        "IMU_LongAccelVal__band_low"
+      ],
+      "n_features": 12,
+      "seconds": 1.2732148170471191,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.2612130641937256,
+        "eval": 0.012001752853393555,
+        "total": 1.2732148170471191
+      },
+      "metrics": {
+        "0": {
+          "n": 9.0,
+          "n_pos": 8.0,
+          "mlpd": -1.202277902568859,
+          "elpd": -10.820501123119731,
+          "brier": 0.44207296862615764,
+          "auroc": 0.5,
+          "auprc": 0.9317956349206349,
+          "ece": 0.5558791638654519,
+          "cal_slope": 0.23209521567817937,
+          "cal_intercept": 2.2965943457866773,
+          "epi_mean": 0.07045202640787432,
+          "ale_mean": 0.10091424448609324,
+          "epi_ale_spearman": 0.6333333333333333,
+          "correctness_auroc_epi": 0.2,
+          "correctness_auroc_total": 0.1,
+          "aurc_epi": 0.774294532627866,
+          "eaurc_epi": 0.5501322751322751,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.2641652333831808,
+          -0.6925702201437312,
+          -0.2987130305729082,
+          -1.9241423407548355,
+          -1.2882485323148865,
+          -1.9882332413644301,
+          -1.9890621075865547,
+          -1.9083807964352124,
+          -0.46698562056398984
+        ]
+      }
+    }
+  },
+  "seconds_projpred": 103.58334445953369,
+  "seconds": 127.28330731391907
+}

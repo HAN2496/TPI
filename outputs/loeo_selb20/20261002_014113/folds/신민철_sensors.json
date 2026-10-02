@@ -1,0 +1,1605 @@
+{
+  "name": "신민철",
+  "subsets": {
+    "Pitch_rate_6D": {
+      "channels": [
+        "Pitch_rate_6D"
+      ],
+      "n_features": 7,
+      "seconds": 0.9779841899871826,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 0.969477653503418,
+        "eval": 0.008506536483764648,
+        "total": 0.9779841899871826
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.6481752170974799,
+          "elpd": -3.2408760854874,
+          "brier": 0.22823768664237726,
+          "auroc": 0.6666666666666666,
+          "auprc": 0.8055555555555556,
+          "ece": 0.17359391442579827,
+          "cal_slope": 3.9302905541487645,
+          "cal_intercept": -2.17560270245123,
+          "epi_mean": 0.0395133252720911,
+          "ale_mean": 0.18289726050643276,
+          "epi_ale_spearman": -0.6,
+          "correctness_auroc_epi": 0.0,
+          "correctness_auroc_total": 0.6666666666666667,
+          "aurc_epi": 0.7133333333333333,
+          "eaurc_epi": 0.5833333333333333,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.45166717686785307,
+          -1.1829716278980167,
+          -0.33515134697557714,
+          -0.3989189834110927,
+          -0.8721669503348602
+        ]
+      }
+    },
+    "Bounce_rate_6D": {
+      "channels": [
+        "Bounce_rate_6D"
+      ],
+      "n_features": 7,
+      "seconds": 0.9814774990081787,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 0.9729609489440918,
+        "eval": 0.008516550064086914,
+        "total": 0.9814774990081787
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.6723518834949974,
+          "elpd": -3.361759417474987,
+          "brier": 0.24038670139622814,
+          "auroc": 0.6666666666666666,
+          "auprc": 0.8666666666666667,
+          "ece": 0.05116381259519307,
+          "cal_slope": 0.7130457247037182,
+          "cal_intercept": -0.046412882539125226,
+          "epi_mean": 0.04590329841511224,
+          "ale_mean": 0.17474321621030942,
+          "epi_ale_spearman": -0.19999999999999998,
+          "correctness_auroc_epi": 0.0,
+          "correctness_auroc_total": 0.6666666666666667,
+          "aurc_epi": 0.7133333333333333,
+          "eaurc_epi": 0.5833333333333333,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.3251502104321586,
+          -1.2275383195025693,
+          -0.6296936218161309,
+          -0.3278937589599074,
+          -0.8514835067642214
+        ]
+      }
+    },
+    "IMU_VerAccelVal": {
+      "channels": [
+        "IMU_VerAccelVal"
+      ],
+      "n_features": 10,
+      "seconds": 1.0426616668701172,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.0306603908538818,
+        "eval": 0.012001276016235352,
+        "total": 1.0426616668701172
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.5586540072737645,
+          "elpd": -2.7932700363688223,
+          "brier": 0.18700443492898022,
+          "auroc": 1.0,
+          "auprc": 1.0,
+          "ece": 0.11438718218888784,
+          "cal_slope": 156.77168179422125,
+          "cal_intercept": -141.82968763432757,
+          "epi_mean": 0.04059905737631639,
+          "ale_mean": 0.1684909629331825,
+          "epi_ale_spearman": -0.6,
+          "correctness_auroc_epi": 0.0,
+          "correctness_auroc_total": 0.75,
+          "aurc_epi": 0.45666666666666667,
+          "eaurc_epi": 0.4166666666666667,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.32911518665670697,
+          -1.2174446046159633,
+          -0.2872054556499418,
+          -0.31785273329616526,
+          -0.641652056150045
+        ]
+      }
+    },
+    "IMU_LongAccelVal": {
+      "channels": [
+        "IMU_LongAccelVal"
+      ],
+      "n_features": 8,
+      "seconds": 0.96783447265625,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 0.9565246105194092,
+        "eval": 0.01130986213684082,
+        "total": 0.96783447265625
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.6355719511101957,
+          "elpd": -3.1778597555509784,
+          "brier": 0.22039829594247448,
+          "auroc": 0.5,
+          "auprc": 0.6388888888888888,
+          "ece": 0.44782353952089804,
+          "cal_slope": 2.051079782549779,
+          "cal_intercept": -0.6691403508482759,
+          "epi_mean": 0.06723620885665971,
+          "ale_mean": 0.16035712524390555,
+          "epi_ale_spearman": -0.7,
+          "correctness_auroc_epi": 0.0,
+          "correctness_auroc_total": 0.0,
+          "aurc_epi": 0.45666666666666667,
+          "eaurc_epi": 0.4166666666666667,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.5044354136757858,
+          -1.2172695966710951,
+          -0.38371010691954893,
+          -0.4071285629499329,
+          -0.6653160753346158
+        ]
+      }
+    },
+    "IMU_LatAccelVal": {
+      "channels": [
+        "IMU_LatAccelVal"
+      ],
+      "n_features": 8,
+      "seconds": 0.9958353042602539,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 0.9868350028991699,
+        "eval": 0.009000301361083984,
+        "total": 0.9958353042602539
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.7098595694133026,
+          "elpd": -3.549297847066513,
+          "brier": 0.25813103226170825,
+          "auroc": 0.5,
+          "auprc": 0.6388888888888888,
+          "ece": 0.06455503895727233,
+          "cal_slope": -7.943308961399509,
+          "cal_intercept": 1.5539002404147795,
+          "epi_mean": 0.06360793283004078,
+          "ale_mean": 0.1843708980239812,
+          "epi_ale_spearman": -0.8999999999999998,
+          "correctness_auroc_epi": 0.8333333333333334,
+          "correctness_auroc_total": 0.5,
+          "aurc_epi": 0.19666666666666666,
+          "eaurc_epi": 0.06666666666666665,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.6658379397605667,
+          -0.7155486186901008,
+          -0.6564255630490423,
+          -0.6139840774231858,
+          -0.8975016481436177
+        ]
+      }
+    },
+    "Pitch_rate_6D+Bounce_rate_6D": {
+      "channels": [
+        "Pitch_rate_6D",
+        "Bounce_rate_6D"
+      ],
+      "n_features": 14,
+      "seconds": 1.0557975769042969,
+      "timing": {
+        "features": 0.0010008811950683594,
+        "gibbs": 1.0427966117858887,
+        "eval": 0.012000083923339844,
+        "total": 1.0557975769042969
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.6763321066129783,
+          "elpd": -3.3816605330648914,
+          "brier": 0.24003913301837038,
+          "auroc": 0.5,
+          "auprc": 0.6388888888888888,
+          "ece": 0.22804312323276926,
+          "cal_slope": 1.181589440959361,
+          "cal_intercept": -0.49206143301085425,
+          "epi_mean": 0.0559346965551352,
+          "ale_mean": 0.15841784676328352,
+          "epi_ale_spearman": 0.19999999999999998,
+          "correctness_auroc_epi": 0.0,
+          "correctness_auroc_total": 0.5,
+          "aurc_epi": 0.7133333333333333,
+          "eaurc_epi": 0.5833333333333333,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.3508863474006033,
+          -1.35075540548564,
+          -0.4611185848514255,
+          -0.31414317839160283,
+          -0.9047570169356196
+        ]
+      }
+    },
+    "Pitch_rate_6D+IMU_VerAccelVal": {
+      "channels": [
+        "Pitch_rate_6D",
+        "IMU_VerAccelVal"
+      ],
+      "n_features": 17,
+      "seconds": 1.1699018478393555,
+      "timing": {
+        "features": 0.0010008811950683594,
+        "gibbs": 1.1508429050445557,
+        "eval": 0.018058061599731445,
+        "total": 1.1699018478393555
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.5460873349707488,
+          "elpd": -2.730436674853744,
+          "brier": 0.18103401421304827,
+          "auroc": 1.0,
+          "auprc": 1.0,
+          "ece": 0.2713785579921723,
+          "cal_slope": 230.41112835118003,
+          "cal_intercept": -184.57343727953614,
+          "epi_mean": 0.05317592910518036,
+          "ale_mean": 0.15927727234028563,
+          "epi_ale_spearman": -0.3,
+          "correctness_auroc_epi": 0.25,
+          "correctness_auroc_total": 0.75,
+          "aurc_epi": 0.25666666666666665,
+          "eaurc_epi": 0.21666666666666665,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.3233095232233647,
+          -1.156204314376552,
+          -0.28450304306454477,
+          -0.3637560913453683,
+          -0.6026637028439142
+        ]
+      }
+    },
+    "Pitch_rate_6D+IMU_LongAccelVal": {
+      "channels": [
+        "Pitch_rate_6D",
+        "IMU_LongAccelVal"
+      ],
+      "n_features": 15,
+      "seconds": 1.0423786640167236,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.0323777198791504,
+        "eval": 0.010000944137573242,
+        "total": 1.0423786640167236
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.6401357030878179,
+          "elpd": -3.2006785154390895,
+          "brier": 0.22076111844830595,
+          "auroc": 0.5,
+          "auprc": 0.6388888888888888,
+          "ece": 0.32778162258980437,
+          "cal_slope": 1.5018535887857998,
+          "cal_intercept": -0.5528024186119157,
+          "epi_mean": 0.07390735240151164,
+          "ale_mean": 0.14391323049633814,
+          "epi_ale_spearman": -0.7,
+          "correctness_auroc_epi": 0.0,
+          "correctness_auroc_total": 0.0,
+          "aurc_epi": 0.45666666666666667,
+          "eaurc_epi": 0.4166666666666667,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.4512486532469836,
+          -1.3812674680760921,
+          -0.3237076381640563,
+          -0.3920562637784207,
+          -0.6523984921735366
+        ]
+      }
+    },
+    "Pitch_rate_6D+IMU_LatAccelVal": {
+      "channels": [
+        "Pitch_rate_6D",
+        "IMU_LatAccelVal"
+      ],
+      "n_features": 15,
+      "seconds": 1.0965967178344727,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.0835998058319092,
+        "eval": 0.012996912002563477,
+        "total": 1.0965967178344727
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.6889328264199694,
+          "elpd": -3.4446641320998475,
+          "brier": 0.24742278794554795,
+          "auroc": 0.5,
+          "auprc": 0.7555555555555555,
+          "ece": 0.17799946686520496,
+          "cal_slope": -0.23267467531451497,
+          "cal_intercept": 0.5701874435117614,
+          "epi_mean": 0.059333938806360176,
+          "ale_mean": 0.16093738070716146,
+          "epi_ale_spearman": -0.49999999999999994,
+          "correctness_auroc_epi": 0.5,
+          "correctness_auroc_total": 0.5,
+          "aurc_epi": 0.4966666666666666,
+          "eaurc_epi": 0.3666666666666666,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.4805465354081367,
+          -1.2032340207026908,
+          -0.32043327365633223,
+          -0.4190231973329647,
+          -1.0214271049997228
+        ]
+      }
+    },
+    "Bounce_rate_6D+IMU_VerAccelVal": {
+      "channels": [
+        "Bounce_rate_6D",
+        "IMU_VerAccelVal"
+      ],
+      "n_features": 17,
+      "seconds": 1.066819429397583,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.0514121055603027,
+        "eval": 0.015407323837280273,
+        "total": 1.066819429397583
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.592275978509026,
+          "elpd": -2.9613798925451302,
+          "brier": 0.20097794580578646,
+          "auroc": 0.8333333333333333,
+          "auprc": 0.9166666666666665,
+          "ece": 0.1967953438752156,
+          "cal_slope": 3.110063526382649,
+          "cal_intercept": -1.6760713677144476,
+          "epi_mean": 0.05824715486813524,
+          "ale_mean": 0.15821869592021628,
+          "epi_ale_spearman": -0.3,
+          "correctness_auroc_epi": 0.0,
+          "correctness_auroc_total": 0.5,
+          "aurc_epi": 0.45666666666666667,
+          "eaurc_epi": 0.4166666666666667,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.3105374562290924,
+          -1.247274779239798,
+          -0.4368944972214137,
+          -0.3345081018106286,
+          -0.6321650580441975
+        ]
+      }
+    },
+    "Bounce_rate_6D+IMU_LongAccelVal": {
+      "channels": [
+        "Bounce_rate_6D",
+        "IMU_LongAccelVal"
+      ],
+      "n_features": 15,
+      "seconds": 1.0525197982788086,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.043520450592041,
+        "eval": 0.008999347686767578,
+        "total": 1.0525197982788086
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.6498308030712863,
+          "elpd": -3.249154015356431,
+          "brier": 0.2254158978782196,
+          "auroc": 0.5,
+          "auprc": 0.6388888888888888,
+          "ece": 0.2164098279005112,
+          "cal_slope": 1.1685243318785346,
+          "cal_intercept": -0.35912647325124714,
+          "epi_mean": 0.07634510664893021,
+          "ale_mean": 0.13957061086869202,
+          "epi_ale_spearman": -0.09999999999999999,
+          "correctness_auroc_epi": 0.0,
+          "correctness_auroc_total": 0.0,
+          "aurc_epi": 0.45666666666666667,
+          "eaurc_epi": 0.4166666666666667,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.31816873009269014,
+          -1.4092774419251077,
+          -0.513470726261922,
+          -0.34151521001343166,
+          -0.6667219070632794
+        ]
+      }
+    },
+    "Bounce_rate_6D+IMU_LatAccelVal": {
+      "channels": [
+        "Bounce_rate_6D",
+        "IMU_LatAccelVal"
+      ],
+      "n_features": 15,
+      "seconds": 1.1010096073150635,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.091010570526123,
+        "eval": 0.00999903678894043,
+        "total": 1.1010096073150635
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.6762501722041732,
+          "elpd": -3.381250861020866,
+          "brier": 0.24285753289600648,
+          "auroc": 0.6666666666666666,
+          "auprc": 0.8666666666666667,
+          "ece": 0.4574923361701394,
+          "cal_slope": 1.2482349572567542,
+          "cal_intercept": -0.5396630645922749,
+          "epi_mean": 0.061970021542006516,
+          "ale_mean": 0.15281970678598145,
+          "epi_ale_spearman": -0.09999999999999999,
+          "correctness_auroc_epi": 0.5,
+          "correctness_auroc_total": 0.6666666666666667,
+          "aurc_epi": 0.4966666666666666,
+          "eaurc_epi": 0.3666666666666666,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.2999110886541212,
+          -1.1815152449614252,
+          -0.5282344990207364,
+          -0.3208906674638414,
+          -1.0506993609207413
+        ]
+      }
+    },
+    "IMU_VerAccelVal+IMU_LongAccelVal": {
+      "channels": [
+        "IMU_VerAccelVal",
+        "IMU_LongAccelVal"
+      ],
+      "n_features": 18,
+      "seconds": 1.1375181674957275,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.1190028190612793,
+        "eval": 0.018515348434448242,
+        "total": 1.1375181674957275
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.5980790936609599,
+          "elpd": -2.9903954683047997,
+          "brier": 0.2038983056156424,
+          "auroc": 0.6666666666666666,
+          "auprc": 0.8055555555555556,
+          "ece": 0.1118311154677923,
+          "cal_slope": 3.6442137032979454,
+          "cal_intercept": -2.689590329585588,
+          "epi_mean": 0.07138280427192042,
+          "ale_mean": 0.1341976452340029,
+          "epi_ale_spearman": -0.8999999999999998,
+          "correctness_auroc_epi": 0.6666666666666667,
+          "correctness_auroc_total": 0.6666666666666667,
+          "aurc_epi": 0.2966666666666667,
+          "eaurc_epi": 0.16666666666666669,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.32402350241913286,
+          -1.3613011365772694,
+          -0.2730305604610303,
+          -0.3374403714543533,
+          -0.6945998973930141
+        ]
+      }
+    },
+    "IMU_VerAccelVal+IMU_LatAccelVal": {
+      "channels": [
+        "IMU_VerAccelVal",
+        "IMU_LatAccelVal"
+      ],
+      "n_features": 18,
+      "seconds": 1.1893084049224854,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.1713099479675293,
+        "eval": 0.017998456954956055,
+        "total": 1.1893084049224854
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.6100764139305797,
+          "elpd": -3.050382069652898,
+          "brier": 0.21115492166276253,
+          "auroc": 1.0,
+          "auprc": 1.0,
+          "ece": 0.17717116647037476,
+          "cal_slope": 159.2634281065289,
+          "cal_intercept": -107.6262507225824,
+          "epi_mean": 0.06359110703421453,
+          "ale_mean": 0.1597536187560358,
+          "epi_ale_spearman": -0.8999999999999998,
+          "correctness_auroc_epi": 0.5,
+          "correctness_auroc_total": 1.0,
+          "aurc_epi": 0.4966666666666666,
+          "eaurc_epi": 0.3666666666666666,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.39852106161042433,
+          -1.0610510867497744,
+          -0.35429717092697005,
+          -0.3772215873136692,
+          -0.85929116305206
+        ]
+      }
+    },
+    "IMU_LongAccelVal+IMU_LatAccelVal": {
+      "channels": [
+        "IMU_LongAccelVal",
+        "IMU_LatAccelVal"
+      ],
+      "n_features": 16,
+      "seconds": 1.1235558986663818,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.1115455627441406,
+        "eval": 0.012010335922241211,
+        "total": 1.1235558986663818
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.6459816096483173,
+          "elpd": -3.2299080482415867,
+          "brier": 0.22666222083460186,
+          "auroc": 0.5,
+          "auprc": 0.6388888888888888,
+          "ece": 0.026293666185138176,
+          "cal_slope": 2.4638567576400137,
+          "cal_intercept": -0.8567254028776864,
+          "epi_mean": 0.0846078489435963,
+          "ale_mean": 0.14621154730321953,
+          "epi_ale_spearman": -0.7,
+          "correctness_auroc_epi": 0.6666666666666667,
+          "correctness_auroc_total": 0.5,
+          "aurc_epi": 0.2966666666666667,
+          "eaurc_epi": 0.16666666666666669,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.5429006398078852,
+          -1.1271172539377943,
+          -0.4027634593801807,
+          -0.39596780747485916,
+          -0.7611588876408677
+        ]
+      }
+    },
+    "Pitch_rate_6D+Bounce_rate_6D+IMU_VerAccelVal": {
+      "channels": [
+        "Pitch_rate_6D",
+        "Bounce_rate_6D",
+        "IMU_VerAccelVal"
+      ],
+      "n_features": 24,
+      "seconds": 1.3566648960113525,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.342548131942749,
+        "eval": 0.014116764068603516,
+        "total": 1.3566648960113525
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.5883724532974991,
+          "elpd": -2.9418622664874956,
+          "brier": 0.19882595946142625,
+          "auroc": 0.6666666666666666,
+          "auprc": 0.8055555555555556,
+          "ece": 0.18775596081166035,
+          "cal_slope": 3.648405823331064,
+          "cal_intercept": -2.250956728897264,
+          "epi_mean": 0.06652748622034024,
+          "ale_mean": 0.14766559408640273,
+          "epi_ale_spearman": -0.7999999999999999,
+          "correctness_auroc_epi": 0.0,
+          "correctness_auroc_total": 0.25,
+          "aurc_epi": 0.45666666666666667,
+          "eaurc_epi": 0.4166666666666667,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.325271166840811,
+          -1.2754470274332737,
+          -0.37764723517210935,
+          -0.3355753364414487,
+          -0.6279215005998526
+        ]
+      }
+    },
+    "Pitch_rate_6D+Bounce_rate_6D+IMU_LongAccelVal": {
+      "channels": [
+        "Pitch_rate_6D",
+        "Bounce_rate_6D",
+        "IMU_LongAccelVal"
+      ],
+      "n_features": 22,
+      "seconds": 1.2634077072143555,
+      "timing": {
+        "features": 0.0010030269622802734,
+        "gibbs": 1.2534050941467285,
+        "eval": 0.00899958610534668,
+        "total": 1.2634077072143555
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.6746739960863103,
+          "elpd": -3.3733699804315513,
+          "brier": 0.23553286728911865,
+          "auroc": 0.5,
+          "auprc": 0.6388888888888888,
+          "ece": 0.3388285110091006,
+          "cal_slope": 0.7135808305348942,
+          "cal_intercept": -0.09160888611050426,
+          "epi_mean": 0.08709433973942685,
+          "ale_mean": 0.12854812807611943,
+          "epi_ale_spearman": -0.39999999999999997,
+          "correctness_auroc_epi": 0.5,
+          "correctness_auroc_total": 0.5,
+          "aurc_epi": 0.4966666666666666,
+          "eaurc_epi": 0.3666666666666666,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.3289523905311638,
+          -1.473265551900721,
+          -0.4644047899597974,
+          -0.3774770150972704,
+          -0.7292702329425984
+        ]
+      }
+    },
+    "Pitch_rate_6D+Bounce_rate_6D+IMU_LatAccelVal": {
+      "channels": [
+        "Pitch_rate_6D",
+        "Bounce_rate_6D",
+        "IMU_LatAccelVal"
+      ],
+      "n_features": 22,
+      "seconds": 1.3399062156677246,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.324906826019287,
+        "eval": 0.0149993896484375,
+        "total": 1.3399062156677246
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.7318318806755825,
+          "elpd": -3.6591594033779122,
+          "brier": 0.2656861316770493,
+          "auroc": 0.3333333333333333,
+          "auprc": 0.5888888888888889,
+          "ece": 0.23100565252309857,
+          "cal_slope": -4.979096768109757,
+          "cal_intercept": 4.022556478170392,
+          "epi_mean": 0.07580925291367521,
+          "ale_mean": 0.14416309464221763,
+          "epi_ale_spearman": -0.09999999999999999,
+          "correctness_auroc_epi": 0.5,
+          "correctness_auroc_total": 0.33333333333333337,
+          "aurc_epi": 0.4966666666666666,
+          "eaurc_epi": 0.3666666666666666,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.3949815009718016,
+          -1.3169884427722014,
+          -0.5256258512221335,
+          -0.37084741598669363,
+          -1.0507161924250823
+        ]
+      }
+    },
+    "Pitch_rate_6D+IMU_VerAccelVal+IMU_LongAccelVal": {
+      "channels": [
+        "Pitch_rate_6D",
+        "IMU_VerAccelVal",
+        "IMU_LongAccelVal"
+      ],
+      "n_features": 25,
+      "seconds": 1.304445743560791,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.2884488105773926,
+        "eval": 0.015996932983398438,
+        "total": 1.304445743560791
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.5679660787859568,
+          "elpd": -2.839830393929784,
+          "brier": 0.19098146315739212,
+          "auroc": 0.8333333333333333,
+          "auprc": 0.9166666666666665,
+          "ece": 0.1918978123019267,
+          "cal_slope": 6.616004358631274,
+          "cal_intercept": -4.7754952569643,
+          "epi_mean": 0.08463911022669443,
+          "ale_mean": 0.12794300691765018,
+          "epi_ale_spearman": -0.6,
+          "correctness_auroc_epi": 0.25,
+          "correctness_auroc_total": 0.5,
+          "aurc_epi": 0.25666666666666665,
+          "eaurc_epi": 0.21666666666666665,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.3451966319748001,
+          -1.2064398500107505,
+          -0.27012580155758,
+          -0.3771941150646942,
+          -0.640873995321959
+        ]
+      }
+    },
+    "Pitch_rate_6D+IMU_VerAccelVal+IMU_LatAccelVal": {
+      "channels": [
+        "Pitch_rate_6D",
+        "IMU_VerAccelVal",
+        "IMU_LatAccelVal"
+      ],
+      "n_features": 25,
+      "seconds": 1.3453001976013184,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.3323023319244385,
+        "eval": 0.012997865676879883,
+        "total": 1.3453001976013184
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.5813280488964107,
+          "elpd": -2.906640244482053,
+          "brier": 0.19888248298751812,
+          "auroc": 1.0,
+          "auprc": 1.0,
+          "ece": 0.16858517170137222,
+          "cal_slope": 73.84132859035961,
+          "cal_intercept": -51.130916703307015,
+          "epi_mean": 0.06730446418812877,
+          "ale_mean": 0.15044443372130217,
+          "epi_ale_spearman": -0.09999999999999999,
+          "correctness_auroc_epi": 1.0,
+          "correctness_auroc_total": 1.0,
+          "aurc_epi": 0.13,
+          "eaurc_epi": 0.0,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.37785700143760814,
+          -1.0420341063382121,
+          -0.28500493539567007,
+          -0.36387705230831147,
+          -0.8378671490022512
+        ]
+      }
+    },
+    "Pitch_rate_6D+IMU_LongAccelVal+IMU_LatAccelVal": {
+      "channels": [
+        "Pitch_rate_6D",
+        "IMU_LongAccelVal",
+        "IMU_LatAccelVal"
+      ],
+      "n_features": 23,
+      "seconds": 1.2820532321929932,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.2697007656097412,
+        "eval": 0.012352466583251953,
+        "total": 1.2820532321929932
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.6616837187928999,
+          "elpd": -3.3084185939644994,
+          "brier": 0.23260787149560827,
+          "auroc": 0.5,
+          "auprc": 0.6388888888888888,
+          "ece": 0.3455134960987813,
+          "cal_slope": 1.3287141517314176,
+          "cal_intercept": -0.490901817284881,
+          "epi_mean": 0.0794088721419317,
+          "ale_mean": 0.1395576557265159,
+          "epi_ale_spearman": -0.7,
+          "correctness_auroc_epi": 0.5,
+          "correctness_auroc_total": 0.5,
+          "aurc_epi": 0.4966666666666666,
+          "eaurc_epi": 0.3666666666666666,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.46213647040781075,
+          -1.3348278266571034,
+          -0.30741679774208147,
+          -0.41492916019964193,
+          -0.7891083389578619
+        ]
+      }
+    },
+    "Bounce_rate_6D+IMU_VerAccelVal+IMU_LongAccelVal": {
+      "channels": [
+        "Bounce_rate_6D",
+        "IMU_VerAccelVal",
+        "IMU_LongAccelVal"
+      ],
+      "n_features": 25,
+      "seconds": 1.3289058208465576,
+      "timing": {
+        "features": 0.0010471343994140625,
+        "gibbs": 1.315861463546753,
+        "eval": 0.011997222900390625,
+        "total": 1.3289058208465576
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.5914096858417442,
+          "elpd": -2.9570484292087214,
+          "brier": 0.19978512562549375,
+          "auroc": 0.6666666666666666,
+          "auprc": 0.8055555555555556,
+          "ece": 0.3052888053061417,
+          "cal_slope": 3.1292161433341192,
+          "cal_intercept": -1.5864695357472605,
+          "epi_mean": 0.08685283628365073,
+          "ale_mean": 0.1321927361467171,
+          "epi_ale_spearman": -0.8999999999999998,
+          "correctness_auroc_epi": 0.25,
+          "correctness_auroc_total": 0.25,
+          "aurc_epi": 0.25666666666666665,
+          "eaurc_epi": 0.21666666666666665,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.33311454229780485,
+          -1.2424058149056896,
+          -0.40442770277694223,
+          -0.38052664583685447,
+          -0.5965737233914302
+        ]
+      }
+    },
+    "Bounce_rate_6D+IMU_VerAccelVal+IMU_LatAccelVal": {
+      "channels": [
+        "Bounce_rate_6D",
+        "IMU_VerAccelVal",
+        "IMU_LatAccelVal"
+      ],
+      "n_features": 25,
+      "seconds": 1.3441457748413086,
+      "timing": {
+        "features": 0.0010006427764892578,
+        "gibbs": 1.3289885520935059,
+        "eval": 0.014156579971313477,
+        "total": 1.3441457748413086
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.602003835070403,
+          "elpd": -3.010019175352015,
+          "brier": 0.20760985892770695,
+          "auroc": 0.8333333333333333,
+          "auprc": 0.9166666666666665,
+          "ece": 0.2948137894688546,
+          "cal_slope": 15.77853735776031,
+          "cal_intercept": -11.541966509811028,
+          "epi_mean": 0.07439850094165291,
+          "ale_mean": 0.14323914021551426,
+          "epi_ale_spearman": -0.09999999999999999,
+          "correctness_auroc_epi": 0.5,
+          "correctness_auroc_total": 0.8333333333333334,
+          "aurc_epi": 0.4966666666666666,
+          "eaurc_epi": 0.3666666666666666,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.32126222011535144,
+          -1.1398320296283508,
+          -0.39396046984035343,
+          -0.33711728163472476,
+          -0.8178471741332346
+        ]
+      }
+    },
+    "Bounce_rate_6D+IMU_LongAccelVal+IMU_LatAccelVal": {
+      "channels": [
+        "Bounce_rate_6D",
+        "IMU_LongAccelVal",
+        "IMU_LatAccelVal"
+      ],
+      "n_features": 23,
+      "seconds": 1.3022990226745605,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.2927618026733398,
+        "eval": 0.009537220001220703,
+        "total": 1.3022990226745605
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.6663183933146775,
+          "elpd": -3.331591966573387,
+          "brier": 0.23527657330323692,
+          "auroc": 0.5,
+          "auprc": 0.6388888888888888,
+          "ece": 0.22649155779725322,
+          "cal_slope": 1.4778558485749902,
+          "cal_intercept": -0.6952704950603017,
+          "epi_mean": 0.08262272929160722,
+          "ale_mean": 0.13196195442928088,
+          "epi_ale_spearman": -0.3,
+          "correctness_auroc_epi": 0.6666666666666667,
+          "correctness_auroc_total": 0.5,
+          "aurc_epi": 0.2966666666666667,
+          "eaurc_epi": 0.16666666666666669,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.3107865079986441,
+          -1.3530027919076724,
+          -0.4672501871778945,
+          -0.34358693414655217,
+          -0.8569655453426237
+        ]
+      }
+    },
+    "IMU_VerAccelVal+IMU_LongAccelVal+IMU_LatAccelVal": {
+      "channels": [
+        "IMU_VerAccelVal",
+        "IMU_LongAccelVal",
+        "IMU_LatAccelVal"
+      ],
+      "n_features": 26,
+      "seconds": 1.3330514430999756,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.3209171295166016,
+        "eval": 0.012134313583374023,
+        "total": 1.3330514430999756
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.6006682034017133,
+          "elpd": -3.003341017008567,
+          "brier": 0.20635734847720477,
+          "auroc": 0.6666666666666666,
+          "auprc": 0.8055555555555556,
+          "ece": 0.20213213172615743,
+          "cal_slope": 6.227468666106985,
+          "cal_intercept": -4.622847910387057,
+          "epi_mean": 0.08386092649411228,
+          "ale_mean": 0.1283599025809139,
+          "epi_ale_spearman": -0.8999999999999998,
+          "correctness_auroc_epi": 0.6666666666666667,
+          "correctness_auroc_total": 0.6666666666666667,
+          "aurc_epi": 0.2966666666666667,
+          "eaurc_epi": 0.16666666666666669,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.36557676372699993,
+          -1.2463163962839203,
+          -0.2904249182344124,
+          -0.34043139905734204,
+          -0.7605915397058921
+        ]
+      }
+    },
+    "Pitch_rate_6D+Bounce_rate_6D+IMU_VerAccelVal+IMU_LongAccelVal": {
+      "channels": [
+        "Pitch_rate_6D",
+        "Bounce_rate_6D",
+        "IMU_VerAccelVal",
+        "IMU_LongAccelVal"
+      ],
+      "n_features": 32,
+      "seconds": 2.2570533752441406,
+      "timing": {
+        "features": 0.0010020732879638672,
+        "gibbs": 2.243054151535034,
+        "eval": 0.012997150421142578,
+        "total": 2.2570533752441406
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.6008843224286267,
+          "elpd": -3.0044216121431333,
+          "brier": 0.20341944382410143,
+          "auroc": 0.5,
+          "auprc": 0.6388888888888888,
+          "ece": 0.3062329303529708,
+          "cal_slope": 2.5024088636162016,
+          "cal_intercept": -1.207562935758945,
+          "epi_mean": 0.09172769534322113,
+          "ale_mean": 0.1253566573485531,
+          "epi_ale_spearman": -0.8999999999999998,
+          "correctness_auroc_epi": 0.0,
+          "correctness_auroc_total": 0.0,
+          "aurc_epi": 0.45666666666666667,
+          "eaurc_epi": 0.4166666666666667,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.3356180158076353,
+          -1.3043655124769113,
+          -0.37809955136603873,
+          -0.39534440273118227,
+          -0.5909941297613657
+        ]
+      }
+    },
+    "Pitch_rate_6D+Bounce_rate_6D+IMU_VerAccelVal+IMU_LatAccelVal": {
+      "channels": [
+        "Pitch_rate_6D",
+        "Bounce_rate_6D",
+        "IMU_VerAccelVal",
+        "IMU_LatAccelVal"
+      ],
+      "n_features": 32,
+      "seconds": 2.2481396198272705,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 2.234050750732422,
+        "eval": 0.014088869094848633,
+        "total": 2.2481396198272705
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.6212403968107238,
+          "elpd": -3.106201984053619,
+          "brier": 0.2155525279827389,
+          "auroc": 0.8333333333333333,
+          "auprc": 0.9166666666666665,
+          "ece": 0.1677323597647532,
+          "cal_slope": 148.62783238405333,
+          "cal_intercept": -110.27842445082813,
+          "epi_mean": 0.08345691237940897,
+          "ale_mean": 0.1404224144205446,
+          "epi_ale_spearman": -0.39999999999999997,
+          "correctness_auroc_epi": 0.5,
+          "correctness_auroc_total": 0.8333333333333334,
+          "aurc_epi": 0.4966666666666666,
+          "eaurc_epi": 0.3666666666666666,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.38724644297506877,
+          -1.1354644603800923,
+          -0.3883120142942919,
+          -0.3839099685876338,
+          -0.8112690978165319
+        ]
+      }
+    },
+    "Pitch_rate_6D+Bounce_rate_6D+IMU_LongAccelVal+IMU_LatAccelVal": {
+      "channels": [
+        "Pitch_rate_6D",
+        "Bounce_rate_6D",
+        "IMU_LongAccelVal",
+        "IMU_LatAccelVal"
+      ],
+      "n_features": 30,
+      "seconds": 1.4483160972595215,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 1.4318435192108154,
+        "eval": 0.016472578048706055,
+        "total": 1.4483160972595215
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.690126127350261,
+          "elpd": -3.4506306367513053,
+          "brier": 0.24388363512741512,
+          "auroc": 0.5,
+          "auprc": 0.6388888888888888,
+          "ece": 0.22647585131560044,
+          "cal_slope": 0.5289941718286546,
+          "cal_intercept": -0.019774015324409224,
+          "epi_mean": 0.08922707133428188,
+          "ale_mean": 0.12144886200274782,
+          "epi_ale_spearman": -0.39999999999999997,
+          "correctness_auroc_epi": 0.5,
+          "correctness_auroc_total": 0.5,
+          "aurc_epi": 0.4966666666666666,
+          "eaurc_epi": 0.3666666666666666,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.31961986223903527,
+          -1.476705136000221,
+          -0.4237929230760521,
+          -0.3510859484996664,
+          -0.8794267669363305
+        ]
+      }
+    },
+    "Pitch_rate_6D+IMU_VerAccelVal+IMU_LongAccelVal+IMU_LatAccelVal": {
+      "channels": [
+        "Pitch_rate_6D",
+        "IMU_VerAccelVal",
+        "IMU_LongAccelVal",
+        "IMU_LatAccelVal"
+      ],
+      "n_features": 33,
+      "seconds": 2.2661077976226807,
+      "timing": {
+        "features": 0.0005230903625488281,
+        "gibbs": 2.249619960784912,
+        "eval": 0.015964746475219727,
+        "total": 2.2661077976226807
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.6050772490556675,
+          "elpd": -3.0253862452783373,
+          "brier": 0.20723895758799588,
+          "auroc": 0.6666666666666666,
+          "auprc": 0.8055555555555556,
+          "ece": 0.16655589958460099,
+          "cal_slope": 4.253609358279851,
+          "cal_intercept": -1.8965353300365722,
+          "epi_mean": 0.09571947649151111,
+          "ale_mean": 0.13213140356605027,
+          "epi_ale_spearman": -0.7,
+          "correctness_auroc_epi": 0.25,
+          "correctness_auroc_total": 0.25,
+          "aurc_epi": 0.25666666666666665,
+          "eaurc_epi": 0.21666666666666665,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.4215591490606552,
+          -1.1108972358441094,
+          -0.34649225958724844,
+          -0.4711284026298219,
+          -0.6753091981565024
+        ]
+      }
+    },
+    "Bounce_rate_6D+IMU_VerAccelVal+IMU_LongAccelVal+IMU_LatAccelVal": {
+      "channels": [
+        "Bounce_rate_6D",
+        "IMU_VerAccelVal",
+        "IMU_LongAccelVal",
+        "IMU_LatAccelVal"
+      ],
+      "n_features": 33,
+      "seconds": 2.2750728130340576,
+      "timing": {
+        "features": 0.001001596450805664,
+        "gibbs": 2.260556936264038,
+        "eval": 0.013514280319213867,
+        "total": 2.2750728130340576
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.6042603330894719,
+          "elpd": -3.0213016654473597,
+          "brier": 0.20663619153072288,
+          "auroc": 0.5,
+          "auprc": 0.6388888888888888,
+          "ece": 0.30748593910582234,
+          "cal_slope": 4.297764515097631,
+          "cal_intercept": -2.5444180904084726,
+          "epi_mean": 0.09727994348830038,
+          "ale_mean": 0.12210079781873666,
+          "epi_ale_spearman": -0.9999999999999999,
+          "correctness_auroc_epi": 0.5,
+          "correctness_auroc_total": 0.5,
+          "aurc_epi": 0.4966666666666666,
+          "eaurc_epi": 0.3666666666666666,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.35705235209482333,
+          -1.224559560627971,
+          -0.39483021211633185,
+          -0.35057854293086077,
+          -0.6942809976773725
+        ]
+      }
+    },
+    "Pitch_rate_6D+Bounce_rate_6D+IMU_VerAccelVal+IMU_LongAccelVal+IMU_LatAccelVal": {
+      "channels": [
+        "Pitch_rate_6D",
+        "Bounce_rate_6D",
+        "IMU_VerAccelVal",
+        "IMU_LongAccelVal",
+        "IMU_LatAccelVal"
+      ],
+      "n_features": 40,
+      "seconds": 2.394925594329834,
+      "timing": {
+        "features": 0.0,
+        "gibbs": 2.3799209594726562,
+        "eval": 0.015004634857177734,
+        "total": 2.394925594329834
+      },
+      "metrics": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.6042774742276619,
+          "elpd": -3.0213873711383092,
+          "brier": 0.20674090149643837,
+          "auroc": 0.6666666666666666,
+          "auprc": 0.8055555555555556,
+          "ece": 0.1508113272721584,
+          "cal_slope": 5.028614462887191,
+          "cal_intercept": -2.919453031213295,
+          "epi_mean": 0.10332310368395245,
+          "ale_mean": 0.11885095916265036,
+          "epi_ale_spearman": -0.7999999999999999,
+          "correctness_auroc_epi": 0.6666666666666667,
+          "correctness_auroc_total": 0.6666666666666667,
+          "aurc_epi": 0.2966666666666667,
+          "eaurc_epi": 0.16666666666666669,
+          "auroc_ci_lo": NaN,
+          "auroc_ci_hi": NaN,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "n_offsets": 1,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.3615669059322256,
+          -1.1861765128178052,
+          -0.38066942756807143,
+          -0.3946024225551885,
+          -0.6983721022650189
+        ]
+      }
+    }
+  },
+  "seconds": 42.22319769859314
+}

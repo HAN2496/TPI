@@ -1,0 +1,19 @@
+{
+  "main": {
+    "n_folds": 10,
+    "budgets": [
+      0,
+      5,
+      10,
+      20,
+      "final"
+    ],
+    "methods": [
+      "proposed",
+      "hb_full",
+      "ebmap",
+      "pooled",
+      "indep"
+    ]
+  }
+}
