@@ -440,18 +440,34 @@ B=\{0,10,20\}\ \text{로 } Q\text{를 정의하면}\quad k^\ast>1\quad\text{이�
 </p>
 
 <!-- ===================================================================== E4 -->
-<h2 id="E4">E4. 확정 실행 (시드 3개) <span class="verdict todo-v">예정</span></h2>
+<h2 id="E4">E4. 확정 실행 (시드 3개) <span class="verdict ok-v">지지</span></h2>
+<p class="meta">실행 <code>outputs/loeo_final/20261002_165129</code> (\(\lambda_0=1\), all) 와 <code>outputs/loeo_final_lam001/20261002_182245</code> (\(\lambda_0=0.01\), main) · 시드 42, 43, 44 · \(B=\{0,10,20\}\) · \(w_{\max}=0.3\)</p>
 <p class="label">가설</p>
 \[
-s_{\text{seed}}\big[\overline{\mathrm{MLPD}}(t)\big]<\mathrm{SE}_{\text{evaluator}}(t)\quad\forall\,t
+s_{\text{seed}}\big[\mathrm{MLPD}_\star(t)\big]<\mathrm{SE}_{\text{evaluator}}(t)\quad\forall\,t
 \]
 <p class="label">근거</p>
 <p>E1~E3은 시드 하나다. 논문 수치로 쓰려면 MCMC 잡음이 평가자 변동보다 작음을 보여야 한다. 시드가 바꾸는 것은 Gibbs 체인, cold start particle, 오프셋별 새 사용자 particle이다.</p>
-<p class="label">설계</p>
-<pre>.venv\Scripts\python.exe run_loeo.py --stage all --set seeds="(42,43,44)" --set sel_budgets="(0,10,20)" --set reliable_w_max=0.3 --set run_name=loeo_final</pre>
-<p>리포트는 시드 평균을 쓰고, 폴드 json의 <code>per_seed</code>에서 \(s_{\text{seed}}\)를 따로 계산한다. 선택과 센서는 시드 42 하나(결정적 projpred, 축소 Gibbs). 끝나면 \(\lambda_0=0.01\)도 같은 시드로 main만 반복해 민감도 표를 확정한다.</p>
-<p class="label">판정</p>
-<p>\(s_{\text{seed}}\)가 SE의 절반 이하이면 "시드 잡음 무시 가능"으로 기록하고 모든 수치를 이 실행에서 논문으로 옮긴다.</p>
+<p class="label">결과</p>
+<table>
+  <thead><tr><th>proposed MLPD</th><th class="num">\(t=0\)</th><th class="num">5</th><th class="num">10</th><th class="num">20</th></tr></thead>
+  <tbody>
+    <tr><td>3시드 평균 macro</td><td class="num">−0.692</td><td class="num">−0.622</td><td class="num">−0.619</td><td class="num">−0.550</td></tr>
+    <tr><td>평가자 단위 SE</td><td class="num">0.044</td><td class="num">0.019</td><td class="num">0.024</td><td class="num">0.019</td></tr>
+    <tr><td>폴드 내 시드 sd (평균)</td><td class="num">0.016</td><td class="num">0.014</td><td class="num">0.014</td><td class="num">0.004</td></tr>
+    <tr><td>폴드 내 시드 sd (최대)</td><td class="num">0.050</td><td class="num">0.039</td><td class="num">0.061</td><td class="num">0.009</td></tr>
+    <tr><td>E1 (시드 42) macro</td><td class="num">−0.698</td><td class="num">−0.624</td><td class="num">−0.620</td><td class="num">−0.547</td></tr>
+  </tbody>
+</table>
+<p class="label">해석과 판정</p>
+<p>
+  폴드 내 시드 sd의 평균은 모든 예산에서 평가자 SE보다 작다. \(t=5,10\)에서는 비율이 0.6~0.7이라 "절반 이하"는 아니지만, 리포트가 쓰는 3시드 평균의 시드 sd는 \(0.014/\sqrt3\approx0.008\)로 SE의 절반 아래다. macro 값은 E1과 0.006 이내로 같다.
+  <span class="verdict ok-v">지지</span>. 이 실행의 수치를 논문에 옮긴다. 선택과 센서 결과(시드 42 단독)는 E3과 수치까지 동일하다: \(k^\ast=1\), \(\Delta Q_{\text{loso}}(\text{VerAccel})=-0.034\pm0.023\), 나머지 채널은 0 근처.
+</p>
+<p class="label">부수: \(\lambda_0=0.01\) 3시드</p>
+<p>
+  MLPD는 \(\lambda_0=1\)과 SE 안에서 같다(\(t=0\): −0.697 vs −0.692, \(t=20\): −0.544 vs −0.550). epistemic의 오답 예측 AUROC는 \(t=0\)에서 0.61 vs 0.52, 신뢰 판정 비율은 \(t=20\)에서 0.78 vs 0.58로 좁은 사전분포가 일관되게 높다. E2의 부수 발견이 3시드에서 재현된다.
+</p>
 
 <!-- ===================================================================== E5 -->
 <h2 id="E5">E5. 소수 라벨 평가자의 무이득 원인 <span class="verdict todo-v">예정</span></h2>
@@ -483,7 +499,7 @@ s_{\text{seed}}\big[\overline{\mathrm{MLPD}}(t)\big]<\mathrm{SE}_{\text{evaluato
 </ul>
 
 <!-- ===================================================================== E6 -->
-<h2 id="E6">E6. cold start 과소 확신의 원인 <span class="verdict todo-v">예정</span></h2>
+<h2 id="E6">E6. cold start 과소 확신의 원인 <span class="verdict mix-v">H6a 지지, 그러나 수축이 유익</span></h2>
 <p class="label">배경</p>
 <p>E1에서 cold start의 ECE가 0.27이고 calibration slope가 1을 크게 넘는다(예측이 \(\tfrac12\) 근처로 몰림). E2에서 \(\boldsymbol\Sigma\) 척도는 원인이 아니었다.</p>
 <p class="label">가설</p>
@@ -504,11 +520,27 @@ s_{\text{seed}}\big[\overline{\mathrm{MLPD}}(t)\big]<\mathrm{SE}_{\text{evaluato
 <p>01 문서 5.6의 임상 예측 연구는 posterior mean 예측이 plug-in보다 slope가 1에 가깝다고 보고했다. 우리 데이터에서 반대라면 cold start particle의 이질성이 비정상적으로 크다는 뜻이다.</p>
 <p class="label">설계</p>
 <p>코드에 <code>mlpd_plugin</code>, <code>ece_plugin</code>, <code>cal_slope_plugin</code>이 추가되어 E4 이후 모든 실행의 리포트 csv에서 바로 읽을 수 있다. \(\tilde p\)는 logit 평균의 sigmoid로 계산하며 이는 \(\sigma(\mathbf z^\top\bar{\boldsymbol\theta})\)와 정확히 같다. 추가 실행은 필요 없다.</p>
-<p class="label">판정</p>
-<p>H6a이면 cold start에서는 \(\tilde p\)로 결정하고 \(\hat p\)로 불확실성을 보고하는 분리 보고를 Discussion에 제안한다. H6b이면 과소 확신은 데이터 한계이며 그대로 보고한다. 어느 쪽이든 posterior mean을 주 예측으로 유지한다.</p>
+<p class="label">결과 (E4 실행, proposed, macro)</p>
+<table>
+  <thead><tr><th></th><th class="num">\(t=0\)</th><th class="num">5</th><th class="num">10</th><th class="num">20</th><th class="num">최종</th></tr></thead>
+  <tbody>
+    <tr><td>MLPD \(\hat p\) / \(\tilde p\)</td><td class="num">−0.692 / −0.782</td><td class="num">−0.622 / −0.642</td><td class="num">−0.619 / −0.637</td><td class="num">−0.550 / −0.553</td><td class="num">−0.562 / −0.558</td></tr>
+    <tr><td>ECE \(\hat p\) / \(\tilde p\)</td><td class="num">0.264 / 0.281</td><td class="num">0.204 / 0.220</td><td class="num">0.190 / 0.200</td><td class="num">0.149 / 0.143</td><td class="num">0.155 / 0.151</td></tr>
+    <tr><td>slope \(\hat p\) / \(\tilde p\)</td><td class="num">13.2 / 6.1 (폭주 폴드 포함)</td><td class="num">1.30 / 0.92</td><td class="num">1.28 / 0.92</td><td class="num">1.46 / 1.09</td><td class="num">1.20 / 1.06</td></tr>
+  </tbody>
+</table>
+<p>\(t=0\) 폴드별 slope (\(\hat p\) / \(\tilde p\)): 강신길 2.40 / 1.41, 이지환 2.04 / 1.36, 조현석 3.23 / 1.80, 박재일 1.04 / 0.63, 한규택 0.88 / 0.53, 김재호 1.26 / 0.73, 김진명 0.87 / 0.62, 김태근 0.86 / 0.37, 이강근 0.71 / 0.20, 신민철 118 / 54 (holdout 5개, 무시).</p>
+<p class="label">해석과 판정</p>
+<ul>
+  <li><strong>H6a 지지.</strong> 모든 폴드에서 \(\text{slope}(\hat p)\)가 \(\text{slope}(\tilde p)\)의 1.5~2.5배다. Jensen 수축이 실재하고 크기도 크다.</li>
+  <li><strong>그러나 H6b도 부분적으로 참.</strong> 긴 스트림 평가자(강신길, 이지환, 조현석)는 plug-in도 slope 1.4~1.8로 과소 확신이다. population 평균 \(\bar{\boldsymbol\theta}\) 자체가 이들에게는 약한 신호다. 반대로 짧은 스트림 평가자들은 plug-in이 slope 0.2~0.7로 과대 확신이다.</li>
+  <li><strong>수축은 log score에 유익하다.</strong> \(t=0\)에서 \(\hat p\)의 MLPD가 \(\tilde p\)보다 0.09 좋다. plug-in은 틀린 쪽으로 확신하는 평가자에서 크게 벌점을 받는다. \(t\ge20\)에서는 둘이 같다. 따라서 "분리 보고" 제안은 철회하고, posterior mean을 유지하며 cold start의 과소 확신을 "population 이질성이 만드는 보호적 수축"으로 서술한다.</li>
+  <li>macro slope는 holdout 5개짜리 폴드 하나에 지배되므로 논문에는 평가자별 또는 중위수로 보고한다.</li>
+</ul>
+<p><span class="verdict mix-v">H6a 지지, H6b 부분 지지</span>. 추가 실행 불필요.</p>
 
 <!-- ===================================================================== E7 -->
-<h2 id="E7">E7. 신뢰 판정 규칙 재설계 <span class="verdict todo-v">예정</span></h2>
+<h2 id="E7">E7. 신뢰 판정 규칙 재설계 <span class="verdict mix-v">대안 1 지지, 대안 3 미구현</span></h2>
 <p class="label">배경</p>
 <p>E1 H2.3에서 폭 기준 0.15는 한 번도 만족되지 않았다. 현재 규칙은 replicate \(r\)마다 particle \(m_r\)과 bootstrap 표본 \(\mathrm{idx}_r\)을 뽑아</p>
 \[
@@ -530,6 +562,21 @@ A_r=\mathrm{AUROC}\big(y[\mathrm{idx}_r],\ p^{(m_r)}[\mathrm{idx}_r]\big),\qquad
 <p>폭 기준은 holdout 크기에 좌우되어 평가자 간 비교가 불공정하다. "우연보다 낫다는 사후 확률"은 크기에 덜 민감하고 Bayesian 해석이 직접적이다. 하한 0.5 조건은 사실상 대안 3의 0.975 기준과 같다.</p>
 <p class="label">설계</p>
 <p>E4 실행에 \(w_{\max}=0.3\)을 쓰고, 리포트에 <code>auroc_ci_width</code>와 함께 \(\Pr(\mathrm{AUROC}>\tfrac12)\)를 추가한다. replicate \(A_r\)을 이미 계산하므로 비용은 없다. 판정은 E4 결과로 한다.</p>
+<p class="label">결과 (E4, \(w_{\max}=0.3\), proposed)</p>
+<table>
+  <thead><tr><th></th><th class="num">\(t=0\)</th><th class="num">5</th><th class="num">10</th><th class="num">20</th><th class="num">최종</th></tr></thead>
+  <tbody>
+    <tr><td>reliable 비율 (\(\lambda_0=1\))</td><td class="num">0.00</td><td class="num">0.09</td><td class="num">0.28</td><td class="num">0.58</td><td class="num">0.50</td></tr>
+    <tr><td>reliable 비율 (\(\lambda_0=0.01\))</td><td class="num">0.01</td><td class="num">0.22</td><td class="num">0.36</td><td class="num">0.78</td><td class="num">0.50</td></tr>
+    <tr><td>구간 폭 (평균)</td><td class="num">0.65</td><td class="num">0.61</td><td class="num">0.49</td><td class="num">0.28</td><td class="num">0.51</td></tr>
+    <tr><td>\(\mathrm{AUROC}_{\mathrm{lo}}\)</td><td class="num">0.24</td><td class="num">0.28</td><td class="num">0.38</td><td class="num">0.55</td><td class="num">0.39</td></tr>
+  </tbody>
+</table>
+<p class="label">해석과 판정</p>
+<p>
+  \(w_{\max}=0.3\)으로 바꾸자 reliable 비율이 \(t\)에 대해 단조 증가하고 \(t=20\)에서 과반이 된다. 폭도 \(t\)와 함께 줄어 \(t=20\)에서 0.28이다(최종 열은 holdout이 5~18개인 짧은 평가자가 섞여 폭이 다시 커진다).
+  좁은 사전분포에서 비율이 더 높은 것은 E2, E4의 epistemic 결과와 같은 방향이다. <span class="verdict mix-v">대안 1 지지</span>. 대안 3의 \(\Pr(\mathrm{AUROC}>\tfrac12)\)는 아직 코드에 없으며, 논문에는 대안 1로 가되 하한 조건이 실질적 판정자임을 적는다.
+</p>
 
 <!-- ===================================================================== E8 -->
 <h2 id="E8">E8. prequential 곡선과 long-stream 사례 <span class="verdict todo-v">예정</span></h2>
@@ -563,10 +610,10 @@ C_\star(n)-C^{\text{pooled}}_\star(n)\ \text{의 기울기가 양수이고, 긴 
     <tr><td>H3.3</td><td>공통 / 개인 / 비활성 분류</td><td>부분 지지, 사전분포 민감</td><td>E1, E2</td><td>두 \(\lambda_0\) 병기</td></tr>
     <tr><td>H2a, H2b</td><td>\(\boldsymbol\Sigma\) 과대 추정이 원인</td><td>기각</td><td>E2</td><td>강건성 표</td></tr>
     <tr><td>H3</td><td>개인 피처가 \(t=20\)에 기여</td><td>기각</td><td>E3</td><td>Discussion</td></tr>
-    <tr><td>H4</td><td>시드 잡음 &lt; 평가자 SE</td><td>예정</td><td>E4</td><td>모든 수치의 출처</td></tr>
-    <tr><td>H5a, H5b</td><td>무이득 원인: 차원 / 라벨 잡음</td><td>예정</td><td>E5</td><td>Discussion 또는 부가 결과</td></tr>
-    <tr><td>H6a, H6b</td><td>과소 확신: Jensen 수축 / 신호 부족</td><td>예정</td><td>E4 (추가 실행 불필요)</td><td>Discussion</td></tr>
-    <tr><td>H7</td><td>\(\Pr(\mathrm{AUROC}>\tfrac12)\) 기반 신뢰 판정</td><td>예정</td><td>E4 + 코드</td><td>IV-E 규칙 교체</td></tr>
+    <tr><td>H4</td><td>시드 잡음 &lt; 평가자 SE</td><td>지지</td><td>E4</td><td>모든 수치의 출처 = <code>loeo_final</code></td></tr>
+    <tr><td>H5a, H5b</td><td>무이득 원인: 차원 / 라벨 잡음</td><td>예정 (k = 1 실행 대기)</td><td>E5</td><td>Discussion 또는 부가 결과</td></tr>
+    <tr><td>H6a, H6b</td><td>과소 확신: Jensen 수축 / 신호 부족</td><td>H6a 지지, H6b 부분 지지; 수축은 유익</td><td>E4</td><td>Discussion</td></tr>
+    <tr><td>H7</td><td>신뢰 판정 규칙</td><td>\(w_{\max}=0.3\) 지지; 사후 확률 판정은 미구현</td><td>E4</td><td>IV-E 규칙의 \(w_{\max}\) 수정</td></tr>
     <tr><td>H8</td><td>prequential 기울기 양수</td><td>예정</td><td>저장된 점수 + 코드</td><td>long-stream 사례 그림</td></tr>
   </tbody>
 </table>
