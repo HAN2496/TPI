@@ -240,13 +240,15 @@ The particle set $\{\bm\theta_{\newuser}^{(m)}\}_{m=1}^{M}$ integrates over both
 
 When the context $\D_{\newuser,t}$ is available, each cold-start particle is updated by the same P\'{o}lya--Gamma conditional that the population sampler uses, with the population parameters of that particle held fixed:
 \begin{equation}
- \bm\theta_{\newuser}^{(m)}\ \leftarrow\ \text{$n_{\mathrm{it}}$ sweeps of \eqref{eq:pg}--\eqref{eq:pg-cond} with }
- (\bm\mu^{(m)},\bm\Sigma^{(m)})\text{ and }\D_{\newuser,t}.
+\begin{split}
+ \bm\theta_{\newuser}^{(m)}\ \leftarrow\ &\text{$n_{\mathrm{it}}$ sweeps of \eqref{eq:pg}--\eqref{eq:pg-cond}}\\
+ &\text{with } (\bm\mu^{(m)},\bm\Sigma^{(m)})\text{ fixed and data }\D_{\newuser,t}.
+\end{split}
  \label{eq:personalize}
 \end{equation}
 Holding $(\bm\mu^{(m)},\bm\Sigma^{(m)})$ fixed ignores the negligible information that one new evaluator carries about the population, and makes the update embarrassingly parallel over $m$ and cheap enough for in-vehicle use: each sweep costs one $d\times d$ Cholesky factorization per particle. The update is warm-started from the previous context size, so that moving from $\D_{\newuser,t}$ to $\D_{\newuser,t'}$ with $t'>t$ requires only a few sweeps. The resulting particles $\{\bm\theta^{(m)}_{\newuser,t}\}$ represent $p(\bm\theta_{\newuser}\mid\D_{\newuser,t},\D_{1:U})$, and the target quantity \eqref{eq:target} is the Monte Carlo average
 \begin{equation}
- \widehat p_{\newuser j,t}=\frac{1}{M}\sum_{m=1}^{M}p^{(m)}_{\newuser j,t},\qquad
+ \widehat p_{\newuser j,t}=\frac{1}{M}\sum_{m=1}^{M}p^{(m)}_{\newuser j,t},\quad
  p^{(m)}_{\newuser j,t}=\sigmoid\!\big(\bm z_{\newuser j}^{\T}\bm\theta^{(m)}_{\newuser,t}\big).
  \label{eq:prediction}
 \end{equation}
@@ -274,9 +276,11 @@ The particle representation \eqref{eq:prediction} yields, for every episode, the
 \subsubsection{Epistemic and Aleatoric Decomposition}
 By the law of total variance, the variance of the Bernoulli outcome under the posterior predictive separates exactly into two terms,
 \begin{equation}
+\begin{split}
  \underbrace{\widehat p_{j}(1-\widehat p_{j})}_{\text{total}}
- =\underbrace{\E_m\!\big[p^{(m)}_{j}(1-p^{(m)}_{j})\big]}_{U^{\mathrm{ale}}_{j}}
+ &=\underbrace{\E_m\!\big[p^{(m)}_{j}(1-p^{(m)}_{j})\big]}_{U^{\mathrm{ale}}_{j}}
  +\underbrace{\Var_m\!\big(p^{(m)}_{j}\big)}_{U^{\mathrm{epi}}_{j}},
+\end{split}
  \label{eq:decomposition}
 \end{equation}
 where the subscripts $\newuser$ and $t$ are suppressed. The aleatoric term $U^{\mathrm{ale}}_{j}$ is the expected Bernoulli variance under the model: it is large when the evaluator's own judgment of episode $j$ is intrinsically close to a coin flip, and no amount of feedback removes it. The epistemic term $U^{\mathrm{epi}}_{j}$ is the disagreement among posterior particles about the probability itself: it is large when the population posterior admits many individuals who would judge $j$ differently, and it contracts as $\D_{\newuser,t}$ pins down where this evaluator lies. The two terms are reported per episode and averaged over a set of pending episodes to form personalization curves $\bar U^{\mathrm{epi}}(t)$ and $\bar U^{\mathrm{ale}}(t)$.
@@ -378,7 +382,7 @@ with $a=b=1$, and the intercept is always included. Because $\bm\gamma$ is share
 \subsubsection{Extended Gibbs Sampler}
 With the mask, the design of evaluator $u$ becomes $\bm X_u=\bm Z_u\diag(\bm\gamma)$, and the P\'{o}lya--Gamma conditionals \eqref{eq:pg}--\eqref{eq:pg-cond} are applied to the slab vectors $\thetatil_u$ with $\bm Z_u$ replaced by $\bm X_u$. The NIW update \eqref{eq:niw-post} uses the slab vectors directly. The group indicators are updated one group at a time with the augmented likelihood, which makes the update a closed-form Bernoulli draw. For group $g$ let $c_{ui}=\sum_{j\in\mathcal{C}_g}z_{uij}\widetilde\theta_{uj}$ be the contribution of the group to the linear predictor and let $h_{ui}$ be the linear predictor with group $g$ removed. The log Bayes factor for inclusion is
 \begin{equation}
- \ell_g=\sum_{u=1}^{U}\sum_{i=1}^{N_u}\Big[\kappa_{ui}c_{ui}-\tfrac12\omega_{ui}\big((h_{ui}+c_{ui})^2-h_{ui}^2\big)\Big],
+ \ell_g=\sum_{u=1}^{U}\sum_{i=1}^{N_u}\Big[\kappa_{ui}c_{ui}-\tfrac12\omega_{ui}\big(2h_{ui}c_{ui}+c_{ui}^2\big)\Big],
  \label{eq:gamma-bf}
 \end{equation}
 and
@@ -399,14 +403,19 @@ The PIPs answer the population-level question directly: $\widehat{\Pr}(\gamma_g=
 
 Projection-predictive selection~\cite{piironen2020projective} asks for the smallest submodel whose predictions reproduce those of the reference model, which is the appropriate criterion when the goal is a compact feature set rather than a list of individually significant coefficients. For posterior draw $m$, evaluator $u$, and candidate column set $S$ (always containing the intercept), the reference predictions $p^{(m)}_{ui}=\sigmoid(\bm z_{ui}^{\T}\bm\theta_u^{(m)})$ are projected onto the submodel by
 \begin{equation}
+\begin{split}
  \widehat{\bm b}^{(m,u)}_S=\arg\min_{\bm b}\sum_{i=1}^{N_u}
  \KL\!\Big[\Bern\big(p^{(m)}_{ui}\big)\,\Big\|\,\Bern\big(\sigmoid(\bm z_{ui,S}^{\T}\bm b)\big)\Big],
+\end{split}
  \label{eq:projection}
 \end{equation}
 which is a logistic regression with soft targets and is solved by a damped Newton method. The projection loss of $S$ is the mean KL divergence over episodes, evaluators, and $M'$ evenly spaced posterior draws,
 \begin{equation}
+\begin{split}
  L(S)=\frac{1}{M'\sum_u N_u}\sum_{m}\sum_{u}\sum_{i}
- \KL\!\Big[\Bern\big(p^{(m)}_{ui}\big)\,\Big\|\,\Bern\big(\sigmoid(\bm z_{ui,S}^{\T}\widehat{\bm b}^{(m,u)}_S)\big)\Big].
+ \KL\!\Big[&\Bern\big(p^{(m)}_{ui}\big)\,\Big\|\\
+ &\Bern\big(\sigmoid(\bm z_{ui,S}^{\T}\widehat{\bm b}^{(m,u)}_S)\big)\Big].
+\end{split}
  \label{eq:projloss}
 \end{equation}
 Starting from the intercept-only set, forward search adds at each step the feature that most reduces $L(S)$, producing a nested path $S_1\subset S_2\subset\cdots$. The projection loss ranks and orders; it does not decide the size. Following~\cite{piironen2020projective} and the warning of~\cite{riha2026selection} that selection rarely improves prediction in finite samples, the size is decided on held-out evaluators: for each candidate size $k$ the hierarchical model is refitted on $S_k$ within the fold and scored by the held-out log predictive density, and the one-standard-error rule picks the smallest $k$ whose score is within one evaluator-level standard error of the best. Sensors are treated by the same refit-and-score comparison over all $2^{C}-1$ channel subsets, which is feasible for $C=5$ and avoids the instability of a greedy path over few groups. The selected sets are reported together with their stability across folds~\cite{nogueira2018stability} (Section~\ref{sec:results-features}).
@@ -738,7 +747,7 @@ We have presented a hierarchical fully Bayesian model for predicting an individu
 As an independent check on the model-based selection of Section~\ref{sec:features}, we estimate for each group $A$ the conditional mutual information $I(Y;\bm Z_A\mid\bm Z_S,U)$ between the label and the group's features given an already selected set $S$ and the evaluator identity $U$, following the conditional-likelihood view of information-theoretic selection~\cite{brown2012conditional}. The estimator is model-based: with a correctly specified conditional model, the expected difference in log score between a model with and without $A$ equals the conditional mutual information. Concretely, within every population evaluator the episodes are split into $K_{\mathrm{cmi}}=5$ stratified folds, and an L2-regularized logistic model with evaluator-specific intercepts and slopes is fitted on the training folds and scored on the validation fold. The cross-fitted gain
 \begin{equation}
  \widehat I(Y;\bm Z_A\mid\bm Z_S,U)=\frac{1}{U}\sum_{u=1}^{U}\frac{1}{N_u}\sum_{i=1}^{N_u}
- \big[\ell^{S\cup A}_{ui}-\ell^{S}_{ui}\big],
+ \big(\ell^{S\cup A}_{ui}-\ell^{S}_{ui}\big),
  \label{eq:cmi}
 \end{equation}
 where $\ell^{S}_{ui}$ is the cross-fitted log predictive density of episode $i$ under set $S$, is averaged per evaluator first so that its standard error reflects evaluator variation. Forward selection adds the group with the largest gain and stops when the best gain is nonpositive. Table~\ref{tab:cmi} reports the forward path at the feature and sensor levels and its agreement with Sections~\ref{sec:pip} and~\ref{sec:projpred}. \draftnote{The conditional-MI check was not part of the confirmatory runs. Either run it against the frozen folds or drop this appendix before submission.}
