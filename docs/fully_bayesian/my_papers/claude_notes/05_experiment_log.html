@@ -628,7 +628,8 @@ C_\star(n)-C^{\text{pooled}}_\star(n)\ \text{의 기울기가 양수이고, 긴 
 
 <!-- ===================================================================== status -->
 <!-- ===================================================================== E9 -->
-<h2 id="E9">E9. population 구성 민감도 <span class="verdict todo-v">예정</span></h2>
+<h2 id="E9">E9. population 구성 민감도 <span class="verdict ok-v">H9a 지지, H9b 지지, H9c 기각</span></h2>
+<p class="meta">실행 <code>outputs/loeo_pop10/20261003_141011</code> (population = 적격 10명, 폴드당 학습 9명, 시드 42~44, \(w_{\max}=0.3\)) · 비교 대상 <code>loeo_final</code> (학습 16명)</p>
 <p class="label">배경</p>
 <p>
   지금까지의 population은 라벨이 두 클래스 다 있는 17명 전원이다. 그중 7명은 라벨이 10개 미만이라 평가 대상은 아니지만 사전분포 학습에는 들어간다. 전문가와 일반인이 섞여 있고 일부는 라벨이 적고 noisy할 수 있다는 우려가 있다.
@@ -669,6 +670,29 @@ git push origin claude_session</pre>
   <li>H9b는 어느 쪽이든 부록 C(\(\lambda_0\) 민감도)와 같은 맥락에서 "사용자 수가 적으면 \(\boldsymbol\Sigma\)의 식별이 약하다"의 추가 근거로 적는다.</li>
   <li>E9b는 긴 스트림 5명에서 cold start가 전원 population과 같으면 "소수의 긴 스트림만으로도 사전분포가 충분하다"는 부수 결과가 된다.</li>
 </ul>
+<p class="label">결과 (proposed, 3시드 평균, pop10 − all17)</p>
+<table>
+  <thead><tr><th></th><th class="num">\(t=0\)</th><th class="num">5</th><th class="num">10</th><th class="num">20</th><th class="num">최종</th></tr></thead>
+  <tbody>
+    <tr><td>\(\Delta\mathrm{MLPD}\) 평가자 단위 ± paired SE</td><td class="num">+0.009 ± 0.015</td><td class="num">−0.001 ± 0.007</td><td class="num">−0.006 ± 0.007</td><td class="num">+0.002 ± 0.002</td><td class="num">+0.000 ± 0.003</td></tr>
+    <tr><td>\(\Delta\mathrm{ELPD}\) 에피소드 단위 ± SE</td><td class="num">−13.3 ± 3.7</td><td class="num">−3.8 ± 2.7</td><td class="num">−4.4 ± 2.4</td><td class="num">+1.4 ± 2.0</td><td class="num">−1.0 ± 2.3</td></tr>
+    <tr><td>MLPD pop10 / all17</td><td class="num">−0.684 / −0.692</td><td class="num">−0.623 / −0.622</td><td class="num">−0.625 / −0.619</td><td class="num">−0.548 / −0.550</td><td class="num">−0.561 / −0.562</td></tr>
+    <tr><td>\(\bar U^{\text{epi}}\) pop10 / all17</td><td class="num">0.081 / 0.071</td><td class="num">0.060 / 0.057</td><td class="num">0.048 / 0.046</td><td class="num">0.036 / 0.035</td><td class="num">0.029 / 0.028</td></tr>
+    <tr><td>오답 예측 AUROC(epi) pop10 / all17</td><td class="num">0.49 / 0.52</td><td class="num">0.56 / 0.57</td><td class="num">0.56 / 0.56</td><td class="num">0.63 / 0.62</td><td class="num">0.54 / 0.56</td></tr>
+    <tr><td>reliable 비율 pop10 / all17</td><td class="num">0.00 / 0.00</td><td class="num">0.04 / 0.09</td><td class="num">0.18 / 0.28</td><td class="num">0.40 / 0.58</td><td class="num">0.50 / 0.50</td></tr>
+    <tr><td>pooled \(\Delta\mathrm{MLPD}\)</td><td class="num">−0.000 ± 0.003</td><td class="num">−0.000 ± 0.003</td><td class="num">+0.000 ± 0.003</td><td class="num">−0.002 ± 0.004</td><td class="num">−0.000 ± 0.002</td></tr>
+  </tbody>
+</table>
+<p>폴드별 cold start 차이: 이강근 +0.114, 한규택 +0.036, 박재일 +0.028, 김태근 +0.027 / 이지환 −0.046, 조현석 −0.032, 김재호 −0.032. 부호가 섞여 있고 에피소드 단위 합이 음수인 것은 긴 스트림(이지환, 조현석)이 음수이기 때문이다.</p>
+<p class="label">해석과 판정</p>
+<ul>
+  <li><strong>H9a 지지.</strong> 평가자 단위 \(\Delta\mathrm{MLPD}\)는 모든 예산에서 paired SE 안이다. 에피소드 단위로는 cold start에서 전원 population이 13 ± 4 nat 낫지만(에피소드당 0.01), \(t\ge5\)에서는 사라진다. 소수 라벨 7명은 사전분포를 해치지 않으며, 오히려 긴 스트림의 cold start에 약간 보탬이 된다.</li>
+  <li><strong>H9b 지지.</strong> 학습 인원 16 → 9에서 cold start epistemic이 0.071 → 0.081로 커지고, 오답 예측 AUROC는 0.52 → 0.49, \(t=20\) reliable 비율은 0.58 → 0.40, 구간 폭은 0.28 → 0.30이다. 예측은 같은데 불확실성 보고만 보수적으로 바뀌는 것은 \(\boldsymbol\Sigma\)의 식별이 사용자 수에 묶여 있다는 부록 C의 설명과 같다. 라벨이 적은 사용자도 NIW 갱신의 "사용자 1명"으로 \(\boldsymbol\Sigma\)를 조이는 데 기여한다.</li>
+  <li><strong>H9c 기각.</strong> cold start MLPD는 +0.009 ± 0.015로 SE 안이고 에피소드 단위로는 오히려 반대 방향이다. 잡음 제거 효과는 없다.</li>
+  <li>pooled는 ±0.003으로 전혀 변하지 않는다. 7명의 에피소드 수가 적어 pooled 로지스틱에는 영향이 없고, 계층 모형에는 "사용자 수"로서만 영향을 준다는 뜻이다.</li>
+  <li>E9b(라벨 100개 이상 5명)는 돌리지 않았다. H9a가 성립한 이상 필요 없다.</li>
+</ul>
+<p><span class="verdict ok-v">전원 population 유지가 정당화됨</span>. 논문 Limitations의 "다음 확인" 문장을 결과 문장으로 바꾸고 부록 C에 단락을 추가했다.</p>
 
 <h2 id="status">가설 현황표</h2>
 <table>
@@ -690,7 +714,7 @@ git push origin claude_session</pre>
     <tr><td>H6a, H6b</td><td>과소 확신: Jensen 수축 / 신호 부족</td><td>H6a 지지, H6b 부분 지지; 수축은 유익</td><td>E4</td><td>Discussion</td></tr>
     <tr><td>H7</td><td>신뢰 판정 규칙</td><td>\(w_{\max}=0.3\) 지지; 사후 확률 판정은 미구현</td><td>E4</td><td>IV-E 규칙의 \(w_{\max}\) 수정</td></tr>
     <tr><td>H8</td><td>prequential 기울기 양수</td><td>예정</td><td>저장된 점수 + 코드</td><td>long-stream 사례 그림</td></tr>
-    <tr><td>H9a, H9b, H9c</td><td>population 제한: 예측 불변 / epistemic 변화 / 잡음 제거</td><td>예정</td><td>E9</td><td>Limitations 문장 교체, 부록 C 표에 행 추가</td></tr>
+    <tr><td>H9a, H9b, H9c</td><td>population 제한: 예측 불변 / epistemic 변화 / 잡음 제거</td><td>지지 / 지지 / 기각</td><td>E9</td><td>Limitations 결과 문장, 부록 C 단락, 부록 D 실행 식별자</td></tr>
   </tbody>
 </table>
 
