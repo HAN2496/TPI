@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06 · 실험 구성 다이어그램</title>
+<style>
+  :root {
+    --bg: #fbfbf9; --fg: #1d1f24; --muted: #5d6270; --line: #e3e3dc;
+    --card: #ffffff; --accent: #1f5f8b; --accent-soft: #e4eef6;
+    --warn: #8a4b08; --warn-soft: #fbeedc; --ok: #2b6a3f; --ok-soft: #e3f1e6;
+    --bad: #8b2b2b; --bad-soft: #f6e3e3; --code: #f1f1ec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14161a; --fg: #e6e6e1; --muted: #a0a4ad; --line: #2c3037;
+      --card: #1b1e24; --accent: #7fb3d9; --accent-soft: #1f2c39;
+      --warn: #e2a463; --warn-soft: #332614; --ok: #8fd19f; --ok-soft: #16301e;
+      --bad: #e08a8a; --bad-soft: #3a1f1f; --code: #23272e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --fg: #e6e6e1; --muted: #a0a4ad; --line: #2c3037;
+    --card: #1b1e24; --accent: #7fb3d9; --accent-soft: #1f2c39;
+    --warn: #e2a463; --warn-soft: #332614; --ok: #8fd19f; --ok-soft: #16301e;
+    --bad: #e08a8a; --bad-soft: #3a1f1f; --code: #23272e;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 16px/1.7 -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", Roboto, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 32px 16px 64px; }
+  header { border-bottom: 1px solid var(--line); padding-bottom: 16px; margin-bottom: 28px; }
+  h1 { font-size: 1.7rem; margin: 0 0 6px; line-height: 1.3; }
+  .meta { color: var(--muted); font-size: 0.92rem; }
+  h2 { font-size: 1.3rem; margin: 44px 0 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+  p { margin: 10px 0; }
+  figure { margin: 18px 0 8px; padding: 16px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+  figure svg { display: block; max-width: 100%; height: auto; color: var(--fg); font-family: inherit; }
+  figcaption { color: var(--muted); font-size: 0.92rem; margin-top: 10px; line-height: 1.55; }
+  .acc { color: var(--accent); }
+  table { border-collapse: collapse; width: 100%; font-size: 0.93rem; margin: 14px 0; }
+  th, td { border-bottom: 1px solid var(--line); padding: 7px 8px; text-align: left; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }
+  ul { padding-left: 22px; }
+  li { margin: 4px 0; }
+  .note { background: var(--accent-soft); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 6px; margin: 14px 0; }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>06 · 실험 구성 다이어그램</h1>
+  <div class="meta">논문 흐름에 따라 어떤 실험을 했고, 무엇을 무엇과 비교했고, 왜 그 비교 대상인지 · 2026-10-03</div>
+</header>
+
+<h2 id="flow">1. 서론의 어려움 → 기여 → 결과 소절</h2>
+<p>서론은 어려움 세 개를 들고, 기여 세 개가 하나씩 답하고, 실험 결과 소절 세 개(VI-F, G, H)가 하나씩 검증한다. 그래서 실험은 세 갈래이고, 각 갈래마다 "무엇을 재는가"가 다르다.</p>
+
+<figure>
+<svg viewBox="0 0 900 330" role="img" aria-label="서론의 세 어려움이 각각 기여 하나와 결과 소절 하나로 이어지는 세 갈래 구조">
+  <defs>
+    <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <!-- column headers -->
+  <text x="130" y="22" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.65">서론: 어려움</text>
+  <text x="450" y="22" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.65">기여 (섹션)</text>
+  <text x="770" y="22" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.65">실험 결과 소절: 무엇을 재는가</text>
+
+  <!-- row 1 -->
+  <rect x="20" y="40" width="220" height="70" rx="8" fill="none" stroke="currentColor"/>
+  <text x="130" y="66" text-anchor="middle" font-size="13" fill="currentColor">사람마다 선호가 다르고</text>
+  <text x="130" y="86" text-anchor="middle" font-size="13" fill="currentColor">새 탑승자는 라벨이 몇 개뿐</text>
+  <line x1="240" y1="75" x2="330" y2="75" stroke="currentColor" marker-end="url(#a1)"/>
+  <rect x="335" y="40" width="230" height="70" rx="8" fill="none" stroke="currentColor"/>
+  <text x="450" y="62" text-anchor="middle" font-size="13" fill="currentColor">1. 문제 정의 + cold start</text>
+  <text x="450" y="82" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.75">계층 로지스틱, PG Gibbs (III, IV)</text>
+  <text x="450" y="100" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.75">population posterior = 새 사람의 prior</text>
+  <line x1="565" y1="75" x2="650" y2="75" stroke="currentColor" marker-end="url(#a1)"/>
+  <rect x="655" y="40" width="230" height="70" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="770" y="62" text-anchor="middle" font-size="13" fill="currentColor">VI-F Cold Start &amp; Personalization</text>
+  <text x="770" y="82" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.8">held-out MLPD vs 기준 모형 4개,</text>
+  <text x="770" y="100" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.8">라벨 t = 0, 5, 10, 20에서</text>
+
+  <!-- row 2 -->
+  <rect x="20" y="140" width="220" height="70" rx="8" fill="none" stroke="currentColor"/>
+  <text x="130" y="166" text-anchor="middle" font-size="13" fill="currentColor">설정을 바꾸는 차량은</text>
+  <text x="130" y="186" text-anchor="middle" font-size="13" fill="currentColor">예측을 얼마나 믿을지 알아야 함</text>
+  <line x1="240" y1="175" x2="330" y2="175" stroke="currentColor" marker-end="url(#a1)"/>
+  <rect x="335" y="140" width="230" height="70" rx="8" fill="none" stroke="currentColor"/>
+  <text x="450" y="162" text-anchor="middle" font-size="13" fill="currentColor">2. 정량화된 신뢰</text>
+  <text x="450" y="182" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.75">epistemic / aleatoric 분해 (IV-E)</text>
+  <text x="450" y="200" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.75">AUROC 신뢰 구간</text>
+  <line x1="565" y1="175" x2="650" y2="175" stroke="currentColor" marker-end="url(#a1)"/>
+  <rect x="655" y="140" width="230" height="70" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="770" y="162" text-anchor="middle" font-size="13" fill="currentColor">VI-G Predictive Uncertainty</text>
+  <text x="770" y="182" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.8">분해 곡선, epistemic의 오답 예측력,</text>
+  <text x="770" y="200" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.8">신뢰 판정 비율</text>
+
+  <!-- row 3 -->
+  <rect x="20" y="240" width="220" height="70" rx="8" fill="none" stroke="currentColor"/>
+  <text x="130" y="266" text-anchor="middle" font-size="13" fill="currentColor">배포하려면 어떤 피처와</text>
+  <text x="130" y="286" text-anchor="middle" font-size="13" fill="currentColor">어떤 센서가 필요한지 알아야 함</text>
+  <line x1="240" y1="275" x2="330" y2="275" stroke="currentColor" marker-end="url(#a1)"/>
+  <rect x="335" y="240" width="230" height="70" rx="8" fill="none" stroke="currentColor"/>
+  <text x="450" y="262" text-anchor="middle" font-size="13" fill="currentColor">3. 필요한 피처와 센서</text>
+  <text x="450" y="282" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.75">spike-and-slab, projpred, q_j (V)</text>
+  <text x="450" y="300" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.75">공통 / 개인 / 비활성</text>
+  <line x1="565" y1="275" x2="650" y2="275" stroke="currentColor" marker-end="url(#a1)"/>
+  <rect x="655" y="240" width="230" height="70" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="770" y="262" text-anchor="middle" font-size="13" fill="currentColor">VI-H Required Features &amp; Sensors</text>
+  <text x="770" y="282" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.8">피처 k개 / 센서 부분집합으로 refit한</text>
+  <text x="770" y="300" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.8">모형의 held-out MLPD vs 전체 bank</text>
+</svg>
+<figcaption>세 갈래 모두 같은 LOEO 폴드와 같은 holdout 위에서 계산된다. 갈래 1은 "다른 모형과" 비교, 갈래 2는 "모형 내부의" 불확실성 항을 라벨에 대해 검정, 갈래 3은 "같은 모형을 피처 부분집합으로 다시 적합해서" 비교한다.</figcaption>
+</figure>
+
+<h2 id="loeo">2. 측정 장치: leave-one-evaluator-out 한 폴드의 흐름</h2>
+<p>모든 숫자는 이 장치 하나에서 나온다. 핵심은 두 가지 경계다. 왼쪽 경계(population만으로 적합)와 아래쪽 경계(holdout은 절대 학습에 쓰지 않음).</p>
+
+<figure>
+<svg viewBox="0 0 900 400" role="img" aria-label="한 평가자를 떼어내고 나머지로 population을 학습한 뒤, 떼어낸 평가자의 스트림을 시간순으로 context와 holdout으로 나누어 예산 t마다 holdout을 예측하는 흐름">
+  <defs>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <!-- evaluators -->
+  <text x="20" y="28" font-size="12" fill="currentColor" opacity="0.65">평가자 17명 (라벨 두 클래스 보유)</text>
+  <g>
+    <rect x="20" y="40" width="26" height="26" rx="4" fill="none" stroke="currentColor"/>
+    <rect x="52" y="40" width="26" height="26" rx="4" fill="none" stroke="currentColor"/>
+    <rect x="84" y="40" width="26" height="26" rx="4" fill="none" stroke="currentColor"/>
+    <rect x="116" y="40" width="26" height="26" rx="4" fill="none" stroke="currentColor"/>
+    <rect x="148" y="40" width="26" height="26" rx="4" fill="none" stroke="currentColor"/>
+    <text x="190" y="59" font-size="12" fill="currentColor">… 16명</text>
+    <rect x="250" y="40" width="26" height="26" rx="4" fill="var(--accent)" stroke="var(--accent)"/>
+    <text x="284" y="59" font-size="12" fill="currentColor">held-out 1명 (적격 10명 중, 돌아가며)</text>
+  </g>
+
+  <!-- population box -->
+  <line x1="110" y1="66" x2="110" y2="100" stroke="currentColor" marker-end="url(#a2)"/>
+  <rect x="20" y="104" width="300" height="150" rx="8" fill="none" stroke="currentColor"/>
+  <text x="170" y="126" text-anchor="middle" font-size="13" fill="currentColor">population set 16명으로만 적합</text>
+  <text x="34" y="150" font-size="12" fill="currentColor" opacity="0.8">· 피처 bank 상관 가지치기, 표준화</text>
+  <text x="34" y="170" font-size="12" fill="currentColor" opacity="0.8">· PG Gibbs 500 + 1500 → (μ, Σ, γ) 입자 M개</text>
+  <text x="34" y="190" font-size="12" fill="currentColor" opacity="0.8">· projpred 경로, 크기 k별 refit, 센서 부분집합 refit</text>
+  <text x="34" y="210" font-size="12" fill="currentColor" opacity="0.8">· 기준 모형 Pooled, EB-MAP, HB-full 학습</text>
+  <text x="34" y="238" font-size="11" fill="var(--accent)">held-out의 어떤 정보도 여기로 들어오지 않는다</text>
+
+  <!-- stream -->
+  <line x1="263" y1="66" x2="263" y2="100" stroke="var(--accent)" />
+  <line x1="263" y1="100" x2="560" y2="100" stroke="var(--accent)" />
+  <line x1="560" y1="100" x2="560" y2="118" stroke="var(--accent)" marker-end="url(#a2)"/>
+  <text x="640" y="112" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.65">held-out 평가자의 스트림, 시간순</text>
+  <rect x="400" y="124" width="240" height="34" rx="4" fill="none" stroke="currentColor"/>
+  <rect x="640" y="124" width="240" height="34" rx="4" fill="none" stroke="currentColor" stroke-dasharray="5 4"/>
+  <text x="520" y="146" text-anchor="middle" font-size="12" fill="currentColor">context 절반 (순차 공개)</text>
+  <text x="760" y="146" text-anchor="middle" font-size="12" fill="currentColor">holdout 절반 (학습 금지)</text>
+  <!-- budget markers -->
+  <line x1="400" y1="158" x2="400" y2="180" stroke="currentColor"/>
+  <line x1="430" y1="158" x2="430" y2="180" stroke="currentColor"/>
+  <line x1="460" y1="158" x2="460" y2="180" stroke="currentColor"/>
+  <line x1="520" y1="158" x2="520" y2="180" stroke="currentColor"/>
+  <line x1="640" y1="158" x2="640" y2="180" stroke="currentColor"/>
+  <text x="400" y="194" text-anchor="middle" font-size="11" fill="currentColor">t=0</text>
+  <text x="430" y="194" text-anchor="middle" font-size="11" fill="currentColor">5</text>
+  <text x="460" y="194" text-anchor="middle" font-size="11" fill="currentColor">10</text>
+  <text x="520" y="194" text-anchor="middle" font-size="11" fill="currentColor">20</text>
+  <text x="640" y="194" text-anchor="middle" font-size="11" fill="currentColor">n_ctx</text>
+  <text x="520" y="214" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.65">시작 오프셋 3개를 평균 (짧은 스트림 보정)</text>
+
+  <!-- prediction flow -->
+  <line x1="320" y1="180" x2="380" y2="180" stroke="currentColor"/>
+  <line x1="170" y1="254" x2="170" y2="290" stroke="currentColor" marker-end="url(#a2)"/>
+  <rect x="20" y="294" width="300" height="86" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="170" y="318" text-anchor="middle" font-size="13" fill="currentColor">t=0: cold start = population posterior predictive</text>
+  <text x="170" y="340" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.85">t&gt;0: context t개로 입자별 PG 업데이트 (μ, Σ 고정)</text>
+  <text x="170" y="362" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.85">기준 모형도 같은 context t개를 받음</text>
+  <line x1="320" y1="337" x2="640" y2="337" stroke="currentColor" marker-end="url(#a2)"/>
+  <text x="480" y="330" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7">holdout 전체를 예측</text>
+  <rect x="645" y="300" width="235" height="74" rx="8" fill="none" stroke="currentColor"/>
+  <text x="762" y="324" text-anchor="middle" font-size="13" fill="currentColor">holdout 지표, 예산 t마다</text>
+  <text x="762" y="344" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.8">MLPD (주), AUROC, Brier, ECE,</text>
+  <text x="762" y="362" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.8">epi / ale, 오답 AUROC, 신뢰 구간</text>
+  <line x1="760" y1="158" x2="760" y2="296" stroke="currentColor" stroke-dasharray="5 4" marker-end="url(#a2)"/>
+  <text x="790" y="235" font-size="11" fill="currentColor" opacity="0.7">정답 라벨</text>
+</svg>
+<figcaption>10명이 돌아가며 held-out이 되므로 폴드 10개. 폴드마다 시드 3개(Gibbs, cold start 입자, 개인화 입자)를 돌려 평균한다. 보고 단위는 평가자(macro 평균 ± 평가자 SE)이고, 같은 holdout 위의 두 모형 비교는 에피소드 단위 paired ΔELPD도 함께 낸다. 짧은 스트림은 context가 t보다 작으면 그 예산에서 빠지므로 t=20은 긴 스트림 5명만 포함한다.</figcaption>
+</figure>
+
+<h2 id="ablation">3. 비교 실험: 기준 모형은 "재료를 하나씩 뺀 것"</h2>
+<p>제안 모형은 재료 세 개로 이루어진다. 개인별 계수(개인화), population에서 빌려오는 계층 구조(전이), 점추정이 아닌 전체 posterior(불확실성). 여기에 inclusion prior(선택)가 얹힌다. 기준 모형은 임의로 고른 경쟁자가 아니라 이 재료를 하나씩 뺀 것이라, 두 행의 차이가 곧 그 재료의 몫이 된다.</p>
+
+<figure>
+<svg viewBox="0 0 900 360" role="img" aria-label="제안 모형에서 재료를 하나씩 제거하면 HB-full, EB-MAP, Pooled, Indep 기준 모형이 되고, 각 차이가 측정하는 것">
+  <defs>
+    <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <!-- Proposed -->
+  <rect x="330" y="20" width="240" height="64" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+  <text x="450" y="44" text-anchor="middle" font-size="14" fill="currentColor">Proposed</text>
+  <text x="450" y="64" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.8">개인 θ_u + 계층 (μ,Σ) + 전체 posterior + γ</text>
+
+  <!-- HB-full -->
+  <line x1="450" y1="84" x2="450" y2="126" stroke="currentColor" marker-end="url(#a3)"/>
+  <text x="462" y="110" font-size="11" fill="currentColor" opacity="0.75">− inclusion prior (γ ≡ 1)</text>
+  <rect x="330" y="130" width="240" height="54" rx="8" fill="none" stroke="currentColor"/>
+  <text x="450" y="152" text-anchor="middle" font-size="13" fill="currentColor">HB-full</text>
+  <text x="450" y="171" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.8">같은 계층, 전체 bank 그대로</text>
+  <text x="590" y="152" font-size="12" fill="var(--accent)">차이 = 선택의 몫</text>
+  <text x="590" y="170" font-size="11" fill="currentColor" opacity="0.7">결과: +0.002 ~ +0.011, 작지만 일관</text>
+
+  <!-- EB-MAP -->
+  <line x1="450" y1="184" x2="450" y2="226" stroke="currentColor" marker-end="url(#a3)"/>
+  <text x="462" y="210" font-size="11" fill="currentColor" opacity="0.75">− 전체 posterior (μ,Σ 점추정 + Laplace)</text>
+  <rect x="330" y="230" width="240" height="54" rx="8" fill="none" stroke="currentColor"/>
+  <text x="450" y="252" text-anchor="middle" font-size="13" fill="currentColor">EB-MAP</text>
+  <text x="450" y="271" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.8">empirical Bayes 계층, 점추정</text>
+  <text x="590" y="252" font-size="12" fill="var(--accent)">차이 = (μ,Σ) 적분의 몫</text>
+  <text x="590" y="270" font-size="11" fill="currentColor" opacity="0.7">결과: +0.015 ~ +0.027, 3~6 SE</text>
+
+  <!-- Pooled and Indep from Proposed, left and right -->
+  <line x1="330" y1="52" x2="200" y2="52" stroke="currentColor"/>
+  <line x1="200" y1="52" x2="200" y2="126" stroke="currentColor" marker-end="url(#a3)"/>
+  <text x="195" y="100" text-anchor="end" font-size="11" fill="currentColor" opacity="0.75">− 개인 (θ_u 하나로 공유)</text>
+  <rect x="40" y="130" width="230" height="54" rx="8" fill="none" stroke="currentColor"/>
+  <text x="155" y="152" text-anchor="middle" font-size="13" fill="currentColor">Pooled</text>
+  <text x="155" y="171" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.8">L2 로지스틱, 전원 라벨 + context 재적합</text>
+  <text x="155" y="206" text-anchor="middle" font-size="12" fill="var(--accent)">차이 = 개인화의 몫</text>
+  <text x="155" y="224" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7">t=0: +0.025 (동등), t=20: +0.142</text>
+  <text x="155" y="242" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7">"기존 population 평가기"의 대표</text>
+
+  <line x1="570" y1="52" x2="760" y2="52" stroke="currentColor"/>
+  <line x1="760" y1="52" x2="760" y2="126" stroke="currentColor" marker-end="url(#a3)"/>
+  <text x="765" y="100" font-size="11" fill="currentColor" opacity="0.75">− 전이 (population 안 씀)</text>
+  <rect x="650" y="130" width="230" height="54" rx="8" fill="none" stroke="currentColor"/>
+  <text x="765" y="152" text-anchor="middle" font-size="13" fill="currentColor">Indep</text>
+  <text x="765" y="171" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.8">L2 로지스틱, context t개만으로</text>
+  <text x="765" y="206" text-anchor="middle" font-size="12" fill="var(--accent)">차이 = 전이의 몫</text>
+  <text x="765" y="224" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7">t≤20에서 cold start보다도 나쁨</text>
+  <text x="765" y="242" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7">t=0에서는 정의 불가</text>
+
+  <!-- bottom note -->
+  <rect x="40" y="300" width="840" height="44" rx="8" fill="none" stroke="currentColor" stroke-dasharray="5 4"/>
+  <text x="460" y="319" text-anchor="middle" font-size="12" fill="currentColor">네 기준 모형 모두 같은 피처 bank, 같은 표준화, 같은 폴드, 같은 context t개, 같은 holdout을 받는다.</text>
+  <text x="460" y="336" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7">계획에 있던 비선형 pooled(GBT)는 돌리지 않아 본문에서 뺐고 Limitations에 적었다.</text>
+</svg>
+<figcaption>왜 이 네 개인가. Pooled는 현재 업계의 "한 가지 점수" 평가기다. Indep은 "그냥 그 사람 데이터로 학습하면 되지 않나"라는 가장 단순한 개인화다. EB-MAP은 같은 계층 모형을 점추정으로 쓰는 표준 대안이라 "전체 posterior가 꼭 필요한가"에 답한다. HB-full은 선택 없는 제안 모형이라 "inclusion prior가 뭘 더하나"에 답한다. 수치는 MLPD 차이(제안 − 기준, 양수가 제안 우세).</figcaption>
+</figure>
+
+<h2 id="uncertainty">4. 불확실성 실험: 모형 내부 값을 라벨에 대해 검정</h2>
+<p>갈래 2는 다른 모형과 비교하지 않는다. 제안 모형이 내놓는 불확실성 항이 "약속한 대로 행동하는가"를 holdout 라벨로 검정한다.</p>
+
+<figure>
+<svg viewBox="0 0 900 300" role="img" aria-label="입자별 예측 확률에서 epistemic과 aleatoric 항을 분해하고, 세 가지 검정으로 이어지는 흐름">
+  <defs>
+    <marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <rect x="20" y="100" width="200" height="90" rx="8" fill="none" stroke="currentColor"/>
+  <text x="120" y="126" text-anchor="middle" font-size="13" fill="currentColor">입자 M개의 예측</text>
+  <text x="120" y="148" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.8">p^(m) = σ(zᵀθ^(m)), m = 1..M</text>
+  <text x="120" y="170" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.8">holdout 에피소드 j마다, 예산 t마다</text>
+
+  <line x1="220" y1="145" x2="290" y2="145" stroke="currentColor" marker-end="url(#a4)"/>
+  <text x="255" y="136" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7">총분산 법칙</text>
+  <rect x="295" y="100" width="230" height="90" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="410" y="124" text-anchor="middle" font-size="13" fill="currentColor">p̂(1−p̂) = U_ale + U_epi</text>
+  <text x="410" y="148" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.85">U_ale = E_m[p(1−p)]  (라벨 자체의 애매함)</text>
+  <text x="410" y="170" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.85">U_epi = Var_m(p)  (입자 간 불일치)</text>
+
+  <!-- three tests -->
+  <line x1="525" y1="120" x2="610" y2="50" stroke="currentColor" marker-end="url(#a4)"/>
+  <line x1="525" y1="145" x2="610" y2="145" stroke="currentColor" marker-end="url(#a4)"/>
+  <line x1="525" y1="170" x2="610" y2="240" stroke="currentColor" marker-end="url(#a4)"/>
+
+  <rect x="615" y="20" width="265" height="64" rx="8" fill="none" stroke="currentColor"/>
+  <text x="747" y="42" text-anchor="middle" font-size="13" fill="currentColor">검정 1: t에 따른 거동</text>
+  <text x="747" y="60" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">epi는 줄고 ale는 일정해야 한다</text>
+  <text x="747" y="76" text-anchor="middle" font-size="11" fill="var(--accent)">0.071 → 0.035 / 0.146 → 0.160 : 지지</text>
+
+  <rect x="615" y="113" width="265" height="64" rx="8" fill="none" stroke="currentColor"/>
+  <text x="747" y="135" text-anchor="middle" font-size="13" fill="currentColor">검정 2: epi가 오답을 가리는가</text>
+  <text x="747" y="153" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">AUROC(epi → 결정 오류), 선택적 예측 위험</text>
+  <text x="747" y="169" text-anchor="middle" font-size="11" fill="var(--accent)">t=0: 0.52 (우연), t=20: 0.62 : 부분 지지</text>
+
+  <rect x="615" y="206" width="265" height="64" rx="8" fill="none" stroke="currentColor"/>
+  <text x="747" y="228" text-anchor="middle" font-size="13" fill="currentColor">검정 3: 평가자 단위 신뢰 판정</text>
+  <text x="747" y="246" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">입자 × bootstrap AUROC 구간, 하한 &gt; ½, 폭 &lt; 0.3</text>
+  <text x="747" y="262" text-anchor="middle" font-size="11" fill="var(--accent)">reliable 비율 0 → 9 → 28 → 58 % : 지지</text>
+
+  <text x="120" y="230" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7">EB-MAP도 Laplace 입자를 뽑아</text>
+  <text x="120" y="246" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7">같은 항을 계산할 수 있게 해 두었다</text>
+  <text x="120" y="262" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7">(불확실성 표에서 함께 보고)</text>
+</svg>
+<figcaption>부수 검정 하나가 더 있다. cold start의 과소 확신(ECE 0.26)이 입자 평균의 Jensen 수축 때문인지 보려고 plug-in 예측 σ(zᵀθ̄)와 비교했고, 수축은 실재하지만 로그 점수에는 유익해서 posterior mean을 유지했다.</figcaption>
+</figure>
+
+<h2 id="features">5. 피처·센서 실험: 같은 모형을 부분집합으로 다시 적합</h2>
+<p>갈래 3도 다른 모형과 비교하지 않는다. 비교 대상은 "전체 bank로 적합한 제안 모형" 하나이고, 피처나 센서를 줄인 같은 모형이 held-out에서 얼마나 잃는지를 본다. 선택 자체가 예측을 개선한다는 주장은 하지 않는다.</p>
+
+<figure>
+<svg viewBox="0 0 900 420" role="img" aria-label="피처 bank에서 가지치기, 포함 확률, projpred 경로, 크기별 refit, 센서 부분집합 refit으로 이어지는 선택 실험의 흐름과 각 산출물">
+  <defs>
+    <marker id="a5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <!-- bank -->
+  <rect x="20" y="30" width="180" height="60" rx="8" fill="none" stroke="currentColor"/>
+  <text x="110" y="54" text-anchor="middle" font-size="13" fill="currentColor">후보 bank</text>
+  <text x="110" y="74" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.8">5채널 × ISO 계열 통계량</text>
+  <line x1="200" y1="60" x2="260" y2="60" stroke="currentColor" marker-end="url(#a5)"/>
+  <text x="230" y="50" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7">|r| ≥ 0.95</text>
+  <rect x="265" y="30" width="180" height="60" rx="8" fill="none" stroke="currentColor"/>
+  <text x="355" y="54" text-anchor="middle" font-size="13" fill="currentColor">가지치기된 bank</text>
+  <text x="355" y="74" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.8">40개 + 절편 (population에서만)</text>
+
+  <!-- reference model -->
+  <line x1="445" y1="60" x2="505" y2="60" stroke="currentColor" marker-end="url(#a5)"/>
+  <rect x="510" y="30" width="370" height="60" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="695" y="54" text-anchor="middle" font-size="13" fill="currentColor">기준 모형 = spike-and-slab 계층 모형 (전체 bank)</text>
+  <text x="695" y="74" text-anchor="middle" font-size="12" fill="currentColor" opacity="0.85">PIP_j, μ_j, Σ_jj → q_j (부호 일치), S_j (효과 크기)</text>
+
+  <!-- three downward paths -->
+  <line x1="580" y1="90" x2="580" y2="140" stroke="currentColor" marker-end="url(#a5)"/>
+  <line x1="695" y1="90" x2="695" y2="140" stroke="currentColor" marker-end="url(#a5)"/>
+  <line x1="810" y1="90" x2="810" y2="140" stroke="currentColor" marker-end="url(#a5)"/>
+
+  <!-- path A: roles -->
+  <rect x="500" y="144" width="160" height="96" rx="8" fill="none" stroke="currentColor"/>
+  <text x="580" y="166" text-anchor="middle" font-size="12" fill="currentColor">역할 분류</text>
+  <text x="580" y="184" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">PIP &lt; ½ → 비활성</text>
+  <text x="580" y="200" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">q ≥ 0.9 → 공통, 아니면 개인</text>
+  <text x="580" y="222" text-anchor="middle" font-size="11" fill="var(--accent)">a_z p2p만 공통, λ0에 민감</text>
+
+  <!-- path B: projpred -->
+  <rect x="615" y="144" width="160" height="96" rx="8" fill="none" stroke="currentColor"/>
+  <text x="695" y="166" text-anchor="middle" font-size="12" fill="currentColor">projpred 전진 경로</text>
+  <text x="695" y="184" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">KL 투영으로 피처 순서만 정함</text>
+  <text x="695" y="200" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">S_1 ⊂ S_2 ⊂ … ⊂ S_30</text>
+  <text x="695" y="222" text-anchor="middle" font-size="11" fill="var(--accent)">1순위는 10폴드 모두 a_z p2p</text>
+
+  <!-- path C: sensors -->
+  <rect x="730" y="144" width="160" height="96" rx="8" fill="none" stroke="currentColor"/>
+  <text x="810" y="166" text-anchor="middle" font-size="12" fill="currentColor">센서 부분집합 31개</text>
+  <text x="810" y="184" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">5채널의 모든 비공집합</text>
+  <text x="810" y="200" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">greedy 대신 전수</text>
+  <text x="810" y="222" text-anchor="middle" font-size="11" fill="var(--accent)">leave-one-sensor-out 차이도</text>
+
+  <!-- refit box -->
+  <line x1="695" y1="240" x2="695" y2="280" stroke="currentColor" marker-end="url(#a5)"/>
+  <line x1="810" y1="240" x2="810" y2="280" stroke="currentColor" marker-end="url(#a5)"/>
+  <rect x="500" y="284" width="390" height="70" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="695" y="306" text-anchor="middle" font-size="13" fill="currentColor">부분집합마다 계층 모형을 폴드 안에서 다시 적합</text>
+  <text x="695" y="324" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">축소 Gibbs 200+400, 예산 {0,10,20} 평균 held-out MLPD</text>
+  <text x="695" y="342" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">전체 bank 대비 paired Δ ± 평가자 SE → one-SE 규칙으로 크기 결정</text>
+
+  <!-- results -->
+  <line x1="695" y1="354" x2="695" y2="384" stroke="currentColor" marker-end="url(#a5)"/>
+  <text x="695" y="404" text-anchor="middle" font-size="12" fill="var(--accent)">k* = 1 (Δ +0.020 ± 0.011) · a_z 제거만 −0.034 ± 0.023 · 6D 제거 0 근처 · 횡가속도 불필요</text>
+
+  <!-- left side: k=1 rerun -->
+  <rect x="20" y="144" width="420" height="120" rx="8" fill="none" stroke="currentColor" stroke-dasharray="5 4"/>
+  <text x="230" y="168" text-anchor="middle" font-size="12" fill="currentColor">보강 실행: k = 1 피처 집합으로 main 프로토콜 전체를 재실행</text>
+  <text x="230" y="190" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">질문 1: 완전 Gibbs와 개인화까지 포함하면 k=1이 전체 bank와 같은가</text>
+  <text x="230" y="208" text-anchor="middle" font-size="11" fill="var(--accent)">→ 전체 bank가 t=20에서 에피소드당 0.015 nat 우세 (3 SE). 선택은 해석용.</text>
+  <text x="230" y="232" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.8">질문 2: 소수 라벨 평가자의 무이득이 차원 때문인가</text>
+  <text x="230" y="250" text-anchor="middle" font-size="11" fill="var(--accent)">→ 한 명만 회복(차원 효과), 두 명은 어떤 모형으로도 pooled 이상 불가(라벨)</text>
+</svg>
+<figcaption>왼쪽 아래 보강 실행이 두 소절을 잇는다. VI-F에서 짧은 스트림이 이득을 못 본 이유를 VI-H의 k=1 모형으로 설명하고, 동시에 선택 단계(축소 Gibbs)의 "k*=1 ≈ 전체"가 완전 프로토콜에서는 "전체가 조금 낫다"로 바뀜을 보여 Riha et al.의 결론과 맞춘다.</figcaption>
+</figure>
+
+<h2 id="sensitivity">6. 결과를 흔들 수 있는 것들: 민감도 실행</h2>
+<p>본문 수치는 한 실행(<code>loeo_final</code>, 시드 3개)에서 나오고, 그 수치가 우연이나 설정에 묶여 있지 않음을 보이는 실행이 넷 있다. 셋은 부록으로, 하나는 VI-H로 갔다.</p>
+<table>
+  <thead><tr><th>바꾼 것</th><th>왜 걱정되는가</th><th>비교 대상</th><th>결과</th><th>논문 위치</th></tr></thead>
+  <tbody>
+    <tr><td>시드 42, 43, 44</td><td>MCMC 잡음이 평가자 차이를 흉내낼 수 있다</td><td>폴드 내 시드 sd vs 평가자 SE</td><td>sd 0.004~0.016 &lt; SE 0.019~0.044</td><td>VI-E, 부록 C</td></tr>
+    <tr><td>λ0 ∈ {1, 0.1, 0.01}</td><td>NIW 사전분포 척도가 Σ, 따라서 epistemic을 좌우한다</td><td>같은 폴드, proposed MLPD와 불확실성 항</td><td>MLPD 불변, epistemic과 신뢰 비율만 변함</td><td>부록 C 표</td></tr>
+    <tr><td>population 17명 → 적격 10명</td><td>라벨 적은 7명이 사전분포를 흐릴 수 있다</td><td>같은 폴드, paired ΔMLPD</td><td>모든 t에서 SE 안, epistemic만 보수적</td><td>Limitations, 부록 C</td></tr>
+    <tr><td>k = 1 피처만</td><td>선택 단계 결론이 축소 체인의 산물일 수 있다</td><td>main 프로토콜 전체, 에피소드 paired</td><td>전체 bank가 소폭 우세, 한 명만 차원 효과</td><td>VI-H</td></tr>
+  </tbody>
+</table>
+
+<div class="note">
+공통 패턴: 세 민감도 실행 모두 "예측(MLPD)은 안 바뀌고 불확실성 보고만 바뀐다"로 나왔다. 그래서 본문 주장은 예측 쪽을 강하게, 불확실성의 절대 크기는 약하게(궤적 기준 상대값으로) 쓰도록 Discussion을 조정했다.
+</div>
+
+<h2 id="notrun">7. 계획했지만 돌리지 않은 것</h2>
+<ul>
+  <li><strong>비선형 pooled 기준 모형(GBT).</strong> 선형 보상이 한계인지 묻는 실험. 본문에서 빼고 Limitations에 "열린 질문"으로 남겼다.</li>
+  <li><strong>K-fold refit ELPD.</strong> 순차 holdout 대신 평가자 전체 라벨로 상한을 재는 실험. 대신 k=1 재실행에서 indep ≈ pooled로 라벨 예측 불가를 간접 확인했다.</li>
+  <li><strong>조건부 상호정보(CMI) 전진 선택.</strong> 모형 없는 독립 검사. 부록 A에 남아 있으나 표가 비어 있어 돌리거나 지워야 한다.</li>
+  <li><strong>prequential 곡선.</strong> 긴 스트림의 온라인 점수 기울기. 데이터는 저장돼 있고 그림만 남았다.</li>
+</ul>
+</main>
+</body>
+</html>
