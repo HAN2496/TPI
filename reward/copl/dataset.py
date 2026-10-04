@@ -60,22 +60,25 @@ class CoPLGraphDataset:
         tr_u, tr_i, tr_y = [], [], []
         va_u, va_i, va_y = [], [], []
         for uid, (item_ids, y) in self.per_user_items.items():
-            if len(np.unique(y)) < 2:
+            n_val = int(round(len(y) * cfg.val_size))
+            # a stratified split needs at least one validation item per class and one training
+            # item per class; users with too few labels (e.g. 10 labels -> 1 val item) stay train-only
+            if len(np.unique(y)) < 2 or n_val < 2 or min(int(y.sum()), int((1 - y).sum())) < 2:
                 tr_u.append(np.full_like(item_ids, uid))
                 tr_i.append(item_ids)
                 tr_y.append(y)
                 continue
             it_tr, it_va, y_tr, y_va = train_test_split(
-                item_ids, y, test_size=cfg.val_size, random_state=cfg.seed, stratify=y)
+                item_ids, y, test_size=n_val, random_state=cfg.seed, stratify=y)
             tr_u.append(np.full_like(it_tr, uid)); tr_i.append(it_tr); tr_y.append(y_tr)
             va_u.append(np.full_like(it_va, uid)); va_i.append(it_va); va_y.append(y_va)
 
         self.tr_u = np.concatenate(tr_u)
         self.tr_i = np.concatenate(tr_i)
         self.tr_y = np.concatenate(tr_y)
-        self.va_u = np.concatenate(va_u)
-        self.va_i = np.concatenate(va_i)
-        self.va_y = np.concatenate(va_y)
+        self.va_u = np.concatenate(va_u) if va_u else np.zeros(0, dtype=np.int64)
+        self.va_i = np.concatenate(va_i) if va_i else np.zeros(0, dtype=np.int64)
+        self.va_y = np.concatenate(va_y) if va_y else np.zeros(0, dtype=np.int64)
 
         tr_pos = (self.tr_y == 1)
         tr_neg = (self.tr_y == 0)

@@ -41,7 +41,8 @@ def dataset_namespace(cfg, device, graph_channel_names, fs):
     """CoPLGraphDataset and the similarity builders read a flat attribute namespace."""
     d = asdict(cfg)
     d.update(similarity_method=cfg.encoder, normalize=True, device=str(device),
-             graph_channel_names=list(graph_channel_names), fs=float(fs))
+             graph_channel_names=list(graph_channel_names), fs=float(fs),
+             verbose=max(0, cfg.verbose - 1))            # dataset / encoder chatter only at verbose >= 2
     return SimpleNamespace(**d)
 
 

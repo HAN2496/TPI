@@ -165,8 +165,8 @@ def stage_encoders(cfg, run, data, channels, fs, names, device):
         for enc in cfg.enc_list:
             rec["encoders"].setdefault(enc, {})
             for cs_label, subset in sets.items():
-                if cs_label in rec["encoders"][enc]:
-                    continue
+                if cs_label in rec["encoders"][enc] and "error" not in rec["encoders"][enc][cs_label]:
+                    continue                                  # finished; failed entries are retried
                 tic = time.time()
                 c = replace(cfg, encoder=enc, graph_channels=tuple(subset), rm_channels=tuple(subset), seed=cfg.seeds[0])
                 try:
