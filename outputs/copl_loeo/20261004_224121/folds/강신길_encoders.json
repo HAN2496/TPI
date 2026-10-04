@@ -1,0 +1,233 @@
+{
+  "name": "강신길",
+  "encoders": {
+    "ae": {
+      "full": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_Pitch_rate_6D": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_Bounce_rate_6D": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_IMU_VerAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_IMU_LongAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_IMU_LatAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_Pitch_rate_6D": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_Bounce_rate_6D": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_IMU_VerAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_IMU_LongAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_IMU_LatAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "imu_only": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      }
+    },
+    "vae": {
+      "full": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_Pitch_rate_6D": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_Bounce_rate_6D": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_IMU_VerAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_IMU_LongAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_IMU_LatAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_Pitch_rate_6D": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_Bounce_rate_6D": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_IMU_VerAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_IMU_LongAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_IMU_LatAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "imu_only": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      }
+    },
+    "pca": {
+      "full": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_Pitch_rate_6D": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_Bounce_rate_6D": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_IMU_VerAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_IMU_LongAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_IMU_LatAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_Pitch_rate_6D": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_Bounce_rate_6D": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_IMU_VerAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_IMU_LongAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_IMU_LatAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "imu_only": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      }
+    },
+    "scatter": {
+      "full": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_Pitch_rate_6D": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_Bounce_rate_6D": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_IMU_VerAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_IMU_LongAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_IMU_LatAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_Pitch_rate_6D": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_Bounce_rate_6D": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_IMU_VerAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_IMU_LongAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_IMU_LatAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "imu_only": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      }
+    },
+    "isobank": {
+      "full": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_Pitch_rate_6D": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_Bounce_rate_6D": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_IMU_VerAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_IMU_LongAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_IMU_LatAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_Pitch_rate_6D": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_Bounce_rate_6D": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_IMU_VerAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_IMU_LongAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_IMU_LatAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "imu_only": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      }
+    },
+    "raw_rbf": {
+      "full": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_Pitch_rate_6D": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_Bounce_rate_6D": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_IMU_VerAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_IMU_LongAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "without_IMU_LatAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_Pitch_rate_6D": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_Bounce_rate_6D": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_IMU_VerAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_IMU_LongAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "only_IMU_LatAccelVal": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      },
+      "imu_only": {
+        "error": "The test_size = 1 should be greater or equal to the number of classes = 2"
+      }
+    }
+  }
+}
