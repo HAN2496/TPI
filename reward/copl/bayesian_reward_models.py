@@ -1,7 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import hamiltorch
+try:
+    import hamiltorch
+except ImportError:                      # only hmc_sample needs it
+    hamiltorch = None
 
 
 def unflatten(model, flat):
@@ -65,6 +68,9 @@ class HMCPosteriorRM(BayesianRM):
 
 def hmc_sample(model, user_emb, obs, y, cfg, pos_weight=None):
     """학습된 model에서 warm start해 posterior weight 샘플 (S, P)를 반환. full-batch likelihood."""
+    if hamiltorch is None:
+        raise ImportError("hamiltorch is required for rm_bayes='hmc' (pip install hamiltorch)")
+
     def log_prob(flat):
         logits = torch.func.functional_call(model, unflatten(model, flat), (user_emb, obs))
         ll = -F.binary_cross_entropy_with_logits(logits, y, pos_weight=pos_weight, reduction="sum")

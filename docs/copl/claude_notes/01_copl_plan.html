@@ -294,12 +294,13 @@ u \xrightarrow{A_{\text{pos}}/A_{\text{neg}}} \text{item}_i \xrightarrow{A_{ii}}
 </ul>
 
 <h2 id="plan">7. 작업 순서와 코드</h2>
+<p>결정 사항(2026-10-04): 라벨은 T-IV와 같은 good/bad(<code>True</code> = good). 채널은 T-IV와 같은 5개. Pooled 기준 모형은 (t, 오프셋)마다 fine-tune. 튜닝은 외부 폴드마다 내부 LOEO(엄밀 모드).</p>
+<p>코드는 <code>run_copl_loeo.py</code> + <code>reward/copl/loeo/</code>(config, data, encoders, graph, fold, baselines, report)에 있고, 기존 <code>reward/copl/</code> 모델 코드는 수정하지 않았다. 스테이지와 명령은 02 문서에.</p>
 <ol>
-  <li><strong>라벨 의미와 채널 확정.</strong> VerAccel 포함 5채널로 맞출지 결정.</li>
-  <li><strong><code>run_copl_loeo.py</code>.</strong> <code>run_loeo.py</code>의 Config, 폴드 루프, 재개 가능한 폴드 json, report 구조를 복제하고 모형 부분만 CoPL로 교체. 스테이지: <code>encoders</code>(내재 지표, GCF 없이 빠름), <code>tune</code>(내부 LOEO), <code>main</code>, <code>ablate</code>(w/o \(A_{ii}\), w/o 적응, oracle, kNN 투표), <code>sweep_k</code>, <code>report</code>.</li>
-  <li><strong>인코더 어댑터.</strong> <code>reward/copl/similarity/</code>에 scattering(lab에서 이동), ISO bank(<code>bank.py</code> 래핑), raw-RBF를 추가. 공통 인터페이스는 이미 <code>base.py</code>에 있음.</li>
-  <li><strong>튜닝 1회</strong> → 설정 고정 → <strong>확정 실행</strong>(시드 3) → <strong>ablation</strong>과 <strong>k sweep</strong>은 시드 1로.</li>
-  <li>가설 기록은 이 문서에 E1~ 형식으로 이어 쓰고, 판정 후 논문에 옮긴다. 결과 폴더는 <code>outputs/copl_loeo*/</code>로 두고 .gitignore에 같은 규칙을 추가한다.</li>
+  <li><code>encoders</code> 스테이지로 인코더 × 채널 집합의 내재 지표를 먼저 본다(GPU 불필요).</li>
+  <li>인코더를 고른 뒤 <code>tune</code>(폴드마다 내부 LOEO 3폴드, 무작위 40회).</li>
+  <li><code>main</code>(시드 3) → <code>ablate</code>, <code>sweep</code>, <code>channels</code>(시드 1) → <code>report</code>.</li>
+  <li>가설 기록은 이 문서에 E1~ 형식으로 이어 쓰고, 판정 후 논문에 옮긴다. 결과 폴더는 <code>outputs/copl_loeo*/</code>로 추적된다.</li>
 </ol>
 
 <h2 id="risk">8. 미리 적어 두는 위험</h2>

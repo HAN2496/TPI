@@ -5,6 +5,10 @@ outputs/**
 !outputs/loeo*/*/
 !outputs/loeo*/*/**
 outputs/loeo*/*/folds/*.joblib
+!outputs/copl_loeo*/
+!outputs/copl_loeo*/*/
+!outputs/copl_loeo*/*/**
+outputs/copl_loeo*/*/**/*.pt
 datasets/
 
 .claude/

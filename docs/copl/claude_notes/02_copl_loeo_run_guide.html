@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02 · CoPL LOEO 실행 안내</title>
+<style>
+  :root {
+    --bg: #fbfbf9; --fg: #1d1f24; --muted: #5d6270; --line: #e3e3dc;
+    --card: #ffffff; --accent: #1f5f8b; --accent-soft: #e4eef6;
+    --warn: #8a4b08; --warn-soft: #fbeedc; --code: #f1f1ec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14161a; --fg: #e6e6e1; --muted: #a0a4ad; --line: #2c3037;
+      --card: #1b1e24; --accent: #7fb3d9; --accent-soft: #1f2c39;
+      --warn: #e2a463; --warn-soft: #332614; --code: #23272e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --fg: #e6e6e1; --muted: #a0a4ad; --line: #2c3037;
+    --card: #1b1e24; --accent: #7fb3d9; --accent-soft: #1f2c39;
+    --warn: #e2a463; --warn-soft: #332614; --code: #23272e;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 16px/1.7 -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", Roboto, sans-serif; }
+  main { max-width: 920px; margin: 0 auto; padding: 32px 16px 64px; }
+  header { border-bottom: 1px solid var(--line); padding-bottom: 16px; margin-bottom: 28px; }
+  h1 { font-size: 1.7rem; margin: 0 0 6px; line-height: 1.3; }
+  .meta { color: var(--muted); font-size: 0.92rem; }
+  h2 { font-size: 1.3rem; margin: 44px 0 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+  h3 { font-size: 1.08rem; margin: 26px 0 8px; }
+  p { margin: 10px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.93rem; margin: 14px 0; }
+  th, td { border-bottom: 1px solid var(--line); padding: 7px 8px; text-align: left; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }
+  pre { background: var(--code); padding: 12px 14px; border-radius: 8px; overflow-x: auto; font-size: 0.86rem; line-height: 1.5; }
+  ul, ol { padding-left: 22px; }
+  li { margin: 4px 0; }
+  .note { background: var(--accent-soft); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 6px; margin: 14px 0; }
+  .warn { background: var(--warn-soft); border-left: 3px solid var(--warn); padding: 10px 14px; border-radius: 6px; margin: 14px 0; }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>02 · CoPL LOEO 실행 안내</h1>
+  <div class="meta"><code>run_copl_loeo.py</code>의 구조, 스테이지, 명령, 산출물, 결과 공유 절차 · 2026-10-04</div>
+</header>
+
+<h2 id="layout">1. 코드 배치</h2>
+<pre>run_copl_loeo.py                 드라이버 (CLI: --stage --data --timestamp --fast --set key=value)
+reward/copl/loeo/
+  config.py      Config dataclass + FAST 프리셋
+  data.py        로더 재사용(reward/fully_bayesian/loeo/data.py), 채널 부분집합, population/적격 필터
+  encoders.py    새 인코더 scatter / isobank / raw_rbf + 내재 지표(agree_cross, rho_cross, vote AUROC)
+  graph.py       희소화 규칙 topk / mutual / epsilon / dense / cross_forced, 그래프 통계
+  fold.py        한 폴드: prepare_fold(인코더+그래프+정규화) → train_models(GCF, RM) → evaluate_copl(예산·오프셋)
+  baselines.py   PooledCNN(라벨마다 fine-tune), IndepCNN, KNNVote
+  report.py      폴드 json 집계 (T-IV 집계 코드 재사용) + CoPL 전용 표·그림
+reward/copl/dataset.py, gcf.py, trainer.py, rm.py   기존 모델 코드, 수정 없음
+reward/copl/similarity/__init__.py                   레지스트리에 새 인코더 3개가 실행 시 등록됨</pre>
+<p>폴드마다 population 16명으로 인코더, 아이템 그래프, 채널 정규화, GCF, 보상 모형을 적합하고, held-out 스트림은 시간순 반분 뒤 예산 \(t\in\{0,5,10,20,n_{ctx}\}\), 오프셋 3개로 평가한다. 폴드 분할·예산·오프셋·지표 코드는 T-IV 드라이버와 같은 함수를 호출한다.</p>
+
+<h2 id="stages">2. 스테이지</h2>
+<table>
+  <thead><tr><th>스테이지</th><th>하는 일</th><th>산출물</th><th>비용(실데이터, GPU)</th></tr></thead>
+  <tbody>
+    <tr><td><code>encoders</code></td><td>인코더 × 채널 집합마다 내재 지표. GCF·RM 학습 없음</td><td><code>folds/&lt;name&gt;_encoders.json</code>, <code>report/encoders.md</code></td><td>수십 분 (AE/VAE 학습이 대부분)</td></tr>
+    <tr><td><code>tune</code></td><td>population 안 내부 LOEO 3폴드, 무작위 탐색 <code>tune_trials</code>회</td><td><code>folds/&lt;name&gt;_tune.json</code> (best)</td><td>큼: 폴드 10 × 내부 3 × 시도 40</td></tr>
+    <tr><td><code>main</code></td><td>CoPL + Pooled/Indep/KNN-vote, 시드별</td><td><code>folds/&lt;name&gt;.json</code></td><td>폴드당 수 분 × 시드</td></tr>
+    <tr><td><code>ablate</code></td><td>no_item_item / no_adapt / oracle (시드 1)</td><td><code>folds/&lt;name&gt;_ablate.json</code></td><td>main의 3배 / 시드 1</td></tr>
+    <tr><td><code>sweep</code></td><td>규칙 × k × λ_ii. 인코더는 폴드당 1회만 적합</td><td><code>folds/&lt;name&gt;_sweep.json</code></td><td>GCF+RM 재학습 × 격자 크기</td></tr>
+    <tr><td><code>channels</code></td><td>LOCO 5 + a_z 단독 + IMU 3채널, 인코더부터 재적합</td><td><code>folds/&lt;name&gt;_channels.json</code></td><td>main × 7 / 시드 1</td></tr>
+    <tr><td><code>report</code></td><td>전부 집계</td><td><code>report/main.md, *.csv, *.png</code></td><td>초</td></tr>
+  </tbody>
+</table>
+<p><code>--stage all</code>은 encoders, main, ablate, sweep, channels, report 순이다(tune 제외). 끝난 폴드 json은 건너뛰므로 중단 후 같은 <code>--timestamp</code>로 재개할 수 있고, report/ablate/sweep/channels/tune은 <code>--timestamp</code>를 생략하면 같은 <code>run_name</code>의 최신 폴더를 쓴다.</p>
+
+<h2 id="commands">3. 권장 순서와 명령</h2>
+<div class="note">모든 명령은 저장소 루트에서. <code>.venv\Scripts\python.exe</code>는 네 환경에 맞게. GPU가 있으면 자동으로 쓴다(<code>device=auto</code>).</div>
+
+<h3>3.1 인코더·채널 내재 지표 (먼저, GPU 없이도 가능)</h3>
+<pre>.venv\Scripts\python.exe run_copl_loeo.py --stage encoders --set run_name=copl_loeo
+.venv\Scripts\python.exe run_copl_loeo.py --stage report --set run_name=copl_loeo</pre>
+<p>기본은 <code>enc_list=("ae","vae","pca","scatter","isobank","raw_rbf")</code>, <code>enc_channel_sets="loso"</code>(전체 + 채널 하나 뺀 5개 + 단일 5개 + IMU). <code>report/encoders.md</code>의 k별 표에서 <strong>held-out vote MLPD</strong>와 <strong>agree_cross</strong>를 본다.</p>
+
+<h3>3.2 튜닝 (엄밀 모드: 폴드마다 내부 LOEO)</h3>
+<pre>.venv\Scripts\python.exe run_copl_loeo.py --stage tune --set run_name=copl_loeo --set encoder=&lt;3.1에서 고른 것&gt;</pre>
+<p>폴드마다 <code>folds/&lt;name&gt;_tune.json</code>에 best가 저장된다. 이후 스테이지에 <code>--set use_tuned=True</code>를 주면 폴드별 best를 적용한다.</p>
+
+<h3>3.3 확정 실행</h3>
+<pre>.venv\Scripts\python.exe run_copl_loeo.py --stage main --set run_name=copl_loeo --set encoder=&lt;...&gt; --set use_tuned=True --set seeds="(42,43,44)"
+.venv\Scripts\python.exe run_copl_loeo.py --stage ablate   --set run_name=copl_loeo --set encoder=&lt;...&gt; --set use_tuned=True
+.venv\Scripts\python.exe run_copl_loeo.py --stage sweep    --set run_name=copl_loeo --set encoder=&lt;...&gt; --set use_tuned=True
+.venv\Scripts\python.exe run_copl_loeo.py --stage channels --set run_name=copl_loeo --set encoder=&lt;...&gt; --set use_tuned=True
+.venv\Scripts\python.exe run_copl_loeo.py --stage report   --set run_name=copl_loeo</pre>
+
+<h3>3.4 결과 공유</h3>
+<pre>git add outputs
+git commit -m "Add copl_loeo &lt;stage&gt; run"
+git push origin claude_session</pre>
+<p><code>outputs/copl_loeo*/</code>는 추적 대상이고 <code>.pt</code>만 제외된다. run_name은 <code>copl_loeo</code>로 시작해야 한다.</p>
+
+<h2 id="options">4. 자주 바꿀 설정</h2>
+<table>
+  <thead><tr><th>필드</th><th>기본</th><th>의미</th></tr></thead>
+  <tbody>
+    <tr><td><code>channels</code></td><td>5채널 (T-IV와 동일)</td><td>로드할 채널</td></tr>
+    <tr><td><code>graph_channels</code>, <code>rm_channels</code></td><td>() = channels</td><td>인코더가 보는 채널 / 보상 모형이 보는 채널. 분리 검정용</td></tr>
+    <tr><td><code>encoder</code></td><td>ae</td><td>ae, vae, pca, kernel_pca, dtw, scatter, isobank, raw_rbf</td></tr>
+    <tr><td><code>graph_rule</code>, <code>knn_k</code>, <code>cross_min</code></td><td>topk, 30, 0</td><td>희소화 규칙. cross_forced는 이웃 중 최소 cross_min개를 다른 사용자에서</td></tr>
+    <tr><td><code>item_item_weight</code></td><td>0.5</td><td>GCF의 λ_ii</td></tr>
+    <tr><td><code>rm_bayes</code></td><td>none</td><td>ensemble / mc_dropout이면 입자 지표(epistemic 등)와 신뢰 구간이 추가됨</td></tr>
+    <tr><td><code>pooled_ft_epochs</code>, <code>pooled_ft_lr</code>, <code>pooled_ctx_weight</code></td><td>3, 1e-4, 1</td><td>Pooled-CNN을 (t, 오프셋)마다 population+context로 fine-tune</td></tr>
+    <tr><td><code>tune_space</code>, <code>tune_trials</code>, <code>tune_inner_folds</code>, <code>tune_budgets</code></td><td>7개 축, 40, 3, (0,5,10)</td><td>튜닝 탐색 공간과 예산</td></tr>
+    <tr><td><code>seeds</code></td><td>(42,)</td><td>인코더·GCF·RM·baseline 모두 시드별 재학습</td></tr>
+    <tr><td><code>folds</code></td><td>()</td><td>디버그용 held-out 부분집합, 예: <code>--set folds="('강신길',)"</code></td></tr>
+  </tbody>
+</table>
+
+<h2 id="json">5. 폴드 json 구조</h2>
+<pre>name, n, n_pos, budgets_cfg, encoder, graph_rule, knn_k, graph_channels, rm_channels
+copl[t]        시드 평균 지표 (mlpd, auroc, brier, ece, w_entropy, …; rm_bayes면 epi_mean, reliable_frac 등)
+pooled[t], indep[t], knn_vote[t]
+lpd[method][t] holdout 에피소드별 log predictive density (paired 비교용)
+per_seed["copl/42"][t]
+w_u[t]         population 사용자별 적응 가중치 평균 (오프셋·시드 평균)
+graph[seed]    n_edges, rho_cross, mean_degree, n_components, n_isolated_users
+enc_meta[seed], fit_stats, info{n_ctx, n_hold, budgets, offsets}, population_users, cfg_used, seconds</pre>
+<p>T-IV 폴드 json과 같은 키 규약이라 <code>reward/fully_bayesian/loeo/report.py</code>의 집계 함수가 그대로 동작한다. 가명 E1~E10 매핑은 05 문서(fully_bayesian 쪽)와 같다.</p>
+
+<h2 id="smoke">6. 스모크 테스트</h2>
+<pre>python run_copl_loeo.py --stage main --data synthetic --fast --set run_name=copl_smoke
+python run_copl_loeo.py --stage report --data synthetic --fast --set run_name=copl_smoke</pre>
+<p>합성 데이터 5명, 에폭 5로 모든 스테이지가 끝까지 도는지만 확인한다. 성능은 의미 없다.</p>
+
+<div class="warn">
+<strong>알려진 비용 요인.</strong> DTW 인코더는 \(O(N^2T^2)\)라 실데이터 2600창에서는 오래 걸린다. <code>enc_list</code>에서 빼 두었다. tune은 가장 비싸므로 먼저 <code>tune_trials=10</code>으로 한 폴드만(<code>folds=('강신길',)</code>) 돌려 시간을 재고 전체를 계획하는 편이 좋다.
+</div>
+</main>
+</body>
+</html>
