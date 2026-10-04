@@ -32,7 +32,8 @@ class Config:
     seeds: tuple = (42,)
     reliable_w_max: float = 0.3
     # ---- encoder (item similarity)
-    encoder: str = "ae"                        # ae | vae | pca | kernel_pca | dtw | scatter | isobank | raw_rbf
+    encoder: str = "scatter"                   # ae | vae | pca | kernel_pca | dtw | scatter | isobank | raw_rbf
+                                               # scatter chosen from the encoders stage (docs/copl/claude_notes/03, E1)
     enc_list: tuple = ("ae", "vae", "pca", "scatter", "isobank", "raw_rbf")   # stage "encoders"
     enc_channel_sets: str = "loso"             # "full" | "loso" (full + leave-one-channel-out + singles) | "all" (31)
     enc_ks: tuple = (5, 10, 20, 30, 50, 100)   # neighbourhood sizes for the intrinsic metrics

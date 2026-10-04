@@ -194,23 +194,48 @@ def all_neighbors(Z, k, metric="euclidean"):
     return np.argsort(D, axis=1)[:, :k]
 
 
-def intrinsic_metrics(Z, y, owner, ks, metric="euclidean", alpha=1.0):
-    """Per k: agree_cross, agree_cross_excess, rho_cross, vote_auroc, vote_mlpd."""
+def intrinsic_metrics(Z, y, owner, ks, metric="euclidean", alpha=1.0, gamma=None, min_labels=10):
+    """Per k: agree_cross, agree_cross_excess, rho_cross, vote_auroc, vote_mlpd.
+
+    Agreement and the vote are evaluated *per target user* (neighbours drawn from the other users
+    only, weighted like the test-time attachment) and macro-averaged over users with both classes
+    and at least `min_labels` items.  Pooling items of users with different base rates would
+    inflate or deflate AUROC for reasons unrelated to the similarity, so it is avoided.
+    rho_cross is a property of the whole graph and stays global.
+    """
     y = np.asarray(y, int); owner = np.asarray(owner)
-    pi = float(y.mean()); base = max(pi, 1 - pi)
+    Zp = prep(Z, metric)
+    D = _pairwise_sq(Zp)
+    np.fill_diagonal(D, np.inf)
+    if gamma is None:
+        d = np.sqrt(D[np.isfinite(D)])
+        gamma = 1.0 / (2 * np.median(d) ** 2 + 1e-12)
+    same = owner[:, None] == owner[None, :]
+    Dc = D.copy(); Dc[same] = np.inf
+    kmax = min(max(ks), Zp.shape[0] - 1)
+    nbr_cross = np.argsort(Dc, axis=1)[:, :kmax]
+    nbr_all = np.argsort(D, axis=1)[:, :kmax]
+    users = [u for u in np.unique(owner)
+             if (owner == u).sum() >= min_labels and len(np.unique(y[owner == u])) == 2]
     out = {}
-    nbr_cross, _ = cross_neighbors(Z, owner, max(ks), metric)
-    nbr_all = all_neighbors(Z, max(ks), metric)
     for k in ks:
+        k = min(int(k), kmax)
         nc = nbr_cross[:, :k]
-        agree = float(np.mean((y[nc] == y[:, None]).mean(axis=1)))
+        W = np.exp(-gamma * np.take_along_axis(Dc, nc, axis=1))           # same weighting as heldout_vote
         rho = float(np.mean(owner[nbr_all[:, :k]] != owner[:, None]))
-        p = (y[nc].sum(axis=1) + alpha * pi) / (k + alpha)
-        p = np.clip(p, 1e-6, 1 - 1e-6)
-        auc = float(roc_auc_score(y, p)) if len(np.unique(y)) == 2 else float("nan")
-        mlpd = float(np.mean(y * np.log(p) + (1 - y) * np.log(1 - p)))
-        out[int(k)] = dict(agree_cross=agree, agree_cross_excess=agree - base, rho_cross=rho,
-                           vote_auroc=auc, vote_mlpd=mlpd)
+        agrees, excs, aucs, mlpds = [], [], [], []
+        for u in users:
+            m = owner == u
+            yu = y[m]; pi_u = float(yu.mean())
+            ag = float(np.mean((y[nc[m]] == yu[:, None]).mean(axis=1)))
+            p = ((W[m] * y[nc[m]]).sum(1) + alpha * pi_u) / (W[m].sum(1) + alpha)
+            p = np.clip(p, 1e-6, 1 - 1e-6)
+            agrees.append(ag); excs.append(ag - max(pi_u, 1 - pi_u))
+            aucs.append(float(roc_auc_score(yu, p)))
+            mlpds.append(float(np.mean(yu * np.log(p) + (1 - yu) * np.log(1 - p))))
+        out[int(k)] = dict(agree_cross=float(np.mean(agrees)), agree_cross_excess=float(np.mean(excs)),
+                           rho_cross=rho, vote_auroc=float(np.mean(aucs)), vote_mlpd=float(np.mean(mlpds)),
+                           n_users=len(users))
     return out
 
 

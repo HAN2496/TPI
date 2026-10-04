@@ -181,7 +181,8 @@ def stage_encoders(cfg, run, data, channels, fs, names, device):
                     y_pop[ids] = yy
                 metric = E.latent_metric(gds.sim_builder)
                 pop = E.intrinsic_metrics(gds.Z_train, y_pop, gds.item_owner_uid, cfg.enc_ks, metric=metric,
-                                          alpha=cfg.knn_vote_alpha)
+                                          alpha=cfg.knn_vote_alpha, min_labels=cfg.min_labels,
+                                          gamma=None if metric == "cosine" else getattr(gds.sim_builder, "gamma", None))
                 Zq = gds.sim_builder.transform_test(gds.norm(X_held[:, :, fd.gidx])[hold_idx])
                 held = {}
                 yh = y_held[hold_idx]
