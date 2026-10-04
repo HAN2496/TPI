@@ -49,6 +49,8 @@ def build_graph(Z, owner, rule="topk", k=30, metric="euclidean", gamma=None, tem
             ok = np.isfinite(np.take_along_axis(Dc, nbr_c, axis=1)).reshape(-1)
             rows = np.concatenate([rows, np.repeat(np.arange(N), kc)[ok]])
             cols = np.concatenate([cols, nbr_c.reshape(-1)[ok]])
+            pairs = np.unique(np.stack([rows, cols], axis=1), axis=0)      # coalesce() would sum duplicates
+            rows, cols = pairs[:, 0], pairs[:, 1]
         mutual = rule == "mutual"
     elif rule == "epsilon":
         m = int(edges_per_node or k) * N              # match the edge count of top-k

@@ -635,8 +635,9 @@ def stage_compare(cfg, run):
 # ----------------------------------------------------------------------------- main
 def main(cfg=None):
     cfg = cfg or Config()
-    if cfg.fast:
-        cfg = replace(cfg, **FAST)
+    if cfg.fast:                                # FAST only fills fields the caller left at their defaults
+        dflt = Config()
+        cfg = replace(cfg, **{k: v for k, v in FAST.items() if getattr(cfg, k) == getattr(dflt, k)})
     if cfg.timestamp is None and cfg.stage in ("report", "select", "sensors"):
         # these stages only read fold results; default to the latest run folder of this run_name
         # instead of creating an empty new one

@@ -53,12 +53,14 @@ def _write(obj, path):
 
 def _tuned(cfg, run, name):
     """Apply folds/<name>_tune.json if requested and present."""
+    if not cfg.use_tuned:
+        return cfg
     p = run.dir / "folds" / f"{name}_tune.json"
-    if cfg.use_tuned and p.exists():
-        best = json.loads(p.read_text(encoding="utf-8"))["best"]
-        log(cfg, f"[tune] {name}: using {best}")
-        return replace(cfg, **best)
-    return cfg
+    rec = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    if "best" not in rec:
+        raise SystemExit(f"use_tuned=True but {p} has no result; run --stage tune first (same run folder)")
+    log(cfg, f"[tune] {name}: using {rec['best']}")
+    return replace(cfg, **rec["best"])
 
 
 # ----------------------------------------------------------------------------- stage: main
@@ -235,8 +237,8 @@ def stage_tune(cfg, run, data, channels, fs, names, device):
                     cache[inner_name] = FD.prepare_fold(replace(cfg, seed=seed), in_data, in_pop, channels, fs, device)
                 fd = cache[inner_name]
                 c = replace(cfg, **tr, graph_rule="topk", cross_min=0)
-                if c.knn_k != fd.cfg.knn_k:
-                    fd.rebuild_graph(c)
+                if (c.knn_k, c.graph_rule, c.cross_min) != (fd.cfg.knn_k, fd.cfg.graph_rule, fd.cfg.cross_min):
+                    fd.rebuild_graph(c)                     # trials are all scored on the same rule
                 models = FD.train_models(c, fd, device, seed, verbose=0)
                 res, _, _, _ = FD.evaluate_copl(c, fd, models, *pop_data[inner_name], seed, device,
                                                 budgets=list(cfg.tune_budgets))
@@ -275,8 +277,9 @@ def stage_report(cfg, run):
         CR.report_encoders(fe, rep)
     ft = CR.load_folds(run.dir, "_tune")
     if ft:
-        R.write_csv([dict(fold=n, best_score=f.get("best_score"), **(f.get("best") or {})) for n, f in ft.items()],
-                    rep / "tune_best.csv")
+        rows = [dict(fold=n, best_score=f.get("best_score"), **(f.get("best") or {})) for n, f in ft.items()]
+        keys = sorted({k for r in rows for k in r}, key=lambda k: (k not in ("fold", "best_score"), k))
+        R.write_csv([{k: r.get(k) for k in keys} for r in rows], rep / "tune_best.csv")
     _write(summary, rep / "summary.json")
     log(cfg, f"[report] written to {rep}")
 
@@ -287,9 +290,10 @@ READ_ONLY = ("report", "ablate", "sweep", "channels", "tune")
 
 def main(cfg=None):
     cfg = cfg or Config()
-    if cfg.fast:
-        cfg = replace(cfg, **FAST)
-    if cfg.timestamp is None and cfg.stage in READ_ONLY:
+    if cfg.fast:                                # FAST only fills fields the caller left at their defaults
+        dflt = Config()
+        cfg = replace(cfg, **{k: v for k, v in FAST.items() if getattr(cfg, k) == getattr(dflt, k)})
+    if cfg.timestamp is None and (cfg.stage in READ_ONLY or cfg.use_tuned):   # tuned main must reuse the tune folder
         existing = sorted(p.name for p in (Path("outputs") / cfg.run_name).glob("*")
                           if p.is_dir() and (p / "folds").is_dir() and p.name != "test")
         if existing and cfg.stage == "report" and not any((Path("outputs") / cfg.run_name / existing[-1] / "folds").glob("*.json")):
@@ -339,7 +343,7 @@ def parse_args():
     if a.fast: over["fast"] = True
     for kv in a.set:
         k, _, v = kv.partition("=")
-        if not hasattr(Config, k):
+        if k not in Config.__dataclass_fields__:              # hasattr misses default_factory fields
             raise SystemExit(f"unknown config field {k!r}")
         try:
             over[k] = ast.literal_eval(v)

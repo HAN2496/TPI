@@ -59,18 +59,22 @@ class CoPLGCFTrainer:
 
         n_epochs = self.config['gcf_epochs']
         metrics = defaultdict(list)
+        has_val = len(va_y_np) >= 2 and len(np.unique(va_y_np)) == 2   # otherwise keep the last state
 
         for epoch in range(n_epochs):
             loss = self.train_epoch(tr_u_t, tr_i_t, tr_y_t, pos_weight)
-            val_loss, val_auc = self.evaluate(va_u_t, va_i_t, va_y_np)
+            if has_val:
+                val_loss, val_auc = self.evaluate(va_u_t, va_i_t, va_y_np)
+            else:
+                val_loss, val_auc = loss, float('nan')
 
             metrics['train/loss'].append(loss)
             metrics['val/loss'].append(val_loss)
             metrics['val/auc'].append(val_auc)
 
-            if val_auc > self.best_auc:
+            if has_val and val_auc > self.best_auc:
                 self.best_auc = val_auc
-            if val_loss < self.best_val_loss:
+            if (not has_val) or val_loss < self.best_val_loss:
                 self.best_val_loss = val_loss
                 self.best_state_dict = {k: v.cpu() for k, v in self.model.state_dict().items()}
 
@@ -156,17 +160,23 @@ class CoPLRMTrainer:
 
         n_epochs = self.config['rm_epochs']
         metrics = defaultdict(list)
+        va_y_all = np.concatenate([b[2].numpy() for b in val_loader]) if len(val_loader) else np.array([])
+        has_val = len(va_y_all) >= 2 and len(np.unique(va_y_all)) == 2   # otherwise keep the last state
 
         for epoch in range(n_epochs):
             train_loss = self.train_epoch(train_loader, E_u_train, pos_weight)
-            val_auc, val_loss = self.evaluate(val_loader, E_u_train)
+            if has_val:
+                val_auc, val_loss = self.evaluate(val_loader, E_u_train)
+            else:
+                val_auc, val_loss = float('nan'), train_loss
 
             metrics['train/loss'].append(train_loss)
             metrics['val/loss'].append(val_loss)
             metrics['val/auc'].append(val_auc)
 
-            if val_auc > self.best_auc:
-                self.best_auc = val_auc
+            if (not has_val) or val_auc > self.best_auc:
+                if has_val:
+                    self.best_auc = val_auc
                 self.best_state_dict = {k: v.cpu() for k, v in self.model.state_dict().items()}
 
             if verbose > 0 and (epoch % 5 == 0 or epoch == n_epochs - 1):

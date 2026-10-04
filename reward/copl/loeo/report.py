@@ -163,19 +163,18 @@ def md_variant_table(rows, label_key, title):
 def report_encoders(folds, rep):
     """Intrinsic metrics per (encoder, channel set, k): macro over folds."""
     rows = []
-    combos = sorted({(enc, cs) for f in folds.values() for enc in f["encoders"] for cs in f["encoders"][enc]})
+    combos = sorted({(enc, cs) for f in folds.values() for enc in f["encoders"]
+                     for cs, v in f["encoders"][enc].items() if "error" not in v})
     for enc, cs in combos:
         ks = sorted({int(k) for f in folds.values() for k in f["encoders"].get(enc, {}).get(cs, {}).get("pop", {})})
         for k in ks:
             row = dict(encoder=enc, channel_set=cs, k=k)
-            for met in ("agree_cross", "agree_cross_excess", "rho_cross", "vote_auroc", "vote_mlpd"):
-                vals = [f["encoders"][enc][cs]["pop"][str(k)][met] for f in folds.values()
-                        if cs in f["encoders"].get(enc, {}) and str(k) in f["encoders"][enc][cs]["pop"]]
-                row[met], row[met + "_se"], _ = M.macro(vals)
-            for met in ("heldout_vote_auroc", "heldout_vote_mlpd"):
-                vals = [f["encoders"][enc][cs]["held"][str(k)][met] for f in folds.values()
-                        if cs in f["encoders"].get(enc, {}) and str(k) in f["encoders"][enc][cs].get("held", {})]
-                row[met], row[met + "_se"], _ = M.macro(vals)
+            for side, mets in (("pop", ("agree_cross", "agree_cross_excess", "rho_cross", "vote_auroc", "vote_mlpd")),
+                               ("held", ("heldout_vote_auroc", "heldout_vote_mlpd"))):
+                for met in mets:
+                    vals = [f["encoders"][enc][cs][side][str(k)][met] for f in folds.values()
+                            if str(k) in f["encoders"].get(enc, {}).get(cs, {}).get(side, {})]   # skips failed entries
+                    row[met], row[met + "_se"], _ = M.macro(vals)
             rows.append(row)
     R.write_csv(rows, rep / "encoders.csv")
     md = ["# Encoder study (intrinsic metrics, macro over folds)"]

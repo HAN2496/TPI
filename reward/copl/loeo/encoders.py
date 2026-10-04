@@ -218,24 +218,27 @@ def intrinsic_metrics(Z, y, owner, ks, metric="euclidean", alpha=1.0, gamma=None
     users = [u for u in np.unique(owner)
              if (owner == u).sum() >= min_labels and len(np.unique(y[owner == u])) == 2]
     out = {}
-    for k in ks:
-        k = min(int(k), kmax)
+    for k_req in ks:
+        k = min(int(k_req), kmax)
         nc = nbr_cross[:, :k]
-        W = np.exp(-gamma * np.take_along_axis(Dc, nc, axis=1))           # same weighting as heldout_vote
+        Dn = np.take_along_axis(Dc, nc, axis=1)
+        valid = np.isfinite(Dn)                                           # a user owning > N-k items pads with its own items
+        W = np.where(valid, np.exp(-gamma * np.where(valid, Dn, 0.0)), 0.0)  # same weighting as heldout_vote
         rho = float(np.mean(owner[nbr_all[:, :k]] != owner[:, None]))
         agrees, excs, aucs, mlpds = [], [], [], []
         for u in users:
             m = owner == u
             yu = y[m]; pi_u = float(yu.mean())
-            ag = float(np.mean((y[nc[m]] == yu[:, None]).mean(axis=1)))
+            eq = (y[nc[m]] == yu[:, None]) & valid[m]
+            ag = float(np.mean(eq.sum(axis=1) / np.maximum(valid[m].sum(axis=1), 1)))
             p = ((W[m] * y[nc[m]]).sum(1) + alpha * pi_u) / (W[m].sum(1) + alpha)
             p = np.clip(p, 1e-6, 1 - 1e-6)
             agrees.append(ag); excs.append(ag - max(pi_u, 1 - pi_u))
             aucs.append(float(roc_auc_score(yu, p)))
             mlpds.append(float(np.mean(yu * np.log(p) + (1 - yu) * np.log(1 - p))))
-        out[int(k)] = dict(agree_cross=float(np.mean(agrees)), agree_cross_excess=float(np.mean(excs)),
-                           rho_cross=rho, vote_auroc=float(np.mean(aucs)), vote_mlpd=float(np.mean(mlpds)),
-                           n_users=len(users))
+        out[int(k_req)] = dict(agree_cross=float(np.mean(agrees)), agree_cross_excess=float(np.mean(excs)),
+                               rho_cross=rho, vote_auroc=float(np.mean(aucs)), vote_mlpd=float(np.mean(mlpds)),
+                               n_users=len(users), k_effective=int(k))
     return out
 
 
