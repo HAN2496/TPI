@@ -108,17 +108,22 @@
   <li><strong>H2.3은 뒤집힌 형태로 성립.</strong> scattering은 AE와 "비슷한" 것이 아니라 모든 인코더 중 가장 좋다(AUROC 0.72, T-IV 계층 모형의 cold start 0.707과 같은 수준을 GCF·RM 없이 kNN 투표만으로 낸다). 고정 표현이라 시드 분산도 없다. <strong>이후 단계의 인코더는 scatter로 확정.</strong></li>
   <li><strong>H3b.1 부분 지지.</strong> Pitch나 LongAccel을 빼면 전체보다 조금 낫고(−0.663 vs −0.677, SE 안), VerAccel을 빼면 분명히 나쁘다(−0.710). \(a_z\) 단독은 전체와 같다. T-IV의 "수직 가속도가 핵심" 결론이 신경망 쪽 표현에서도 재현된다. 다만 IMU 3채널의 AUROC(0.739)가 가장 높아 "그래프는 \(a_z\) 하나"보다 "IMU 3채널"이 그래프 채널로 유리할 수 있다. 3b절 3단계(분리 검정)에서 가른다.</li>
   <li><strong>k.</strong> 모든 인코더에서 k=5는 나쁘고 k≥30에서 안정된다. 그러나 AE/VAE는 k가 커질수록 MLPD가 좋아지기만 하는데, 이는 투표가 기저율로 수렴하기 때문이지 이웃이 정보적이어서가 아니다. k sweep(RQ3)에서는 MLPD와 AUROC를 같이 봐야 한다.</li>
-  <li><strong>H2.1 보류.</strong> 이번 실행의 population 쪽 내재 지표(agree_cross, pop vote AUROC)는 16명의 아이템을 한 덩어리로 섞어 계산했다. 사용자마다 양성 비율이 다르면(E2 76%, E4 24%) 덩어리 AUROC는 유사도와 무관하게 왜곡되고, agree_cross의 기저율도 흐려진다. 그래서 agree_cross가 모든 인코더에서 0.50~0.53으로 기저율 아래였고, held-out 지표(사용자별 계산)와 Spearman 0.32밖에 안 났다. 코드를 사용자별 계산 후 macro로 고쳤다(<code>intrinsic_metrics</code>). 재실행 후 다시 판정한다.</li>
+  <li><strong>H2.1 지지 (재실행 후).</strong> 첫 실행의 population 지표는 16명의 아이템을 한 덩어리로 섞어 계산해 사용자별 양성 비율 차이(E2 76%, E4 24%)에 왜곡됐었다. 사용자별로 계산해 macro 평균하도록 고친 재실행(<code>outputs/copl_loeo/20261005_022135</code>)에서, 72개 (인코더, 채널 집합) 조합에 걸친 Spearman 상관은 population 투표 AUROC 대 held-out 투표 AUROC가 <strong>0.78</strong>, agree_cross 대 held-out AUROC가 0.64, MLPD끼리는 0.51이다. 즉 population 안에서 GCF 없이 계산한 투표 AUROC로 인코더·채널을 고를 수 있다. 다만 agree_cross 자체는 모든 인코더에서 0.50~0.53으로 사용자별 다수 클래스 비율(0.65 안팎)보다 낮다. 다른 사용자의 라벨은 기저율이 달라 원시 일치율로는 신호가 안 보이고, 사용자별 AUROC가 맞는 지표다. 논문에는 agree_cross를 빼고 투표 AUROC를 내재 지표로 쓴다.</li>
+  <li><strong>population 지표와 held-out 지표의 순위는 비슷하되 같지는 않다.</strong> population 투표 AUROC(k=30, 전체 채널)는 isobank 0.656 &gt; scatter 0.631 &gt; raw 0.616 &gt; pca 0.589 &gt; vae 0.522 &gt; ae 0.504이고, held-out에서는 scatter 0.719가 isobank 0.608을 크게 앞선다. 두 지표 모두 AE/VAE를 최하위에 두는 점은 같다. 인코더 선택은 실제 목표인 held-out 쪽을 따라 scatter로 유지한다.</li>
 </ul>
+
+<h2 id="E0">E0. 튜닝 비용 측정 <span class="verdict ok-v">전체 tune 가능</span></h2>
+<p class="meta">실행 <code>outputs/copl_loeo_tuneprobe/20261005_021615</code> · 폴드 강신길 1개 · 내부 held-out 이지환, 박재일, 한규택 · 시도 3회</p>
+<p>인코더 준비 3회 + GCF·RM 학습 9회가 140초. 학습 1회 약 15초이므로 전체 tune(폴드 10 × 내부 3 × 시도 40 = 1200회)은 약 5시간이다. 시도 간 점수 차이가 크다(−0.644, −0.766, −0.815). 특히 adapt_user_softmax_temp와 학습률이 결과를 크게 바꾸므로 튜닝은 생략할 수 없다. 첫 시도의 설정(emb 16, λ_ii 2.0, k 10, temp 0.5, neg 0.5, gcf_lr 2e-4, rm_lr 1e-3)이 가장 좋았으나 3회로는 결론 없음.</p>
 <div class="note">
-<strong>다음 실행.</strong> (1) population 내재 지표 재계산을 위한 encoders 재실행(약 2시간, 급하지 않음, 논문의 내재-외재 상관 그림용). (2) <code>encoder=scatter</code>로 tune 비용 측정 후 전체 tune. 둘은 독립이라 병렬로 돌려도 된다.
+<strong>다음 실행.</strong> encoders 재실행 폴더(<code>20261005_022135</code>)에 이어서 <code>tune</code> 전체(약 5시간) → <code>main --set use_tuned=True --set seeds="(42,43,44)"</code> → ablate / sweep / channels → report.
 </div>
 
 <h2 id="status">가설 현황표</h2>
 <table>
   <thead><tr><th>ID</th><th>가설</th><th>판정</th><th>근거</th><th>논문 반영</th></tr></thead>
   <tbody>
-    <tr><td>H2.1</td><td>내재 지표가 외재 성능과 상관</td><td>보류 (지표 수정 후 재판정)</td><td>E1</td><td>인코더 절의 산점도</td></tr>
+    <tr><td>H2.1</td><td>내재 지표가 외재 성능과 상관</td><td>지지 (투표 AUROC, Spearman 0.78; agree_cross는 부적합)</td><td>E1 재실행</td><td>인코더 절의 산점도</td></tr>
     <tr><td>H2.2</td><td>ISO bank ≥ AE/VAE</td><td>지지 (AE, VAE가 최하위)</td><td>E1</td><td>인코더 표, 기본값 변경</td></tr>
     <tr><td>H2.3</td><td>scattering ≈ AE</td><td>뒤집혀 성립 (scattering이 최선)</td><td>E1</td><td>인코더 확정 = scatter</td></tr>
     <tr><td>H3b.1</td><td>그래프 채널은 좁게</td><td>부분 지지 (VerAccel 필수, Pitch/Long 제거 유리)</td><td>E1</td><td>채널 절</td></tr>
