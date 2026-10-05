@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07 · Fully Bayesian 작업 최종 정리</title>
+<script>
+  MathJax = { tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+              options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] } };
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<style>
+  :root {
+    --bg: #fbfbf9; --fg: #1d1f24; --muted: #5d6270; --line: #e3e3dc;
+    --card: #ffffff; --accent: #1f5f8b; --accent-soft: #e4eef6;
+    --warn: #8a4b08; --warn-soft: #fbeedc; --ok: #2b6a3f; --ok-soft: #e3f1e6;
+    --bad: #8b2b2b; --bad-soft: #f6e3e3; --code: #f1f1ec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14161a; --fg: #e6e6e1; --muted: #a0a4ad; --line: #2c3037;
+      --card: #1b1e24; --accent: #7fb3d9; --accent-soft: #1f2c39;
+      --warn: #e2a463; --warn-soft: #332614; --ok: #8fd19f; --ok-soft: #16301e;
+      --bad: #e08a8a; --bad-soft: #3a1f1f; --code: #23272e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --fg: #e6e6e1; --muted: #a0a4ad; --line: #2c3037;
+    --card: #1b1e24; --accent: #7fb3d9; --accent-soft: #1f2c39;
+    --warn: #e2a463; --warn-soft: #332614; --ok: #8fd19f; --ok-soft: #16301e;
+    --bad: #e08a8a; --bad-soft: #3a1f1f; --code: #23272e;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 16px/1.7 -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", Roboto, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 32px 16px 64px; }
+  header { border-bottom: 1px solid var(--line); padding-bottom: 16px; margin-bottom: 28px; }
+  h1 { font-size: 1.7rem; margin: 0 0 6px; line-height: 1.3; }
+  .meta { color: var(--muted); font-size: 0.92rem; }
+  h2 { font-size: 1.3rem; margin: 44px 0 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+  h3 { font-size: 1.05rem; margin: 26px 0 8px; }
+  p { margin: 10px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; margin: 14px 0; }
+  th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }
+  pre { background: var(--code); padding: 12px 14px; border-radius: 8px; overflow-x: auto; font-size: 0.88rem; line-height: 1.5; }
+  ul, ol { padding-left: 22px; }
+  li { margin: 4px 0; }
+  .note { background: var(--accent-soft); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 6px; margin: 14px 0; }
+  .warn { background: var(--warn-soft); border-left: 3px solid var(--warn); padding: 10px 14px; border-radius: 6px; margin: 14px 0; }
+  .ok { color: var(--ok); font-weight: 600; } .bad { color: var(--bad); font-weight: 600; } .part { color: var(--warn); font-weight: 600; }
+  .toc { columns: 2; column-gap: 32px; font-size: 0.95rem; }
+  .toc li { break-inside: avoid; }
+  mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; margin: 10px 0 !important; }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>07 · Fully Bayesian 작업 최종 정리</h1>
+  <div class="meta">
+    무엇을 만들었고 무엇을 돌렸고 어떤 수치가 나왔는지 · 2026-10-05 ·
+    논문 <code>docs/fully_bayesian/my_papers/main.tex</code> · 수치 출처 <code>outputs/loeo_final/20261002_165129</code> 외 (10절)
+  </div>
+</header>
+
+<ul class="toc">
+  <li><a href="#sum">0. 한 줄 요약</a></li>
+  <li><a href="#problem">1. 문제 설정</a></li>
+  <li><a href="#model">2. 모형과 추론</a></li>
+  <li><a href="#unc">3. 불확실성</a></li>
+  <li><a href="#feat">4. 피처 bank와 선택</a></li>
+  <li><a href="#code">5. 코드 구성</a></li>
+  <li><a href="#protocol">6. 데이터와 프로토콜</a></li>
+  <li><a href="#history">7. 실험 이력 E1–E9</a></li>
+  <li><a href="#results">8. 최종 결과 수치</a></li>
+  <li><a href="#paper">9. 논문 반영 상태와 남은 일</a></li>
+  <li><a href="#runs">10. 실행 식별자</a></li>
+</ul>
+
+<h2 id="sum">0. 한 줄 요약</h2>
+<p>
+  평가자별 로지스틱 계수에 정규 population 사전분포를 두고 NIW와 spike-and-slab까지 전부 Gibbs로 적분하는 계층 모형을 만들었다.
+  새 평가자는 population posterior predictive에서 시작해(cold start) Pólya–Gamma 갱신으로 개인화되고, posterior를 particle로 유지하므로
+  예측마다 epistemic/aleatoric 분해와 평가자 단위 신뢰 구간이 나온다. 실차 bump 2627 에피소드, 평가자 17명(적격 10명) LOEO에서
+  cold start는 pooled와 동등 이상(MLPD −0.692 vs −0.717), 라벨 20개에서 pooled보다 0.142 nat 좋고, indep는 t≤20 내내 cold start보다 나쁘다.
+  epistemic은 단조 감소하며 t=20부터 오답을 가려내고, 센서는 수직 가속도 하나로 충분하다.
+</p>
+
+<h2 id="problem">1. 문제 설정</h2>
+<p>평가자 \(u=1,\dots,U\), 에피소드 \(i\), 피처 \(\mathbf z_{ui}=\phi(\tau_{ui})\in\mathbb R^d\) (절편 포함), 라벨 \(y_{ui}\in\{0,1\}\) (1 = good).</p>
+\[
+y_{ui}\sim\mathrm{Bernoulli}\big(\sigma(\boldsymbol\theta_u^\top\mathbf z_{ui})\big),\qquad
+\sigma(a)=\frac{1}{1+e^{-a}}
+\]
+<p>새 평가자 \(\star\)가 라벨 \(t\)개 \(\mathcal D_{\star,t}\)를 준 상태에서 미결 에피소드 \(j\)의 판단 확률을 예측한다.</p>
+\[
+p(y_{\star j}=1\mid\mathbf z_{\star j},\mathcal D_{\star,t},\mathcal D_{1:U})
+\]
+<p>\(t=0\)이 cold start, \(t\)가 늘어나는 과정이 sequential personalization이다. 요구 사항은 (i) population에서 새 평가자로 전이되는 표현, (ii) 작은 \(t\)에서의 갱신, (iii) 모든 \(t\)에서의 불확실성 정량화, 부수적으로 (iv) 어떤 피처와 센서가 필요한가.</p>
+
+<h2 id="model">2. 모형과 추론</h2>
+
+<h3>2.1 계층 사전분포</h3>
+\[
+\boldsymbol\theta_u=\boldsymbol\gamma\odot\tilde{\boldsymbol\theta}_u,\qquad
+\tilde{\boldsymbol\theta}_u\mid\boldsymbol\mu,\boldsymbol\Sigma\sim\mathcal N(\boldsymbol\mu,\boldsymbol\Sigma),\qquad
+(\boldsymbol\mu,\boldsymbol\Sigma)\sim\mathrm{NIW}(\mathbf m_0,\kappa_0,\nu_0,\boldsymbol\Lambda_0)
+\]
+\[
+\gamma_j=\gamma_g\ (j\in\mathcal C_g),\qquad \gamma_g\mid\pi\sim\mathrm{Bernoulli}(\pi),\qquad \pi\sim\mathrm{Beta}(1,1)
+\]
+<p>\(\mathbf m_0=\mathbf 0,\ \kappa_0=1,\ \nu_0=d+2,\ \boldsymbol\Lambda_0=\lambda_0\mathbf I,\ \lambda_0=1\) (피처가 표준화되어 있으므로). 마스크 \(\boldsymbol\gamma\)는 평가자 공통이다: \(\gamma_g=0\)은 "population의 누구도 그룹 \(g\)를 쓰지 않는다"는 뜻이고, 개인차는 \(\boldsymbol\Sigma\)로 표현된다. 그룹은 피처 하나(피처 수준) 또는 채널의 모든 피처(센서 수준)다. \(\boldsymbol\gamma\equiv\mathbf 1\)이면 HB-full, 포함 사전분포까지 켠 것이 proposed(reference model)다.</p>
+
+<h3>2.2 Pólya–Gamma Gibbs</h3>
+<p>\(\kappa_{ui}=y_{ui}-\tfrac12\), \(\omega_{ui}\sim\mathrm{PG}(1,\mathbf z_{ui}^\top\boldsymbol\theta_u)\), \(\boldsymbol\Omega_u=\mathrm{diag}(\boldsymbol\omega_u)\). 한 sweep은</p>
+\[
+\mathbf A_u=\mathbf Z_u^\top\boldsymbol\Omega_u\mathbf Z_u+\boldsymbol\Sigma^{-1},\qquad
+\mathbf m_u=\mathbf A_u^{-1}\big(\mathbf Z_u^\top\boldsymbol\kappa_u+\boldsymbol\Sigma^{-1}\boldsymbol\mu\big),\qquad
+\boldsymbol\theta_u\mid\cdot\sim\mathcal N(\mathbf m_u,\mathbf A_u^{-1})
+\]
+\[
+\kappa_n=\kappa_0+U,\quad \nu_n=\nu_0+U,\quad
+\mathbf m_n=\frac{\kappa_0\mathbf m_0+U\bar{\boldsymbol\theta}}{\kappa_n},\quad
+\boldsymbol\Lambda_n=\boldsymbol\Lambda_0+\mathbf S+\frac{\kappa_0U}{\kappa_n}(\bar{\boldsymbol\theta}-\mathbf m_0)(\bar{\boldsymbol\theta}-\mathbf m_0)^\top,\quad
+(\boldsymbol\mu,\boldsymbol\Sigma)\mid\cdot\sim\mathrm{NIW}(\mathbf m_n,\kappa_n,\nu_n,\boldsymbol\Lambda_n)
+\]
+<p>마스크가 있으면 설계가 \(\mathbf X_u=\mathbf Z_u\,\mathrm{diag}(\boldsymbol\gamma)\)로 바뀌고, 그룹 \(g\)의 포함은 증강 우도로 닫힌 형태의 Bernoulli 갱신이 된다. \(c_{ui}\)를 그룹 \(g\)의 선형예측자 기여, \(h_{ui}\)를 그룹을 뺀 선형예측자라 하면</p>
+\[
+\ell_g=\sum_{u}\sum_{i}\Big[\kappa_{ui}c_{ui}-\tfrac12\omega_{ui}\big(2h_{ui}c_{ui}+c_{ui}^2\big)\Big],\qquad
+p(\gamma_g=1\mid\cdot)=\sigma\!\Big(\log\tfrac{\pi}{1-\pi}+\ell_g\Big),\qquad
+\pi\mid\boldsymbol\gamma\sim\mathrm{Beta}\big(1+\textstyle\sum_g\gamma_g,\ 1+G-\sum_g\gamma_g\big)
+\]
+<p>burn-in \(B=500\), 보존 \(M=1500\) sweep. 보존된 \(\{(\boldsymbol\mu^{(m)},\boldsymbol\Sigma^{(m)},\boldsymbol\gamma^{(m)},\boldsymbol\theta^{(m)}_{1:U})\}_{m=1}^M\)이 population posterior이며 어떤 단계에서도 점으로 축약하지 않는다. PIP는 \(M^{-1}\sum_m\gamma_g^{(m)}\).</p>
+
+<h3>2.3 Cold start와 개인화</h3>
+\[
+p(\boldsymbol\theta_\star\mid\mathcal D_{1:U})=\int\mathcal N(\boldsymbol\theta_\star;\boldsymbol\mu,\boldsymbol\Sigma)\,p(\boldsymbol\mu,\boldsymbol\Sigma\mid\mathcal D_{1:U})\,d\boldsymbol\mu\,d\boldsymbol\Sigma
+\quad\Longrightarrow\quad
+\tilde{\boldsymbol\theta}^{(m)}_\star\sim\mathcal N(\boldsymbol\mu^{(m)},\boldsymbol\Sigma^{(m)}),\ \
+\boldsymbol\theta^{(m)}_\star=\boldsymbol\gamma^{(m)}\odot\tilde{\boldsymbol\theta}^{(m)}_\star
+\]
+<p>particle \(m\)마다 \((\boldsymbol\mu^{(m)},\boldsymbol\Sigma^{(m)},\boldsymbol\gamma^{(m)})\)을 고정하고 \(\mathcal D_{\star,t}\)로 PG sweep \(n_{\mathrm{it}}=8\)회를 돌린다 (이전 예산에서 warm start). 비용은 particle당 \(d\times d\) Cholesky 하나이고 \(m\)에 대해 병렬이다. 예측은 particle 평균이다.</p>
+\[
+p^{(m)}_{\star j,t}=\sigma\big(\mathbf z_{\star j}^\top\boldsymbol\theta^{(m)}_{\star,t}\big),\qquad
+\hat p_{\star j,t}=\frac1M\sum_{m=1}^M p^{(m)}_{\star j,t}
+\]
+
+<h2 id="unc">3. 불확실성</h2>
+<p>전체 분산 법칙으로 Bernoulli 분산을 정확히 둘로 나눈다.</p>
+\[
+\underbrace{\hat p_j(1-\hat p_j)}_{\text{total}}
+=\underbrace{\mathbb E_m\big[p^{(m)}_j(1-p^{(m)}_j)\big]}_{U^{\mathrm{ale}}_j}
++\underbrace{\mathrm{Var}_m\big(p^{(m)}_j\big)}_{U^{\mathrm{epi}}_j}
+\]
+<p>\(U^{\mathrm{ale}}\)는 평가자 자신의 판단이 동전 던지기에 가까운 정도(피드백으로 안 줄어듦), \(U^{\mathrm{epi}}\)는 particle 간 불일치(개인화되면 줄어듦). holdout 평균 \(\bar U^{\mathrm{epi}}(t),\bar U^{\mathrm{ale}}(t)\)를 곡선으로 보고한다.</p>
+<p>평가자 단위 신뢰 구간: replicate \(r=1..K\) (\(K=600\))마다 particle \(m_r\)과 holdout bootstrap \(\mathrm{idx}_r\)을 뽑아 \(A_r=\mathrm{AUROC}(y[\mathrm{idx}_r],p^{(m_r)}[\mathrm{idx}_r])\), 2.5/97.5 백분위가 \([\mathrm{AUROC}_{\mathrm{lo}},\mathrm{AUROC}_{\mathrm{hi}}]\).</p>
+\[
+\text{reliable}(t)\iff \mathrm{AUROC}_{\mathrm{lo}}(t)>\tfrac12\ \wedge\ \mathrm{AUROC}_{\mathrm{hi}}(t)-\mathrm{AUROC}_{\mathrm{lo}}(t)<w_{\max},\qquad w_{\max}=0.3
+\]
+<p>Jensen 수축 진단용 plug-in 예측도 같이 계산한다: \(\tilde p_j=\sigma(\mathbf z_j^\top\bar{\boldsymbol\theta})\), \(|\hat p_j-\tfrac12|\le|\tilde p_j-\tfrac12|\).</p>
+
+<h2 id="feat">4. 피처 bank와 선택</h2>
+<p>채널 5개(\(a_x,a_y,a_z\): IMU 가속도; \(\dot z,\dot\theta\): 6D bounce/pitch rate), 창 −2~+2 s, 10 Hz 저역통과 후 50 Hz, \(T=200\). 통계 다섯 계열: 진폭(abs peak, p2p, 95% of \(|x|\)), 에너지(RMS, sd, impulse), 형태(crest, 4제곱 dose, 1초 running RMS max), ISO 가중 RMS(\(W_k,W_d,W_e\)), 밴드(0.5–5 Hz RMS, 1–2 / 4–8 Hz 상대 에너지). rate 채널은 미분값에도 적용.</p>
+<p>중복 제거: population 에피소드에서 같은 채널 내 \(|\rho|\ge0.95\)인 쌍 중 우선순위가 낮은 열을 greedy로 제거. 결과 \(a_z\) 10, \(a_x\) 8, \(a_y\) 8, \(\dot z\) 7, \(\dot\theta\) 7 = 40, 절편 포함 \(d=41\). 표준화 상수와 함께 held-out 평가자를 보기 전에 고정.</p>
+<p>선택 절차 두 개가 모형에 붙는다.</p>
+<ol>
+  <li><b>Spike-and-slab PIP</b> (2.1절). 피처 수준과 센서 수준 두 번 실행.</li>
+  <li><b>Projection-predictive forward search</b>. draw \(m\), 평가자 \(u\), 열 집합 \(S\)에 대해
+  \[
+  \hat{\mathbf b}^{(m,u)}_S=\arg\min_{\mathbf b}\sum_i\mathrm{KL}\Big[\mathrm{Bern}(p^{(m)}_{ui})\,\Big\|\,\mathrm{Bern}\big(\sigma(\mathbf z_{ui,S}^\top\mathbf b)\big)\Big],\qquad
+  L(S)=\frac{1}{M'\sum_uN_u}\sum_{m,u,i}\mathrm{KL}[\cdot\|\cdot]
+  \]
+  \(M'=12\). 경로는 \(L\)이 정하고 크기는 폴드 내 held-out MLPD 재적합(축소 체인 200+400, 예산 \(\{0,10,20\}\) 평균) + one-SE 규칙이 정한다. 센서는 \(2^5-1=31\) 부분집합 전수 재적합.</li>
+</ol>
+<p>역할 분류. inactive: \(\mathrm{PIP}_j<\tfrac12\). 포함된 피처는 부호 일치 확률로 나눈다.</p>
+\[
+q_j=\mathbb E_m\!\left[\Phi\!\left(\frac{|\mu^{(m)}_j|}{\sqrt{\Sigma^{(m)}_{jj}}}\right)\right],\qquad
+\text{common: } q_j\ge0.9,\quad \text{specific: otherwise};\qquad
+S_j=\mathbb E_m\big[(\mu^{(m)}_j)^2+\Sigma^{(m)}_{jj}\big]
+\]
+
+<h2 id="code">5. 코드 구성</h2>
+<table>
+  <tr><th style="width:38%">파일</th><th>역할</th></tr>
+  <tr><td><code>reward/fully_bayesian/model.py</code></td><td>PG Gibbs 계층 모형 (NIW, 그룹 spike-and-slab, cold start, 개인화 sweep, particle 요약)</td></tr>
+  <tr><td><code>reward/fully_bayesian/features.py</code></td><td>피처 bank (통계 계열, ISO 가중, 밴드), 창 처리</td></tr>
+  <tr><td><code>reward/fully_bayesian/projpred.py</code></td><td>projection-predictive 투영(damped Newton)과 forward path</td></tr>
+  <tr><td><code>reward/fully_bayesian/conditional_mi.py</code></td><td>조건부 MI 선택 (부록 A, 확정 실행에는 미사용)</td></tr>
+  <tr><td><code>reward/fully_bayesian/loeo/data.py</code>, <code>bank.py</code></td><td>데이터 적재, 적격 평가자/population 선택(<code>pop_min_labels</code>), 폴드 내 bank 가지치기와 표준화</td></tr>
+  <tr><td><code>reward/fully_bayesian/loeo/protocol.py</code></td><td>문맥/holdout 분할, 예산·오프셋·시드 루프, particle 갱신과 지표 수집</td></tr>
+  <tr><td><code>reward/fully_bayesian/loeo/baselines.py</code></td><td>Pooled, Indep (L2 로지스틱, \(C=1\)), EB-MAP (점추정 \((\boldsymbol\mu,\boldsymbol\Sigma)\) + Laplace, \(M=400\))</td></tr>
+  <tr><td><code>reward/fully_bayesian/loeo/metrics.py</code></td><td>MLPD, AUROC, AUPRC, Brier, ECE, 분해, 오답 예측 AUROC, risk–coverage, 신뢰 구간, plug-in 지표, prequential</td></tr>
+  <tr><td><code>reward/fully_bayesian/loeo/selection.py</code></td><td>select 스테이지(경로 + 크기별 재적합 + one-SE), sensors 스테이지(31 부분집합)</td></tr>
+  <tr><td><code>reward/fully_bayesian/loeo/report.py</code></td><td>폴드 json → macro 표, 평가자별 표, paired ΔELPD, 피처 역할표, 곡선 png</td></tr>
+  <tr><td><code>run_loeo.py</code></td><td>드라이버. <code>--stage main|select|sensors|report|compare|all</code>, <code>--set key=value</code>, <code>--fast</code>(기본값 필드에만 적용), <code>--timestamp</code> 생략 시 최신 폴더</td></tr>
+  <tr><td><code>outputs/&lt;run_name&gt;/&lt;timestamp&gt;/</code></td><td><code>cfg.json</code>, <code>folds/*.json</code>, <code>report/</code>(main.md, main_macro.csv, select.md, feature_roles_*.csv, curve_*.png, prequential_cumulative.json). git 추적(.pt 제외)</td></tr>
+  <tr><td><code>docs/fully_bayesian/my_papers/figures/</code></td><td><code>make_*.py</code> → fig_sequential, fig_uncertainty, fig_selection, fig_pip, fig_framework (pdf/png/svg)</td></tr>
+</table>
+<p>관련 노트: 01 평가 지표 조사, 02 피처 선택 조사, 03 실행 가이드, 04 1차 결과, 05 가설·판정 기록, 06 실험 구성 다이어그램.</p>
+
+<h2 id="protocol">6. 데이터와 프로토콜</h2>
+<table>
+  <tr><th>평가자</th><th>가명</th><th class="num">에피소드</th><th class="num">good</th><th class="num">bad</th><th class="num">\(n_{\mathrm{ctx}}\)</th><th class="num">\(n_{\mathrm{hold}}\)</th></tr>
+  <tr><td>E1</td><td>이지환</td><td class="num">1056</td><td class="num">436</td><td class="num">620</td><td class="num">528</td><td class="num">528</td></tr>
+  <tr><td>E2</td><td>박재일</td><td class="num">591</td><td class="num">452</td><td class="num">139</td><td class="num">295</td><td class="num">296</td></tr>
+  <tr><td>E3</td><td>한규택</td><td class="num">369</td><td class="num">280</td><td class="num">89</td><td class="num">184</td><td class="num">185</td></tr>
+  <tr><td>E4</td><td>조현석</td><td class="num">279</td><td class="num">66</td><td class="num">213</td><td class="num">139</td><td class="num">140</td></tr>
+  <tr><td>E5</td><td>강신길</td><td class="num">205</td><td class="num">128</td><td class="num">77</td><td class="num">102</td><td class="num">103</td></tr>
+  <tr><td>E6</td><td>김태근</td><td class="num">35</td><td class="num">18</td><td class="num">17</td><td class="num">17</td><td class="num">18</td></tr>
+  <tr><td>E7</td><td>김재호</td><td class="num">34</td><td class="num">16</td><td class="num">18</td><td class="num">17</td><td class="num">17</td></tr>
+  <tr><td>E8</td><td>김진명</td><td class="num">30</td><td class="num">14</td><td class="num">16</td><td class="num">15</td><td class="num">15</td></tr>
+  <tr><td>E9</td><td>이강근</td><td class="num">18</td><td class="num">15</td><td class="num">3</td><td class="num">9</td><td class="num">9</td></tr>
+  <tr><td>E10</td><td>신민철</td><td class="num">10</td><td class="num">6</td><td class="num">4</td><td class="num">5</td><td class="num">5</td></tr>
+  <tr><th>합계</th><th></th><th class="num">2627</th><th class="num">1431</th><th class="num">1196</th><th class="num">1311</th><th class="num">1316</th></tr>
+</table>
+<ul>
+  <li>Population: 두 클래스 라벨이 있는 17명 전원. 적격(held-out 대상): 라벨 ≥10, 클래스당 ≥3인 10명. 나머지 7명은 사전분포 학습에만 들어간다.</li>
+  <li>LOEO: 적격 평가자 1명을 빼고 16명으로 bank 가지치기·표준화·모형·베이스라인을 모두 적합. held-out 평가자는 기록 순서로 문맥 절반 / holdout 절반.</li>
+  <li>예산 \(t\in\{0,5,10,20,n_{\mathrm{ctx}}\}\), \(t<n_{\mathrm{ctx}}\)는 문맥 창의 시작 오프셋 \(R=3\)개 평균. \(t=10\)은 8명, \(t=20\)은 E1–E5 5명만 해당.</li>
+  <li>시드 3개(42, 43, 44): Gibbs 체인, cold start, 개인화 particle. 보고값은 시드 평균, 오차는 평가자 단위 SE.</li>
+  <li>베이스라인: Pooled(문맥 라벨을 붙여 재적합), Indep(문맥만, \(t=0\) 미정의), EB-MAP(점추정 계층), HB-full(\(\boldsymbol\gamma\equiv\mathbf 1\)). 비선형 pooled(GBT)는 계획했으나 확정 실행에서 제외.</li>
+  <li>주 지표 MLPD. paired 비교는 \(\Delta\mathrm{ELPD}\pm\sqrt{n\,\widehat{\mathrm{Var}}(\Delta\ell_j)}\) (Vehtari).</li>
+</ul>
+\[
+\mathrm{MLPD}=\frac1n\sum_{j=1}^n\log\big[y_j\hat p_j+(1-y_j)(1-\hat p_j)\big]
+\]
+
+<h2 id="history">7. 실험 이력 E1–E9</h2>
+<p>05 문서에 가설·설계·판정이 상세히 있다. 여기서는 무엇을 왜 돌렸고 결론이 무엇인지만 적는다.</p>
+<table>
+  <tr><th style="width:6%">번호</th><th style="width:22%">실행</th><th>질문</th><th style="width:34%">결론</th></tr>
+  <tr><td>E1</td><td><code>loeo/20261001_170056</code> 시드 1개</td><td>기본 LOEO. H1 전이/개인화, H2 불확실성, H3 선택</td>
+      <td><span class="ok">H1.1 동등성 지지</span>, <span class="ok">H1.2 지지</span>, <span class="bad">H1.3(보편적 이득) 기각</span>: 이득이 긴 스트림 5명에 집중. <span class="ok">H2.1 지지</span>, <span class="part">H2.2 부분</span>(epistemic은 t≥10부터 오답 예측), <span class="bad">H2.3 기각</span>(폭 0.15 불만족). H3: \(k^\ast=1\), 수직 가속도만 필요, 횡가속도 inactive.</td></tr>
+  <tr><td>E2</td><td><code>loeo_lam01</code>, <code>loeo_lam001</code></td><td>\(\lambda_0\in\{0.1,0.01\}\). \(\boldsymbol\Sigma\)가 사전분포에 끌려 cold start가 평평하고 소수 라벨 평가자가 손해 보는가</td>
+      <td><span class="bad">기각</span>. MLPD/ECE는 SE 안에서 동일, 소수 라벨 평가자 \(\Delta(5)\)도 같은 부호·크기. 부수: \(\bar U^{\mathrm{epi}}(0)\) 0.070→0.044, 오답 예측 AUROC 0.49→0.62, 공통/개인 분류가 \(\lambda_0\)에 민감. \(\lambda_0=1\) 기본 유지, 0.01 민감도 보고.</td></tr>
+  <tr><td>E3</td><td><code>loeo_selb20</code></td><td>선택 점수 예산을 \(\{0,10,20\}\)으로 넓히면 bounce 피처가 기여하는가</td>
+      <td><span class="bad">기각</span>. \(k^\ast=1\) 그대로, \(\Delta Q_{\mathrm{loso}}(\text{Bounce})=+0.004\pm0.006\). 높은 PIP ≠ held-out 기여. \(B=\{0,10,20\}\)을 확정 설정으로.</td></tr>
+  <tr><td>E4</td><td><code>loeo_final/20261002_165129</code> 시드 3개, all</td><td>시드 잡음 < 평가자 SE인가</td>
+      <td><span class="ok">지지</span>. 폴드 내 시드 sd 0.016/0.014/0.014/0.004 vs 평가자 SE 0.044/0.019/0.024/0.019 (t=0/5/10/20). 이 실행이 논문 수치.</td></tr>
+  <tr><td>E5</td><td><code>loeo_k1/20261002_222009</code></td><td>소수 라벨 3명이 이득 없는 원인: 차원(H5a) / 라벨 잡음(H5b) / 표본 잡음(H5c)</td>
+      <td><span class="part">H5a 1/3</span>: E7(김재호)만 \(k=1\)에서 손실 −0.10~−0.17 → 0 근처. <span class="part">H5b 간접 지지</span>: E6, E8은 자기 라벨로 적합한 indep도 pooled를 못 넘음. 부수: 예측은 전체 bank가 약간 낫다(t=20 paired ELPD −19±6).</td></tr>
+  <tr><td>E6</td><td>E4 리포트 재분석</td><td>cold start 과소 확신(ECE 0.26)의 원인이 Jensen 수축인가</td>
+      <td><span class="ok">H6a 지지</span>: 모든 폴드에서 slope(\(\hat p\)) = 1.5~2.5 × slope(\(\tilde p\)). 그러나 수축이 유익: t=0 MLPD \(\hat p\) −0.692 vs plug-in −0.782. posterior mean 유지.</td></tr>
+  <tr><td>E7</td><td>E4 리포트 (\(w_{\max}=0.3\))</td><td>신뢰 판정 규칙 재설계</td>
+      <td><span class="ok">대안 1 지지</span>: reliable 비율 0/9/28/58 % (t=0/5/10/20), 폭 0.65→0.28. 하한 조건이 실질 판정자. 사후확률 \(\Pr(\mathrm{AUROC}>\tfrac12)\) 대안은 미구현.</td></tr>
+  <tr><td>E8</td><td>—</td><td>prequential 누적 곡선</td><td>점수는 <code>report/prequential_cumulative.json</code>에 저장됨. 그림·논문 반영은 미완(선택).</td></tr>
+  <tr><td>E9</td><td><code>loeo_pop10/20261003_141011</code> 시드 3개</td><td>population을 적격 10명으로 제한하면(폴드당 9명 학습) 바뀌는가</td>
+      <td><span class="ok">H9a, H9b 지지</span>: MLPD 차이 +0.009±0.015 (t=0), +0.002±0.002 (t=20); pooled 변화 <0.003. <span class="bad">H9c 기각</span>: \(\bar U^{\mathrm{epi}}(0)\) 0.071→0.081, reliable(t=20) 58→40 %. 저라벨 7명은 \(\boldsymbol\Sigma\) 식별에 기여. 전원 유지.</td></tr>
+</table>
+
+<h2 id="results">8. 최종 결과 수치 (<code>loeo_final</code>, 시드 3개 평균, 평가자 단위 SE)</h2>
+
+<h3>8.1 Cold start와 개인화</h3>
+<table>
+  <tr><th>예산</th><th>모형</th><th class="num">AUROC</th><th class="num">Brier</th><th class="num">MLPD</th><th class="num">ECE</th><th class="num">Reliable %</th></tr>
+  <tr><td rowspan="4">\(t=0\) (10명)</td><td>Pooled</td><td class="num">0.692±0.043</td><td class="num">0.255±0.023</td><td class="num">−0.717±0.057</td><td class="num">0.282±0.034</td><td class="num">–</td></tr>
+  <tr><td>EB-MAP</td><td class="num">0.700±0.032</td><td class="num">0.256±0.023</td><td class="num">−0.720±0.062</td><td class="num">0.264±0.041</td><td class="num">0</td></tr>
+  <tr><td>HB-full</td><td class="num">0.694±0.036</td><td class="num">0.249±0.018</td><td class="num">−0.695±0.042</td><td class="num">0.258±0.038</td><td class="num">0</td></tr>
+  <tr><td><b>Proposed</b></td><td class="num"><b>0.707</b>±0.039</td><td class="num"><b>0.247</b>±0.019</td><td class="num"><b>−0.692</b>±0.044</td><td class="num">0.264±0.039</td><td class="num">0</td></tr>
+  <tr><td rowspan="5">\(t=5\) (10명)</td><td>Pooled</td><td class="num">0.691±0.043</td><td class="num">0.254±0.023</td><td class="num">−0.714±0.056</td><td class="num">0.280±0.033</td><td class="num">–</td></tr>
+  <tr><td>Indep</td><td class="num">0.592±0.032</td><td class="num">0.274±0.018</td><td class="num">−0.824±0.050</td><td class="num">0.301±0.031</td><td class="num">–</td></tr>
+  <tr><td>EB-MAP</td><td class="num">0.683±0.031</td><td class="num">0.225±0.007</td><td class="num">−0.641±0.014</td><td class="num">0.230±0.028</td><td class="num">7</td></tr>
+  <tr><td>HB-full</td><td class="num">0.678±0.030</td><td class="num">0.220±0.008</td><td class="num">−0.629±0.018</td><td class="num">0.224±0.020</td><td class="num">3</td></tr>
+  <tr><td><b>Proposed</b></td><td class="num">0.686±0.038</td><td class="num"><b>0.217</b>±0.009</td><td class="num"><b>−0.622</b>±0.019</td><td class="num"><b>0.204</b>±0.022</td><td class="num">9</td></tr>
+  <tr><td rowspan="5">\(t=20\) (5명)</td><td>Pooled</td><td class="num">0.718±0.024</td><td class="num">0.246±0.009</td><td class="num">−0.692±0.023</td><td class="num">0.250±0.028</td><td class="num">–</td></tr>
+  <tr><td>Indep</td><td class="num">0.679±0.028</td><td class="num">0.261±0.013</td><td class="num">−0.839±0.042</td><td class="num">0.235±0.016</td><td class="num">–</td></tr>
+  <tr><td>EB-MAP</td><td class="num">0.754±0.041</td><td class="num">0.191±0.009</td><td class="num">−0.566±0.020</td><td class="num">0.153±0.017</td><td class="num">33</td></tr>
+  <tr><td>HB-full</td><td class="num">0.765±0.032</td><td class="num">0.190±0.008</td><td class="num">−0.561±0.017</td><td class="num">0.155±0.020</td><td class="num">40</td></tr>
+  <tr><td><b>Proposed</b></td><td class="num"><b>0.777</b>±0.036</td><td class="num"><b>0.184</b>±0.008</td><td class="num"><b>−0.550</b>±0.019</td><td class="num"><b>0.149</b>±0.017</td><td class="num">58</td></tr>
+  <tr><td rowspan="5">\(t=n_{\mathrm{ctx}}\) (10명)</td><td>Pooled</td><td class="num">0.695±0.044</td><td class="num">0.244±0.022</td><td class="num">−0.691±0.054</td><td class="num">0.267±0.034</td><td class="num">–</td></tr>
+  <tr><td>Indep</td><td class="num">0.703±0.029</td><td class="num">0.218±0.025</td><td class="num">−0.673±0.073</td><td class="num">0.221±0.043</td><td class="num">–</td></tr>
+  <tr><td>EB-MAP</td><td class="num">0.698±0.037</td><td class="num">0.194±0.011</td><td class="num">−0.570±0.027</td><td class="num">0.175±0.030</td><td class="num">50</td></tr>
+  <tr><td>HB-full</td><td class="num">0.705±0.036</td><td class="num"><b>0.188</b>±0.013</td><td class="num"><b>−0.558</b>±0.030</td><td class="num">0.185±0.032</td><td class="num">50</td></tr>
+  <tr><td><b>Proposed</b></td><td class="num">0.696±0.040</td><td class="num">0.190±0.012</td><td class="num">−0.562±0.028</td><td class="num"><b>0.155</b>±0.022</td><td class="num">50</td></tr>
+</table>
+<ul>
+  <li>Cold start vs Pooled: paired ΔELPD +58.7±9.6 (1316 에피소드), 평가자 단위 ΔMLPD +0.025±0.019. 긴 스트림에서 이득, 짧은 스트림에서 동등.</li>
+  <li>\(t=20\) vs Pooled: ΔMLPD +0.142±0.029, ΔELPD +180±14. Indep는 \(t\le20\) 내내 cold start보다 나쁘다(−0.82~−0.91).</li>
+  <li>EB-MAP 대비 0.015~0.027, HB-full 대비 0.002~0.011 (t≤20). 전체 posterior 적분 > 포함 사전분포 > 0, 둘 다 시드 잡음보다 크다.</li>
+  <li>이득은 확률 품질(Brier 0.247→0.184, ECE 0.26→0.15)에 먼저, 순위(AUROC 0.707→0.777)에 나중에 나타난다.</li>
+</ul>
+
+<h3>8.2 평가자별 (cold start → 전체 문맥)</h3>
+<table>
+  <tr><th>평가자</th><th class="num">AUROC</th><th class="num">Brier</th><th class="num">ΔELPD ± SE</th><th>reliable 시점</th></tr>
+  <tr><td>E1</td><td class="num">0.79→0.81</td><td class="num">0.236→0.184</td><td class="num">+59.5±7.3</td><td>t=10</td></tr>
+  <tr><td>E2</td><td class="num">0.71→0.72</td><td class="num">0.232→0.150</td><td class="num">+54.7±9.7</td><td>t=n_ctx</td></tr>
+  <tr><td>E3</td><td class="num">0.67→0.65</td><td class="num">0.248→0.187</td><td class="num">+19.3±10.8</td><td>t=10</td></tr>
+  <tr><td>E4</td><td class="num">0.86→0.87</td><td class="num">0.264→0.129</td><td class="num">+45.0±6.3</td><td>t=n_ctx</td></tr>
+  <tr><td>E5</td><td class="num">0.83→0.84</td><td class="num">0.202→0.180</td><td class="num">+6.1±2.5</td><td>t=20</td></tr>
+  <tr><td>E6</td><td class="num">0.68→0.61</td><td class="num">0.247→0.238</td><td class="num">+0.4±1.7</td><td>없음</td></tr>
+  <tr><td>E7</td><td class="num">0.67→0.63</td><td class="num">0.222→0.230</td><td class="num">−0.3±1.2</td><td>없음</td></tr>
+  <tr><td>E8</td><td class="num">0.68→0.64</td><td class="num">0.224→0.244</td><td class="num">−0.7±0.7</td><td>없음</td></tr>
+  <tr><td>E9</td><td class="num">0.42→0.46</td><td class="num">0.407→0.161</td><td class="num">+5.1±2.0</td><td>없음</td></tr>
+  <tr><td>E10</td><td class="num">0.78→0.72</td><td class="num">0.190→0.192</td><td class="num">−0.0±0.4</td><td>없음</td></tr>
+</table>
+<p>E1–E5는 2.5~8 SE 양수. E6–E10은 1 SE 이내. E7은 \(k=1\) 모형에서 손실이 사라지고(차원 효과), E6·E8은 어떤 모형으로도 population 이상 예측 안 됨(E5).</p>
+
+<h3>8.3 불확실성</h3>
+<table>
+  <tr><th></th><th class="num">t=0</th><th class="num">5</th><th class="num">10</th><th class="num">20</th><th class="num">최종</th></tr>
+  <tr><td>\(\bar U^{\mathrm{epi}}\)</td><td class="num">0.071</td><td class="num">0.057</td><td class="num">0.046</td><td class="num">0.035</td><td class="num">긴 스트림 0.006–0.013 / 짧은 0.037–0.064</td></tr>
+  <tr><td>\(\bar U^{\mathrm{ale}}\)</td><td class="num" colspan="5">0.146–0.163 내내 평탄</td></tr>
+  <tr><td>오답 예측 AUROC (score = \(U^{\mathrm{epi}}\))</td><td class="num">0.52±0.04</td><td class="num"></td><td class="num"></td><td class="num">0.62±0.02</td><td class="num"></td></tr>
+  <tr><td>risk–coverage 면적</td><td class="num">0.36</td><td class="num"></td><td class="num"></td><td class="num">0.19</td><td class="num"></td></tr>
+  <tr><td>\(\rho_s(U^{\mathrm{epi}},U^{\mathrm{ale}})\)</td><td class="num">−0.38</td><td class="num"></td><td class="num"></td><td class="num">+0.32</td><td class="num"></td></tr>
+  <tr><td>신뢰 구간 폭 (평균)</td><td class="num">0.65</td><td class="num">0.61</td><td class="num">0.49</td><td class="num">0.28</td><td class="num"></td></tr>
+  <tr><td>reliable 비율 %</td><td class="num">0</td><td class="num">9</td><td class="num">28</td><td class="num">58</td><td class="num">50 (긴 5명 모두 / 짧은 5명 없음)</td></tr>
+  <tr><td>MLPD posterior mean / plug-in</td><td class="num">−0.692 / −0.782</td><td class="num">−0.622 / −0.642</td><td class="num">−0.619 / −0.637</td><td class="num">−0.550 / −0.553</td><td class="num">−0.562 / −0.558</td></tr>
+</table>
+<p>전체 문맥에서의 구간: E1 [0.73, 0.84], E2 [0.61, 0.79], E3 [0.54, 0.74], E4 [0.73, 0.91], E5 [0.73, 0.91]; E6–E10은 [0.0~0.23, 0.90~1.00].</p>
+
+<h3>8.4 피처와 센서</h3>
+<table>
+  <tr><th>채널</th><th>통계</th><th class="num">PIP</th><th class="num">\(\mu_j\)</th><th class="num">\(\sqrt{\Sigma_{jj}}\)</th><th class="num">\(q_j\)</th><th class="num">\(S_j\)</th><th>역할 (C/S/I 폴드)</th></tr>
+  <tr><td>\(a_z\)</td><td>peak-to-peak</td><td class="num">0.93</td><td class="num">−0.89</td><td class="num">0.54</td><td class="num">0.92</td><td class="num">1.26</td><td>common (7/3/0)</td></tr>
+  <tr><td>\(a_x\)</td><td>standard deviation</td><td class="num">0.74</td><td class="num">+0.52</td><td class="num">0.41</td><td class="num">0.84</td><td class="num">0.67</td><td>specific (2/5/3)</td></tr>
+  <tr><td>\(\dot z\)</td><td>impulse</td><td class="num">0.88</td><td class="num">+0.55</td><td class="num">0.43</td><td class="num">0.87</td><td class="num">0.62</td><td>specific (0/9/1); \(\lambda_0=0.01\)이면 common 10/10</td></tr>
+  <tr><td>\(a_x\)</td><td>peak-to-peak</td><td class="num">0.75</td><td class="num">−0.44</td><td class="num">0.37</td><td class="num">0.83</td><td class="num">0.52</td><td>specific (1/7/2)</td></tr>
+  <tr><td>\(\dot z\)</td><td>derivative p2p</td><td class="num">0.80</td><td class="num">−0.26</td><td class="num">0.39</td><td class="num">0.75</td><td class="num">0.35</td><td>specific (0/8/2)</td></tr>
+  <tr><td>\(a_x\)</td><td>low-band energy</td><td class="num">0.84</td><td class="num">−0.22</td><td class="num">0.37</td><td class="num">0.73</td><td class="num">0.26</td><td>specific (0/9/1)</td></tr>
+  <tr><td>\(a_y\), \(\dot\theta\)</td><td>전부 (pitch abs peak 0.47 제외)</td><td class="num">&lt;0.5</td><td colspan="4"></td><td>inactive</td></tr>
+</table>
+<table>
+  <tr><th>피처 집합</th><th class="num">\(d-1\)</th><th class="num">MLPD</th><th class="num">Δ vs full ± SE</th></tr>
+  <tr><td>전체 bank (5채널)</td><td class="num">40</td><td class="num">−0.671±0.046</td><td class="num">–</td></tr>
+  <tr><td>projpred \(k^\ast=1\) (\(a_z\) p2p), Nogueira 안정성 1.0</td><td class="num">1</td><td class="num">−0.651±0.045</td><td class="num">+0.020±0.011</td></tr>
+  <tr><td>PIP &gt; ½ (median probability model)</td><td class="num">≈10</td><td class="num">−0.677±0.061</td><td class="num">−0.006±0.017</td></tr>
+  <tr><td>최적 센서 부분집합 (\(\dot\theta,a_z,a_x\))</td><td class="num">25</td><td class="num">−0.657±0.037</td><td class="num">+0.015±0.012</td></tr>
+  <tr><td>IMU만 (\(a_x,a_y,a_z\))</td><td class="num">26</td><td class="num">−0.664±0.035</td><td class="num">+0.007±0.012</td></tr>
+  <tr><td>\(a_z\)만</td><td class="num">10</td><td class="num">−0.665±0.034</td><td class="num">+0.006±0.022</td></tr>
+  <tr><td>\(a_z\) 제외</td><td class="num">30</td><td class="num">−0.705±0.066</td><td class="num">−0.034±0.023</td></tr>
+  <tr><td>6D만 (\(\dot z,\dot\theta\))</td><td class="num">14</td><td class="num">−0.695±0.051</td><td class="num">−0.024±0.013</td></tr>
+</table>
+<ul>
+  <li>선택 단계(축소 체인)에서는 \(k=1\)이 전체와 one-SE 안이지만, 완전 main 프로토콜에서는 전체 bank가 긴 스트림 예산에서 일관되게 조금 낫다(t=20 paired ELPD −19±6, 5명 모두 음수). 결론: 선택은 해석과 센서 결정용, 예측은 전체 bank + 포함 사전분포.</li>
+  <li>센서 수준 PIP는 폴드 간 bimodal(bounce 9/10, \(a_z\) 5/10, pitch 3/10)이라 결정에 쓰지 않고 재적합 비교로 판단. 배포 결론: 수직 가속도계 하나로 population 신호를 담는다, 6D bounce는 held-out 이득 없는 개인차 피처, 횡가속도는 제거 가능.</li>
+</ul>
+
+<h3>8.5 민감도</h3>
+<table>
+  <tr><th>\(\lambda_0\)</th><th class="num">시드</th><th class="num">MLPD t=0</th><th class="num">MLPD t=20</th><th class="num">AUROC t=0</th><th class="num">\(\bar U^{\mathrm{epi}}(0)\)</th><th class="num">오답 AUROC t=0</th><th class="num">reliable t=20</th></tr>
+  <tr><td>1 (기본)</td><td class="num">3</td><td class="num">−0.692±0.044</td><td class="num">−0.550±0.019</td><td class="num">0.707</td><td class="num">0.071</td><td class="num">0.52±0.04</td><td class="num">58 %</td></tr>
+  <tr><td>0.1</td><td class="num">1</td><td class="num">−0.705±0.054</td><td class="num">−0.543±0.020</td><td class="num">0.726</td><td class="num">0.051</td><td class="num">0.57±0.05</td><td class="num">(다른 \(w_{\max}\))</td></tr>
+  <tr><td>0.01</td><td class="num">3</td><td class="num">−0.697±0.047</td><td class="num">−0.544±0.019</td><td class="num">0.718</td><td class="num">0.043</td><td class="num">0.61±0.03</td><td class="num">78 %</td></tr>
+</table>
+<p>예측은 \(\lambda_0\) 두 자릿수 범위에서 SE 안. 불확실성 요약은 바뀐다: \(U=16\)이면 \(\boldsymbol\Sigma\)가 대부분 방향에서 약하게 식별되어 사전 척도가 epistemic으로 샌다. 근사식(E2):</p>
+\[
+\Sigma_{jj}\approx\frac{\lambda_0+U\tau_j^2}{U+1}
+\]
+<p>population 제한(E9, 9명 학습): MLPD 차이 +0.009±0.015 / +0.002±0.002 / 0.000±0.003 (t=0/20/최종), \(\bar U^{\mathrm{epi}}(0)\) 0.071→0.081, reliable(t=20) 58→40 %, 오답 AUROC(0) 0.52→0.49.</p>
+
+<h2 id="paper">9. 논문 반영 상태와 남은 일</h2>
+<p>반영 완료: 초록, 서론 결과 미리보기, 관련 연구(Riha 2026, Nogueira 2018, Gneiting &amp; Raftery 2007, Van Calster 2019, Mucsányi 2024 추가), III 문제 설정, IV 모형, V 피처(bank 수 10/8/8/7/7, 가지치기 규칙), VI 실험(데이터 표, 프로토콜, 베이스라인, 지표 \(w_{\max}=0.3\), 구현, 결과 F/G/H와 표 5개, 그림 4개), VII 논의, VIII 결론, 부록 B bank 표, C 시드·\(\lambda_0\)·population 민감도, D 실행 식별자. Fig. 1 framework 그림(초안) 배치. 넓은 수식 5개 split 처리.</p>
+<div class="warn">
+남은 <code>\draftnote</code>:
+<ul>
+  <li>메타데이터: 소속, 차량/도로/센서 모델·샘플링·장착 위치, 전체 카탈로그 크기(라벨 유무 포함), 모집·동의·윤리 식별자, 하드웨어·패키지 버전.</li>
+  <li>그림: plate diagram(IV-A; framework 그림으로 대체 가능), 수렴 trace와 \(\hat R\)/ESS(부록 C), framework 그림 정식 벡터화.</li>
+  <li>부록 A 조건부 MI: 확정 폴드에서 돌리거나 삭제.</li>
+  <li>부록 B: 폴드별 prune report에서 제거된 중복 열 목록.</li>
+  <li>선택: E8 prequential 그림, 표 1에서 True=good 재확인 문구 삭제.</li>
+  <li>로컬 LaTeX 빌드 후 <code>grep -n "Overfull \\hbox" main.log</code>로 남은 수식 넘침 정리(사용자 측).</li>
+</ul>
+</div>
+
+<h2 id="runs">10. 실행 식별자</h2>
+<table>
+  <tr><th>폴더</th><th>내용</th><th>논문 사용처</th></tr>
+  <tr><td><code>outputs/loeo_final/20261002_165129</code></td><td>시드 42–44, \(\lambda_0=1\), \(w_{\max}=0.3\), main+select+sensors+report</td><td>표 main / per-evaluator / reliability / feature-classes / sensors, 그림 sequential / uncertainty / pip / selection</td></tr>
+  <tr><td><code>outputs/loeo_final_lam001/20261002_182245</code></td><td>시드 42–44, \(\lambda_0=0.01\), main</td><td>표 lambda</td></tr>
+  <tr><td><code>outputs/loeo_lam01/20261002_003556</code></td><td>시드 42, \(\lambda_0=0.1\), main</td><td>표 lambda</td></tr>
+  <tr><td><code>outputs/loeo_k1/20261002_222009</code></td><td>시드 42, feature_subset = \(a_z\) p2p, main+report</td><td>VI-H 단일 피처 재실행 문단</td></tr>
+  <tr><td><code>outputs/loeo_pop10/20261003_141011</code></td><td>시드 42–44, population = 적격 10명</td><td>부록 C population 문단, 한계</td></tr>
+  <tr><td><code>outputs/loeo_selb20</code>, <code>outputs/loeo/20261001_170056</code></td><td>E3, E1 (시드 1개)</td><td>미사용 (05 문서 기록)</td></tr>
+</table>
+<pre>.venv\Scripts\python.exe run_loeo.py --stage all --set run_name=loeo_final --set seeds="(42,43,44)"
+.venv\Scripts\python.exe run_loeo.py --stage report --set run_name=loeo_final      # --timestamp 생략 시 최신 폴더
+python docs/fully_bayesian/my_papers/figures/make_framework.py                     # 그림 재생성(다른 make_*.py도 동일)</pre>
+</main>
+</body>
+</html>
