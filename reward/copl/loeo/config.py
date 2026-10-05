@@ -104,8 +104,8 @@ class Config:
     rm_calibrate: bool = True                  # temperature scaling fitted on the population validation set
     # ---- adaptation (CoPL vote -> softmax over population users)
     adapt_normalize: bool = True               # standardize the vote scores c_u before the softmax
-    adapt_evidence: str = "sqrt"               # scale of the standardized score: "unit" (independent of t),
-                                               # "sqrt" (grows like sqrt(t): evidence accumulates), "none" = original CoPL
+    adapt_evidence: str = "none"               # "none" = original CoPL scale (grows with t; best in E4 at tau ~ 1),
+                                               # "unit" = standardized (independent of t), "sqrt" = standardized * sqrt(t)
     # ---- mixture-consistent reward-model training: the reward model is queried with convex mixtures of
     # population embeddings (cold start = mean, adaptation = softmax mixture), so it is trained on them too
     rm_mix_prob: float = 0.5                   # fraction of training rows whose user embedding is replaced by a mixture
@@ -134,16 +134,15 @@ class Config:
     tune_trials: int = 40
     tune_inner_folds: int = 3
     tune_inner_mix: bool = True                # longest streams plus the shortest eligible one (short-stream coverage)
-    tune_budgets: tuple = (0, 5, 10)
+    tune_budgets: tuple = (0, 5, 10, 20)
     tune_seed: int = 7
     tune_rm_bayes: str = "none"                # single reward model during tuning (cost); main uses rm_bayes
     tune_space: dict = field(default_factory=lambda: {
         "gcf_emb_dim": [16, 32, 64],
         "item_item_weight": [0.25, 0.5, 1.0, 2.0],
         "knn_k": [10, 30, 100],
-        "adapt_user_softmax_temp": [0.5, 1.0, 2.0, 4.0],
-        "adapt_evidence": ["unit", "sqrt"],
-        "rm_mix_prob": [0.0, 0.5],
+        "adapt_user_softmax_temp": [0.25, 0.5, 1.0, 2.0, 4.0],
+        "adapt_evidence": ["none", "unit", "sqrt"],
         "adapt_neg_weight": [0.0, 0.5, 1.0],
         "gcf_lr": [2e-4, 7e-4, 2e-3],
         "rm_lr": [1e-4, 3e-4, 1e-3],

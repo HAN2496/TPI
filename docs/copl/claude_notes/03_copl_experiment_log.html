@@ -171,6 +171,31 @@
   <li>ablation에 orig_adapt, unit_adapt, no_mix, no_calib 추가. 튜닝 공간에 adapt_evidence, rm_mix_prob 추가.</li>
 </ul>
 
+<h2 id="E4">E4. 수정 확인 2차 (4폴드, ablation 7종) <span class="verdict mix-v">mixture training 지지, 적응은 원 규칙이 최선</span></h2>
+<p class="meta">실행 <code>outputs/copl_loeo_fix2/20261005_155145</code> · 강신길, 김진명, 조현석, 한규택 · scatter, k=30, τ=1.15 · 시드 1 · 기본 = 보정 + 앙상블 3 + mixture training + \(\sqrt t\) 적응</p>
+<table>
+  <thead><tr><th>4폴드 macro MLPD</th><th class="num">t=0</th><th class="num">5</th><th class="num">10</th><th class="num">20 (3폴드)</th><th class="num">최종</th></tr></thead>
+  <tbody>
+    <tr><td>기본 (\(\sqrt t\) 적응)</td><td class="num">−0.670</td><td class="num">−0.814</td><td class="num">−0.718</td><td class="num">−0.620</td><td class="num">−0.695</td></tr>
+    <tr><td>orig_adapt (원 CoPL 스케일)</td><td class="num">−0.667</td><td class="num">−0.676</td><td class="num">−0.661</td><td class="num"><strong>−0.591</strong></td><td class="num">−0.622</td></tr>
+    <tr><td>unit_adapt (표준화)</td><td class="num">−0.667</td><td class="num">−0.782</td><td class="num">−0.711</td><td class="num">−0.584</td><td class="num">−0.654</td></tr>
+    <tr><td>no_adapt</td><td class="num">−0.666</td><td class="num">−0.666</td><td class="num">−0.666</td><td class="num">−0.660</td><td class="num">−0.666</td></tr>
+    <tr><td>no_mix (mixture training 없음)</td><td class="num">−0.737</td><td class="num">−0.802</td><td class="num">−0.702</td><td class="num">−0.626</td><td class="num">−0.669</td></tr>
+    <tr><td>no_calib</td><td class="num">−0.667</td><td class="num">−0.871</td><td class="num">−0.761</td><td class="num">−0.624</td><td class="num">−0.726</td></tr>
+    <tr><td>no_item_item (GCF 전파에서 \(A_{ii}\) 제거)</td><td class="num">−0.654</td><td class="num">−0.793</td><td class="num">−0.703</td><td class="num">−0.623</td><td class="num">−0.689</td></tr>
+    <tr><td>oracle (held-out context가 그래프에 포함)</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">−0.565</td></tr>
+    <tr><td>pooled-CNN (보정, fine-tune)</td><td class="num">−0.605</td><td class="num">−0.614</td><td class="num">−0.609</td><td class="num">−0.608</td><td class="num">−0.608</td></tr>
+  </tbody>
+</table>
+<ul>
+  <li><strong>mixture training 지지.</strong> cold start −0.737 → −0.670 (강신길 −0.682 → −0.567, 한규택 −0.869 → −0.691). 보상 모형이 혼합 임베딩을 학습 중에 보는 것이 cold start를 살린다.</li>
+  <li><strong>적응은 원 규칙이 최선, \(\sqrt t\)는 과집중.</strong> \(\sqrt t\) 규칙은 t=5에서 엔트로피 0.3(사실상 한 명)까지 몰려 −0.814로 크게 해롭다. 원 규칙은 어느 t에서도 no_adapt보다 크게 나쁘지 않고 t=20에서 −0.591로 pooled(−0.608)를 넘는다. 라벨 5개의 표는 잡음이라 "증거가 선형으로 쌓이는" 원 규칙의 보수성이 맞았다. 수정 2의 \(\sqrt t\)는 기각. 기본값을 원 규칙으로 되돌리고, 세 규칙과 τ ∈ {0.25, …, 4}를 튜닝에 맡긴다.</li>
+  <li><strong>온도 보정은 적응 후에 효과.</strong> cold start는 앙상블만으로 충분하지만(no_calib −0.667 ≈ 기본), 적응된 혼합 임베딩은 극단 로짓을 만들어 보정 없이는 t=5에서 −0.871, 최종 −0.726으로 나빠진다.</li>
+  <li><strong>GCF 안의 item-item 전파는 기여 없음.</strong> no_item_item이 기본과 같거나 조금 낫다. 다리는 GCF 전파가 아니라 테스트 시 kNN 부착에서 작동한다. RQ3의 첫 답이며, sweep에서 k의 효과도 부착 쪽으로 해석해야 한다.</li>
+  <li><strong>상한.</strong> oracle 최종 −0.565 대 orig_adapt 최종 −0.622, pooled −0.608. 이상적 임베딩이라도 pooled-CNN보다 0.04 나은 데 그친다. 이 데이터에서 "사용자 임베딩이 더해 주는 것"의 크기가 그 정도라는 뜻이다.</li>
+</ul>
+<p><span class="verdict mix-v">판정</span>: 보정 + 앙상블 + mixture training + 원 적응 규칙으로 확정 설정을 잡고 전체 튜닝(규칙·온도 포함, 예산 0/5/10/20)과 main으로 간다. 논문의 ablation 표는 이 7종을 10폴드로 다시 낸다.</p>
+
 <h2 id="status">가설 현황표</h2>
 <table>
   <thead><tr><th>ID</th><th>가설</th><th>판정</th><th>근거</th><th>논문 반영</th></tr></thead>
