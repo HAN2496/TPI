@@ -148,6 +148,29 @@
 <p class="label">판정</p>
 <p><span class="verdict bad-v">RQ1 현재 미달</span>. 이 실행은 "원 CoPL 적응 규칙 + AUROC 기준 선택"의 결과로 보존하고(ablation의 비교선), 수정 후 재튜닝·재실행한다. 재실행 전 문제 폴드 4개(강신길, 김진명, 조현석, 한규택)로 수정 효과를 먼저 확인한다.</p>
 
+<h2 id="E3">E3. 수정 확인 1차 (4폴드, 튜닝 없음) <span class="verdict mix-v">보정 효과 확인, 적응은 소수 라벨에서 해로움</span></h2>
+<p class="meta">실행 <code>outputs/copl_loeo_fix/20261005_153803</code> · 강신길, 김진명, 조현석, 한규택 · scatter, k=30, τ=1.15 · 시드 1 · 온도 보정 + 검증 BCE 선택 + 앙상블 3 + 표준화 적응(unit)</p>
+<table>
+  <thead><tr><th>폴드 (t=0 MLPD)</th><th class="num">E2 copl</th><th class="num">E3 copl</th><th class="num">pooled-CNN(보정)</th><th class="num">kNN 투표</th><th class="num">E3 copl t=5</th></tr></thead>
+  <tbody>
+    <tr><td>강신길</td><td class="num">−0.893</td><td class="num">−0.695</td><td class="num">−0.579</td><td class="num">−0.678</td><td class="num">−0.928</td></tr>
+    <tr><td>김진명</td><td class="num">−1.247</td><td class="num">−0.750</td><td class="num">−0.597</td><td class="num">−0.742</td><td class="num">−0.913</td></tr>
+    <tr><td>조현석</td><td class="num">−0.757</td><td class="num">−0.636</td><td class="num">−0.609</td><td class="num">−0.604</td><td class="num">−0.604</td></tr>
+    <tr><td>한규택</td><td class="num">−0.906</td><td class="num">−0.882</td><td class="num">−0.629</td><td class="num">−0.686</td><td class="num">−0.791</td></tr>
+  </tbody>
+</table>
+<ul>
+  <li><strong>보정은 먹혔다.</strong> cold start가 평균 0.2 좋아졌다(온도 1.1~1.3). pooled-CNN도 보정 후 −0.603으로 강한 기준 모형이 됐다.</li>
+  <li><strong>표준화 적응은 t=5에서 해롭다.</strong> 라벨 5개의 표는 잡음이 커서 표준화하면 잡음이 신호처럼 보여 엉뚱한 사용자로 쏠린다(강신길 −0.695 → −0.928). 원 규칙(스케일 ∝ t, 안 움직임)과 표준화(스케일 1, 과하게 움직임)의 중간이 필요하다.</li>
+  <li><strong>cold start 임베딩이 학습 분포 밖이다.</strong> 같은 CNN 구조인 pooled-CNN(−0.603)보다 CoPL cold start(−0.741)가 훨씬 나쁘다. 보상 모형은 학습 중 실제 사용자 임베딩만 보는데 테스트에서는 항상 볼록 결합(평균 또는 softmax 혼합)을 받는다. CoPL 설계의 빈틈이다.</li>
+</ul>
+<p class="label">수정 2</p>
+<ul>
+  <li><strong>증거 스케일 적응</strong> (<code>adapt_evidence="sqrt"</code>): 표준화 점수에 \(\sqrt{t}\)를 곱해 라벨이 쌓일수록 집중. \(z_u=\sqrt{t}\,(c_u-\bar c)/\mathrm{sd}(c)\), \(w_u=\mathrm{softmax}(z_u/\tau)\). "none"(원 규칙), "unit"(표준화)와 함께 튜닝·ablation 대상.</li>
+  <li><strong>mixture-consistent training</strong> (<code>rm_mix_prob=0.5</code>): 보상 모형 학습 시 행의 절반에서 사용자 임베딩을 \((1-\lambda)e_u+\lambda\,\mathrm{Dir}(\alpha)\cdot E\)로 바꿔 넣는다. 평균 임베딩과 혼합 임베딩이 학습 분포 안에 들어온다.</li>
+  <li>ablation에 orig_adapt, unit_adapt, no_mix, no_calib 추가. 튜닝 공간에 adapt_evidence, rm_mix_prob 추가.</li>
+</ul>
+
 <h2 id="status">가설 현황표</h2>
 <table>
   <thead><tr><th>ID</th><th>가설</th><th>판정</th><th>근거</th><th>논문 반영</th></tr></thead>

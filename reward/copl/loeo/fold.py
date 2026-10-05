@@ -191,7 +191,7 @@ def adapt_user(cfg, gds, y_ctx, neigh_idx, neigh_w, E_u, device):
     standardized across users before the softmax, which makes the temperature act on a quantity
     whose scale does not depend on t.
     """
-    if not cfg.adapt_normalize:
+    if not cfg.adapt_normalize or cfg.adapt_evidence == "none":
         return gds.adapt_test_user(y_ctx, neigh_idx, neigh_w, E_u, device=device)
     y_ctx = np.asarray(y_ctx).astype(np.int64)
     v = np.zeros((gds.Apos_bin.size(1),), dtype=np.float32)
@@ -209,6 +209,8 @@ def adapt_user(cfg, gds, y_ctx, neigh_idx, neigh_w, E_u, device):
         w_u = torch.ones_like(c_u) / c_u.numel()
     else:
         z = (c_u - c_u.mean()) / sd
+        if cfg.adapt_evidence == "sqrt":        # evidence accumulates: sharper with more labels
+            z = z * float(np.sqrt(len(y_ctx)))
         w_u = torch.softmax(z / max(1e-6, cfg.adapt_user_softmax_temp), dim=0)
     return (w_u.unsqueeze(-1) * E_u).sum(dim=0), w_u.detach().cpu().numpy()
 
@@ -233,7 +235,7 @@ def train_models(cfg, fd, device, seed, verbose=0):
                     shuffle=False, collate_fn=rm_collate)
     rm_cfg = {"device": str(device), "rm_lr": cfg.rm_lr, "rm_weight_decay": cfg.rm_weight_decay,
               "rm_lambda_reg": cfg.rm_lambda_reg, "rm_epochs": cfg.rm_epochs, "use_pos_weight": cfg.use_pos_weight,
-              "rm_select": cfg.rm_select}
+              "rm_select": cfg.rm_select, "rm_mix_prob": cfg.rm_mix_prob, "rm_mix_alpha": cfg.rm_mix_alpha}
     obs_dim = fd.rm_series.shape[2]
     rm_aucs, temps = [], []
 

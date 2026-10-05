@@ -103,8 +103,13 @@ class Config:
     rm_select: str = "loss"                    # early stopping on validation BCE ('loss') or AUROC ('auc')
     rm_calibrate: bool = True                  # temperature scaling fitted on the population validation set
     # ---- adaptation (CoPL vote -> softmax over population users)
-    adapt_normalize: bool = True               # standardize the vote scores c_u before the softmax, so the
-                                               # temperature acts on a scale-free quantity independent of t
+    adapt_normalize: bool = True               # standardize the vote scores c_u before the softmax
+    adapt_evidence: str = "sqrt"               # scale of the standardized score: "unit" (independent of t),
+                                               # "sqrt" (grows like sqrt(t): evidence accumulates), "none" = original CoPL
+    # ---- mixture-consistent reward-model training: the reward model is queried with convex mixtures of
+    # population embeddings (cold start = mean, adaptation = softmax mixture), so it is trained on them too
+    rm_mix_prob: float = 0.5                   # fraction of training rows whose user embedding is replaced by a mixture
+    rm_mix_alpha: float = 1.0                  # Dirichlet concentration of the mixture weights (1 = uniform simplex)
     # ---- test-time adaptation
     adapt_topk: int = 30
     adapt_use_neg: bool = True
@@ -136,7 +141,9 @@ class Config:
         "gcf_emb_dim": [16, 32, 64],
         "item_item_weight": [0.25, 0.5, 1.0, 2.0],
         "knn_k": [10, 30, 100],
-        "adapt_user_softmax_temp": [0.5, 1.0, 2.0],
+        "adapt_user_softmax_temp": [0.5, 1.0, 2.0, 4.0],
+        "adapt_evidence": ["unit", "sqrt"],
+        "rm_mix_prob": [0.0, 0.5],
         "adapt_neg_weight": [0.0, 0.5, 1.0],
         "gcf_lr": [2e-4, 7e-4, 2e-3],
         "rm_lr": [1e-4, 3e-4, 1e-3],

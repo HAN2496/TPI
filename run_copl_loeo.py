@@ -81,7 +81,11 @@ def stage_main(cfg, run, data, channels, fs, names, device):
 
 
 # ----------------------------------------------------------------------------- stage: ablate
-ABLATIONS = {"no_item_item": dict(use_item_item=False), "no_adapt": dict(use_adapt=False), "oracle": dict(oracle=True)}
+ABLATIONS = {"no_item_item": dict(use_item_item=False), "no_adapt": dict(use_adapt=False), "oracle": dict(oracle=True),
+             "orig_adapt": dict(adapt_evidence="none"),            # original CoPL vote scale (no standardization)
+             "unit_adapt": dict(adapt_evidence="unit"),            # standardized, no evidence growth
+             "no_mix": dict(rm_mix_prob=0.0),                      # reward model trained on true users only
+             "no_calib": dict(rm_calibrate=False, rm_select="auc")}  # original model selection, no temperature
 
 
 def _variant_record(fold):

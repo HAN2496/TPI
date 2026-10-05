@@ -119,6 +119,22 @@ class CoPLRMTrainer:
             uids_b, obs_b, y_b = uids_b.to(self.device), obs_b.to(self.device), y_b.to(self.device)
             if self.uses_user_embedding:
                 user_emb = E_u_train[uids_b]
+                mix_p = float(self.config.get('rm_mix_prob', 0.0))
+                if mix_p > 0:
+                    # mixture-consistent training: the model is queried at test time with convex mixtures of
+                    # population embeddings (cold start = mean, adaptation = softmax mixture).  Replace a
+                    # fraction of rows by w = (1-lam) e_u + lam * Dirichlet(alpha) mixtures of all users.
+                    B, U = len(uids_b), E_u_train.shape[0]
+                    sel = torch.rand(B, device=self.device) < mix_p
+                    if sel.any():
+                        alpha = float(self.config.get('rm_mix_alpha', 1.0))
+                        dirich = torch.distributions.Dirichlet(torch.full((U,), alpha, device=self.device))
+                        W = dirich.sample((int(sel.sum()),))                       # (n_sel, U)
+                        lam = torch.rand(int(sel.sum()), 1, device=self.device)
+                        onehot = F.one_hot(uids_b[sel], U).float()
+                        Wmix = (1 - lam) * onehot + lam * W
+                        user_emb = user_emb.clone()
+                        user_emb[sel] = Wmix @ E_u_train
                 logits = self.model(user_emb, obs_b)
                 reg_loss = self.config['rm_lambda_reg'] * user_emb.norm(2).pow(2).mean()
             else:
