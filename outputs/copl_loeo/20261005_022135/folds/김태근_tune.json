@@ -1,0 +1,700 @@
+{
+  "name": "김태근",
+  "trials": {
+    "{\"adapt_neg_weight\": 0.5, \"adapt_user_softmax_temp\": 0.5, \"gcf_emb_dim\": 16, \"gcf_lr\": 0.0002, \"item_item_weight\": 2.0, \"knn_k\": 10, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 16,
+        "item_item_weight": 2.0,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 0.5,
+        "adapt_neg_weight": 0.5,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.7679963612261654,
+        "박재일": -0.677195444181495,
+        "한규택": -0.6848994588100448
+      },
+      "score": -0.7100304214059018
+    },
+    "{\"adapt_neg_weight\": 1.0, \"adapt_user_softmax_temp\": 2.0, \"gcf_emb_dim\": 32, \"gcf_lr\": 0.0007, \"item_item_weight\": 0.5, \"knn_k\": 10, \"rm_lr\": 0.0001}": {
+      "params": {
+        "gcf_emb_dim": 32,
+        "item_item_weight": 0.5,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_neg_weight": 1.0,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.0001
+      },
+      "scores": {
+        "이지환": -0.5909707895278529,
+        "박재일": -0.902931537531127,
+        "한규택": -0.8345565449137001
+      },
+      "score": -0.7761529573242266
+    },
+    "{\"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 0.5, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.002, \"item_item_weight\": 2.0, \"knn_k\": 100, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 2.0,
+        "knn_k": 100,
+        "adapt_user_softmax_temp": 0.5,
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.002,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.6033030405131717,
+        "박재일": -0.7743292172777408,
+        "한규택": -0.8660859098848969
+      },
+      "score": -0.7479060558919365
+    },
+    "{\"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 0.5, \"gcf_emb_dim\": 16, \"gcf_lr\": 0.0007, \"item_item_weight\": 0.25, \"knn_k\": 100, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 16,
+        "item_item_weight": 0.25,
+        "knn_k": 100,
+        "adapt_user_softmax_temp": 0.5,
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.6082736843173512,
+        "박재일": -1.1739714441186393,
+        "한규택": -0.7637860150745936
+      },
+      "score": -0.8486770478368614
+    },
+    "{\"adapt_neg_weight\": 0.5, \"adapt_user_softmax_temp\": 2.0, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0007, \"item_item_weight\": 0.5, \"knn_k\": 30, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 0.5,
+        "knn_k": 30,
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_neg_weight": 0.5,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.6006916613862208,
+        "박재일": -0.9282102288499764,
+        "한규택": -1.1531946600596867
+      },
+      "score": -0.8940321834319613
+    },
+    "{\"adapt_neg_weight\": 1.0, \"adapt_user_softmax_temp\": 0.5, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0002, \"item_item_weight\": 0.25, \"knn_k\": 30, \"rm_lr\": 0.0001}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 0.25,
+        "knn_k": 30,
+        "adapt_user_softmax_temp": 0.5,
+        "adapt_neg_weight": 1.0,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.0001
+      },
+      "scores": {
+        "이지환": -0.6014213988010941,
+        "박재일": -0.9392037767868354,
+        "한규택": -0.7769743148522892
+      },
+      "score": -0.7725331634800728
+    },
+    "{\"adapt_neg_weight\": 0.5, \"adapt_user_softmax_temp\": 2.0, \"gcf_emb_dim\": 32, \"gcf_lr\": 0.0002, \"item_item_weight\": 0.5, \"knn_k\": 30, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 32,
+        "item_item_weight": 0.5,
+        "knn_k": 30,
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_neg_weight": 0.5,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.5667273288014909,
+        "박재일": -1.1102069356620852,
+        "한규택": -1.027801986084383
+      },
+      "score": -0.901578750182653
+    },
+    "{\"adapt_neg_weight\": 0.5, \"adapt_user_softmax_temp\": 0.5, \"gcf_emb_dim\": 32, \"gcf_lr\": 0.0002, \"item_item_weight\": 0.25, \"knn_k\": 30, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 32,
+        "item_item_weight": 0.25,
+        "knn_k": 30,
+        "adapt_user_softmax_temp": 0.5,
+        "adapt_neg_weight": 0.5,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.5825557342887571,
+        "박재일": -0.8243610392186754,
+        "한규택": -1.1527341340228563
+      },
+      "score": -0.8532169691767629
+    },
+    "{\"adapt_neg_weight\": 0.5, \"adapt_user_softmax_temp\": 0.5, \"gcf_emb_dim\": 32, \"gcf_lr\": 0.002, \"item_item_weight\": 0.25, \"knn_k\": 30, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 32,
+        "item_item_weight": 0.25,
+        "knn_k": 30,
+        "adapt_user_softmax_temp": 0.5,
+        "adapt_neg_weight": 0.5,
+        "gcf_lr": 0.002,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.601860787709419,
+        "박재일": -0.8174172986822005,
+        "한규택": -0.7617306865266177
+      },
+      "score": -0.727002924306079
+    },
+    "{\"adapt_neg_weight\": 1.0, \"adapt_user_softmax_temp\": 1.0, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0007, \"item_item_weight\": 0.25, \"knn_k\": 30, \"rm_lr\": 0.0001}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 0.25,
+        "knn_k": 30,
+        "adapt_user_softmax_temp": 1.0,
+        "adapt_neg_weight": 1.0,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.0001
+      },
+      "scores": {
+        "이지환": -0.5952876660504415,
+        "박재일": -0.9770282838669502,
+        "한규택": -0.8404162992620355
+      },
+      "score": -0.804244083059809
+    },
+    "{\"adapt_neg_weight\": 1.0, \"adapt_user_softmax_temp\": 0.5, \"gcf_emb_dim\": 32, \"gcf_lr\": 0.0007, \"item_item_weight\": 0.5, \"knn_k\": 10, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 32,
+        "item_item_weight": 0.5,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 0.5,
+        "adapt_neg_weight": 1.0,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.5739383515587938,
+        "박재일": -0.8481614185298462,
+        "한규택": -0.7778655560231239
+      },
+      "score": -0.733321775370588
+    },
+    "{\"adapt_neg_weight\": 0.5, \"adapt_user_softmax_temp\": 2.0, \"gcf_emb_dim\": 32, \"gcf_lr\": 0.002, \"item_item_weight\": 2.0, \"knn_k\": 100, \"rm_lr\": 0.0001}": {
+      "params": {
+        "gcf_emb_dim": 32,
+        "item_item_weight": 2.0,
+        "knn_k": 100,
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_neg_weight": 0.5,
+        "gcf_lr": 0.002,
+        "rm_lr": 0.0001
+      },
+      "scores": {
+        "이지환": -0.5824280293008712,
+        "박재일": -1.018239994886008,
+        "한규택": -0.8996650752048755
+      },
+      "score": -0.8334443664639183
+    },
+    "{\"adapt_neg_weight\": 0.5, \"adapt_user_softmax_temp\": 0.5, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0002, \"item_item_weight\": 1.0, \"knn_k\": 10, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 1.0,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 0.5,
+        "adapt_neg_weight": 0.5,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.5886195986055623,
+        "박재일": -0.8239362021436533,
+        "한규택": -0.9126597943683477
+      },
+      "score": -0.7750718650391878
+    },
+    "{\"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 1.0, \"gcf_emb_dim\": 32, \"gcf_lr\": 0.0007, \"item_item_weight\": 2.0, \"knn_k\": 30, \"rm_lr\": 0.0001}": {
+      "params": {
+        "gcf_emb_dim": 32,
+        "item_item_weight": 2.0,
+        "knn_k": 30,
+        "adapt_user_softmax_temp": 1.0,
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.0001
+      },
+      "scores": {
+        "이지환": -0.6015087559355837,
+        "박재일": -0.9334154151717309,
+        "한규택": -0.8858917128739064
+      },
+      "score": -0.8069386279937404
+    },
+    "{\"adapt_neg_weight\": 0.5, \"adapt_user_softmax_temp\": 1.0, \"gcf_emb_dim\": 32, \"gcf_lr\": 0.0002, \"item_item_weight\": 1.0, \"knn_k\": 10, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 32,
+        "item_item_weight": 1.0,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 1.0,
+        "adapt_neg_weight": 0.5,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.6304883408624137,
+        "박재일": -0.8750069348141318,
+        "한규택": -0.9641553074415213
+      },
+      "score": -0.8232168610393557
+    },
+    "{\"adapt_neg_weight\": 1.0, \"adapt_user_softmax_temp\": 2.0, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0002, \"item_item_weight\": 1.0, \"knn_k\": 10, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 1.0,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_neg_weight": 1.0,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.6169596831524307,
+        "박재일": -0.8777528583473622,
+        "한규택": -0.9041006524980988
+      },
+      "score": -0.7996043979992972
+    },
+    "{\"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 1.0, \"gcf_emb_dim\": 16, \"gcf_lr\": 0.002, \"item_item_weight\": 0.25, \"knn_k\": 10, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 16,
+        "item_item_weight": 0.25,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 1.0,
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.002,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.5762122882572736,
+        "박재일": -1.1923889573678716,
+        "한규택": -1.040013451072101
+      },
+      "score": -0.936204898899082
+    },
+    "{\"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 0.5, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0002, \"item_item_weight\": 1.0, \"knn_k\": 10, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 1.0,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 0.5,
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.8445525434060134,
+        "박재일": -0.7106402381546152,
+        "한규택": -1.0757759902020638
+      },
+      "score": -0.8769895905875641
+    },
+    "{\"adapt_neg_weight\": 0.5, \"adapt_user_softmax_temp\": 1.0, \"gcf_emb_dim\": 16, \"gcf_lr\": 0.0007, \"item_item_weight\": 0.25, \"knn_k\": 10, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 16,
+        "item_item_weight": 0.25,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 1.0,
+        "adapt_neg_weight": 0.5,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.6174729613791805,
+        "박재일": -1.0047567502460653,
+        "한규택": -0.7716586163813691
+      },
+      "score": -0.7979627760022049
+    },
+    "{\"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 0.5, \"gcf_emb_dim\": 16, \"gcf_lr\": 0.002, \"item_item_weight\": 1.0, \"knn_k\": 10, \"rm_lr\": 0.0001}": {
+      "params": {
+        "gcf_emb_dim": 16,
+        "item_item_weight": 1.0,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 0.5,
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.002,
+        "rm_lr": 0.0001
+      },
+      "scores": {
+        "이지환": -0.5910161141618234,
+        "박재일": -0.8489632268319601,
+        "한규택": -0.8236105654249024
+      },
+      "score": -0.7545299688062287
+    },
+    "{\"adapt_neg_weight\": 1.0, \"adapt_user_softmax_temp\": 0.5, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0007, \"item_item_weight\": 2.0, \"knn_k\": 100, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 2.0,
+        "knn_k": 100,
+        "adapt_user_softmax_temp": 0.5,
+        "adapt_neg_weight": 1.0,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.7160455438125486,
+        "박재일": -1.1209504187765027,
+        "한규택": -0.8774213377074904
+      },
+      "score": -0.9048057667655138
+    },
+    "{\"adapt_neg_weight\": 0.5, \"adapt_user_softmax_temp\": 2.0, \"gcf_emb_dim\": 32, \"gcf_lr\": 0.0002, \"item_item_weight\": 0.25, \"knn_k\": 100, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 32,
+        "item_item_weight": 0.25,
+        "knn_k": 100,
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_neg_weight": 0.5,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.5742105105015212,
+        "박재일": -0.935954857744151,
+        "한규택": -0.9588276199471716
+      },
+      "score": -0.8229976627309479
+    },
+    "{\"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 2.0, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0002, \"item_item_weight\": 1.0, \"knn_k\": 30, \"rm_lr\": 0.0001}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 1.0,
+        "knn_k": 30,
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.0001
+      },
+      "scores": {
+        "이지환": -0.6163534283583015,
+        "박재일": -0.8369388952282141,
+        "한규택": -0.8248192588572868
+      },
+      "score": -0.7593705274812675
+    },
+    "{\"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 1.0, \"gcf_emb_dim\": 32, \"gcf_lr\": 0.0002, \"item_item_weight\": 1.0, \"knn_k\": 10, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 32,
+        "item_item_weight": 1.0,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 1.0,
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.6961440062577147,
+        "박재일": -0.775164998263019,
+        "한규택": -0.8685881407921722
+      },
+      "score": -0.7799657151043019
+    },
+    "{\"adapt_neg_weight\": 1.0, \"adapt_user_softmax_temp\": 0.5, \"gcf_emb_dim\": 32, \"gcf_lr\": 0.0007, \"item_item_weight\": 1.0, \"knn_k\": 10, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 32,
+        "item_item_weight": 1.0,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 0.5,
+        "adapt_neg_weight": 1.0,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.6115720358108304,
+        "박재일": -0.690364872500568,
+        "한규택": -0.7817615227630186
+      },
+      "score": -0.6945661436914724
+    },
+    "{\"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 2.0, \"gcf_emb_dim\": 16, \"gcf_lr\": 0.002, \"item_item_weight\": 2.0, \"knn_k\": 100, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 16,
+        "item_item_weight": 2.0,
+        "knn_k": 100,
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.002,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.7845186612715521,
+        "박재일": -0.5873627431774214,
+        "한규택": -0.7837252747494657
+      },
+      "score": -0.7185355597328131
+    },
+    "{\"adapt_neg_weight\": 0.5, \"adapt_user_softmax_temp\": 2.0, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0007, \"item_item_weight\": 1.0, \"knn_k\": 30, \"rm_lr\": 0.0001}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 1.0,
+        "knn_k": 30,
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_neg_weight": 0.5,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.0001
+      },
+      "scores": {
+        "이지환": -0.6017263294245283,
+        "박재일": -0.7682379310310985,
+        "한규택": -0.8165774263186512
+      },
+      "score": -0.7288472289247593
+    },
+    "{\"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 0.5, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0002, \"item_item_weight\": 0.25, \"knn_k\": 10, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 0.25,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 0.5,
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.6242415428470657,
+        "박재일": -1.0335469910544985,
+        "한규택": -0.8173446740274287
+      },
+      "score": -0.8250444026429977
+    },
+    "{\"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 1.0, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0002, \"item_item_weight\": 0.5, \"knn_k\": 30, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 0.5,
+        "knn_k": 30,
+        "adapt_user_softmax_temp": 1.0,
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.6929461201615648,
+        "박재일": -0.7289945275377891,
+        "한규택": -0.884952076687536
+      },
+      "score": -0.7689642414622967
+    },
+    "{\"adapt_neg_weight\": 1.0, \"adapt_user_softmax_temp\": 0.5, \"gcf_emb_dim\": 32, \"gcf_lr\": 0.002, \"item_item_weight\": 1.0, \"knn_k\": 30, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 32,
+        "item_item_weight": 1.0,
+        "knn_k": 30,
+        "adapt_user_softmax_temp": 0.5,
+        "adapt_neg_weight": 1.0,
+        "gcf_lr": 0.002,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.5759390532795668,
+        "박재일": -0.8109595431457809,
+        "한규택": -0.8734023717060272
+      },
+      "score": -0.7534336560437916
+    },
+    "{\"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 1.0, \"gcf_emb_dim\": 32, \"gcf_lr\": 0.0007, \"item_item_weight\": 2.0, \"knn_k\": 10, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 32,
+        "item_item_weight": 2.0,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 1.0,
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.6129190588475916,
+        "박재일": -0.715456164028181,
+        "한규택": -0.7676972118848423
+      },
+      "score": -0.6986908115868716
+    },
+    "{\"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 2.0, \"gcf_emb_dim\": 16, \"gcf_lr\": 0.0002, \"item_item_weight\": 2.0, \"knn_k\": 30, \"rm_lr\": 0.0001}": {
+      "params": {
+        "gcf_emb_dim": 16,
+        "item_item_weight": 2.0,
+        "knn_k": 30,
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.0001
+      },
+      "scores": {
+        "이지환": -0.6524279529301685,
+        "박재일": -0.6645053794510253,
+        "한규택": -0.6551064661838703
+      },
+      "score": -0.657346599521688
+    },
+    "{\"adapt_neg_weight\": 1.0, \"adapt_user_softmax_temp\": 2.0, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0002, \"item_item_weight\": 2.0, \"knn_k\": 10, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 2.0,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_neg_weight": 1.0,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.6638525405886474,
+        "박재일": -0.8939176068690458,
+        "한규택": -0.6104647343007253
+      },
+      "score": -0.7227449605861396
+    },
+    "{\"adapt_neg_weight\": 1.0, \"adapt_user_softmax_temp\": 0.5, \"gcf_emb_dim\": 32, \"gcf_lr\": 0.0007, \"item_item_weight\": 2.0, \"knn_k\": 10, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 32,
+        "item_item_weight": 2.0,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 0.5,
+        "adapt_neg_weight": 1.0,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.6186205859212801,
+        "박재일": -0.697115587873026,
+        "한규택": -0.7114002784890402
+      },
+      "score": -0.6757121507611155
+    },
+    "{\"adapt_neg_weight\": 0.5, \"adapt_user_softmax_temp\": 1.0, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0002, \"item_item_weight\": 0.5, \"knn_k\": 10, \"rm_lr\": 0.0001}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 0.5,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 1.0,
+        "adapt_neg_weight": 0.5,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.0001
+      },
+      "scores": {
+        "이지환": -0.5969301699864459,
+        "박재일": -0.8697609554648658,
+        "한규택": -0.8669862976798268
+      },
+      "score": -0.7778924743770461
+    },
+    "{\"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 2.0, \"gcf_emb_dim\": 32, \"gcf_lr\": 0.0002, \"item_item_weight\": 1.0, \"knn_k\": 30, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 32,
+        "item_item_weight": 1.0,
+        "knn_k": 30,
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.5801988210874809,
+        "박재일": -1.0122494140457858,
+        "한규택": -1.0000143340474679
+      },
+      "score": -0.8641541897269116
+    },
+    "{\"adapt_neg_weight\": 1.0, \"adapt_user_softmax_temp\": 1.0, \"gcf_emb_dim\": 16, \"gcf_lr\": 0.002, \"item_item_weight\": 2.0, \"knn_k\": 30, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 16,
+        "item_item_weight": 2.0,
+        "knn_k": 30,
+        "adapt_user_softmax_temp": 1.0,
+        "adapt_neg_weight": 1.0,
+        "gcf_lr": 0.002,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.6216291719733157,
+        "박재일": -0.8660698370652652,
+        "한규택": -0.9045139591144231
+      },
+      "score": -0.7974043227176679
+    },
+    "{\"adapt_neg_weight\": 1.0, \"adapt_user_softmax_temp\": 0.5, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0007, \"item_item_weight\": 1.0, \"knn_k\": 30, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 1.0,
+        "knn_k": 30,
+        "adapt_user_softmax_temp": 0.5,
+        "adapt_neg_weight": 1.0,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.6586740005493434,
+        "박재일": -0.9962217428742121,
+        "한규택": -0.7494393375670096
+      },
+      "score": -0.801445026996855
+    },
+    "{\"adapt_neg_weight\": 0.5, \"adapt_user_softmax_temp\": 0.5, \"gcf_emb_dim\": 32, \"gcf_lr\": 0.0002, \"item_item_weight\": 0.25, \"knn_k\": 100, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 32,
+        "item_item_weight": 0.25,
+        "knn_k": 100,
+        "adapt_user_softmax_temp": 0.5,
+        "adapt_neg_weight": 0.5,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.57426134635309,
+        "박재일": -0.6575065059177166,
+        "한규택": -1.1724477644817766
+      },
+      "score": -0.8014052055841944
+    },
+    "{\"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 0.5, \"gcf_emb_dim\": 32, \"gcf_lr\": 0.002, \"item_item_weight\": 0.25, \"knn_k\": 10, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 32,
+        "item_item_weight": 0.25,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 0.5,
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.002,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.5898445201982647,
+        "박재일": -0.7646737113324483,
+        "한규택": -0.780519652354504
+      },
+      "score": -0.7116792946284057
+    }
+  },
+  "inner": [
+    "이지환",
+    "박재일",
+    "한규택"
+  ],
+  "best": {
+    "gcf_emb_dim": 16,
+    "item_item_weight": 2.0,
+    "knn_k": 30,
+    "adapt_user_softmax_temp": 2.0,
+    "adapt_neg_weight": 0.0,
+    "gcf_lr": 0.0002,
+    "rm_lr": 0.0001
+  },
+  "best_score": -0.657346599521688
+}
