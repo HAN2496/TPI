@@ -1,0 +1,11 @@
+{
+  "method": "copl_loeo_fix2",
+  "metrics": {
+    "stages": {
+      "done": [
+        "report"
+      ]
+    }
+  },
+  "completed_at": "2026-10-05T16:18:30.498956"
+}
