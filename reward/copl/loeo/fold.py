@@ -135,6 +135,84 @@ class Models:
         self.E_u, self.E_i, self.rm, self.stats = E_u, E_i, rm, stats
 
 
+# ----------------------------------------------------------------------------- calibration
+class TemperatureScaled(torch.nn.Module):
+    """Post-hoc temperature scaling (Guo et al. 2017): logits / T, T fitted on validation BCE."""
+
+    def __init__(self, model, T=1.0):
+        super().__init__()
+        self.model = model
+        self.uses_user_embedding = getattr(model, "uses_user_embedding", True)
+        self.register_buffer("T", torch.tensor(float(T)))
+
+    def forward(self, *args):
+        return self.model(*args) / self.T
+
+
+def fit_temperature(logits, y, grid=np.geomspace(0.25, 8.0, 61)):
+    """Scalar T minimizing BCE of logits / T on held-out (validation) labels; 1.0 if no usable labels."""
+    logits = np.asarray(logits, float); y = np.asarray(y, float)
+    if len(y) < 2 or len(np.unique(y)) < 2:
+        return 1.0
+    best, best_T = np.inf, 1.0
+    for T in grid:
+        p = 1.0 / (1.0 + np.exp(-logits / T))
+        p = np.clip(p, 1e-6, 1 - 1e-6)
+        bce = -np.mean(y * np.log(p) + (1 - y) * np.log(1 - p))
+        if bce < best:
+            best, best_T = bce, float(T)
+    return best_T
+
+
+def _val_logits(model, loader, E_u, device):
+    model.eval()
+    out, ys = [], []
+    with torch.no_grad():
+        for u, obs, y in loader:
+            obs = obs.to(device)
+            lg = model(E_u[u.to(device)], obs) if getattr(model, "uses_user_embedding", True) else model(obs)
+            out.append(lg.detach().cpu().numpy()); ys.append(y.numpy())
+    return (np.concatenate(out), np.concatenate(ys)) if out else (np.zeros(0), np.zeros(0))
+
+
+def calibrate(model, loader, E_u, device):
+    """Wrap `model` with the temperature fitted on `loader` (population validation set)."""
+    lg, y = _val_logits(model, loader, E_u, device)
+    T = fit_temperature(lg, y)
+    return TemperatureScaled(model, T).to(device), T
+
+
+# ----------------------------------------------------------------------------- adaptation
+def adapt_user(cfg, gds, y_ctx, neigh_idx, neigh_w, E_u, device):
+    """CoPL vote -> softmax over population users; optionally standardized (scale-free) scores.
+
+    The original score c_u = (A_pos - A_neg) v grows with the number of context labels, so a fixed
+    temperature gives near-uniform weights for small t.  With adapt_normalize the scores are
+    standardized across users before the softmax, which makes the temperature act on a quantity
+    whose scale does not depend on t.
+    """
+    if not cfg.adapt_normalize:
+        return gds.adapt_test_user(y_ctx, neigh_idx, neigh_w, E_u, device=device)
+    y_ctx = np.asarray(y_ctx).astype(np.int64)
+    v = np.zeros((gds.Apos_bin.size(1),), dtype=np.float32)
+    pos, neg = y_ctx == 1, y_ctx == 0
+    if pos.any():
+        np.add.at(v, neigh_idx[pos].reshape(-1), neigh_w[pos].reshape(-1))
+    if cfg.adapt_use_neg and neg.any():
+        np.add.at(v, neigh_idx[neg].reshape(-1), -cfg.adapt_neg_weight * neigh_w[neg].reshape(-1))
+    v_t = torch.tensor(v, dtype=torch.float32, device=device)
+    c_u = torch.spmm(gds.Apos_bin.to(device), v_t.unsqueeze(-1)).squeeze(-1)
+    if cfg.adapt_use_neg:
+        c_u = c_u - torch.spmm(gds.Aneg_bin.to(device), v_t.unsqueeze(-1)).squeeze(-1)
+    sd = c_u.std()
+    if not torch.isfinite(sd) or sd < 1e-8:
+        w_u = torch.ones_like(c_u) / c_u.numel()
+    else:
+        z = (c_u - c_u.mean()) / sd
+        w_u = torch.softmax(z / max(1e-6, cfg.adapt_user_softmax_temp), dim=0)
+    return (w_u.unsqueeze(-1) * E_u).sum(dim=0), w_u.detach().cpu().numpy()
+
+
 def train_models(cfg, fd, device, seed, verbose=0):
     """GCF embeddings and the (possibly Bayesian) reward model for one seed."""
     seed_all(seed)
@@ -154,25 +232,28 @@ def train_models(cfg, fd, device, seed, verbose=0):
     va = DataLoader(RMEdgeDataset(gds.va_u, gds.va_i, gds.va_y, fd.rm_series), batch_size=cfg.rm_batch_size,
                     shuffle=False, collate_fn=rm_collate)
     rm_cfg = {"device": str(device), "rm_lr": cfg.rm_lr, "rm_weight_decay": cfg.rm_weight_decay,
-              "rm_lambda_reg": cfg.rm_lambda_reg, "rm_epochs": cfg.rm_epochs, "use_pos_weight": cfg.use_pos_weight}
+              "rm_lambda_reg": cfg.rm_lambda_reg, "rm_epochs": cfg.rm_epochs, "use_pos_weight": cfg.use_pos_weight,
+              "rm_select": cfg.rm_select}
     obs_dim = fd.rm_series.shape[2]
-    rm_aucs = []
-    if cfg.rm_bayes == "ensemble":
-        members = []
-        for k in range(cfg.rm_ensemble_k):
-            seed_all(seed * 100 + k)
-            m = RM_MODELS[cfg.rm_model](cfg, obs_dim).to(device)
-            auc, _ = CoPLRMTrainer(m, rm_cfg, log_dir=None).train(tr, va, E_u, gds.tr_y, verbose=verbose)
-            rm_aucs.append(auc); members.append(m)
-        rm = EnsembleRM(members)
-    else:
+    rm_aucs, temps = [], []
+
+    def _one(k):
+        seed_all(seed * 100 + k)
         m = RM_MODELS[cfg.rm_model](cfg, obs_dim).to(device)
         auc, _ = CoPLRMTrainer(m, rm_cfg, log_dir=None).train(tr, va, E_u, gds.tr_y, verbose=verbose)
         rm_aucs.append(auc)
+        if cfg.rm_calibrate:
+            m, T = calibrate(m, va, E_u, device); temps.append(T)
+        return m
+
+    if cfg.rm_bayes == "ensemble":
+        rm = EnsembleRM([_one(k) for k in range(cfg.rm_ensemble_k)])
+    else:
+        m = _one(0)
         rm = MCDropoutRM(m, cfg.rm_mc_samples) if cfg.rm_bayes == "mc_dropout" else m
     rm.eval()
-    stats = dict(gcf_val_auc=float(gcf_auc), rm_val_auc=float(np.mean(rm_aucs)), seconds_gcf=t_gcf,
-                 seconds_rm=time.time() - tic, n_train_users=int(gds.n_users), n_items=int(gds.n_items))
+    stats = dict(gcf_val_auc=float(gcf_auc), rm_val_auc=float(np.mean(rm_aucs)), rm_temperature=temps,
+                 seconds_gcf=t_gcf, seconds_rm=time.time() - tic, n_train_users=int(gds.n_users), n_items=int(gds.n_items))
     return Models(E_u, E_i, rm, stats)
 
 
@@ -210,7 +291,7 @@ def evaluate_copl(cfg, fd, models, X_held, y_held, seed, device, budgets=None, o
                 if hi - lo < t and o > 0:
                     continue
                 _, nidx, nw = gds.attach_test_items(Xg_ctx[lo:hi], E_i.cpu(), topk=cfg.adapt_topk, device=device)
-                e_u, w_u = gds.adapt_test_user(y_ctx[lo:hi], nidx, nw, E_u, device=device)
+                e_u, w_u = adapt_user(cfg, gds, y_ctx[lo:hi], nidx, nw, E_u, device)
             emb = e_u.unsqueeze(0).expand(len(y_hold), -1)
             with torch.no_grad():
                 if isinstance(rm, BayesianRM):

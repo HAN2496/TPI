@@ -108,6 +108,7 @@ class CoPLRMTrainer:
             weight_decay=config['rm_weight_decay']
         )
         self.best_auc = -1.0
+        self.best_val_loss = float('inf')
         self.best_state_dict = None
 
     def train_epoch(self, loader, E_u_train=None, pos_weight=None):
@@ -174,9 +175,14 @@ class CoPLRMTrainer:
             metrics['val/loss'].append(val_loss)
             metrics['val/auc'].append(val_auc)
 
-            if (not has_val) or val_auc > self.best_auc:
-                if has_val:
-                    self.best_auc = val_auc
+            # model selection: validation AUROC (original) or validation BCE ('loss', calibration-aware)
+            select_loss = self.config.get('rm_select', 'auc') == 'loss'
+            improved = (val_loss < self.best_val_loss) if select_loss else (val_auc > self.best_auc)
+            if has_val and val_auc > self.best_auc:
+                self.best_auc = val_auc
+            if has_val and val_loss < self.best_val_loss:
+                self.best_val_loss = val_loss
+            if (not has_val) or improved:
                 self.best_state_dict = {k: v.cpu() for k, v in self.model.state_dict().items()}
 
             if verbose > 0 and (epoch % 5 == 0 or epoch == n_epochs - 1):

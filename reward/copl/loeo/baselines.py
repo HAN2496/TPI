@@ -23,7 +23,7 @@ def obs_only_model(cfg, obs_dim):
 def _rm_cfg(cfg, device, lr=None, epochs=None):
     return {"device": str(device), "rm_lr": cfg.rm_lr if lr is None else lr, "rm_weight_decay": cfg.rm_weight_decay,
             "rm_lambda_reg": 0.0, "rm_epochs": cfg.rm_epochs if epochs is None else epochs,
-            "use_pos_weight": cfg.use_pos_weight}
+            "use_pos_weight": cfg.use_pos_weight, "rm_select": getattr(cfg, "rm_select", "auc")}
 
 
 def _predict(model, obs, device, bs=1024):
@@ -53,6 +53,10 @@ class PooledCNN:
                         shuffle=False, collate_fn=rm_collate)
         self.val_auc, _ = CoPLRMTrainer(self.model, _rm_cfg(cfg, self.device), log_dir=None).train(
             tr, va, None, gds.tr_y, verbose=verbose)
+        self.temperature = 1.0
+        if getattr(cfg, "rm_calibrate", False):               # same post-hoc calibration as the CoPL reward model
+            from .fold import calibrate
+            self.model, self.temperature = calibrate(self.model, va, None, self.device)
         self.pos_weight = float((1 - gds.tr_y).sum() / max(1, gds.tr_y.sum())) if cfg.use_pos_weight else None
         return self
 

@@ -119,6 +119,35 @@
 <strong>다음 실행.</strong> encoders 재실행 폴더(<code>20261005_022135</code>)에 이어서 <code>tune</code> 전체(약 5시간) → <code>main --set use_tuned=True --set seeds="(42,43,44)"</code> → ablate / sweep / channels → report.
 </div>
 
+<h2 id="E2">E2. 첫 확정 실행: 튜닝 + main (시드 3) <span class="verdict bad-v">RQ1 미달, 설계 결함 발견</span></h2>
+<p class="meta">실행 <code>outputs/copl_loeo/20261005_022135</code> · scatter · 폴드별 튜닝(내부 LOEO 3폴드, 40회) · main 시드 42~44 · 기준 모형 pooled-CNN(fine-tune), indep-CNN, kNN 투표</p>
+<p class="label">결과 (macro, 10폴드)</p>
+<table>
+  <thead><tr><th>t=0</th><th class="num">MLPD</th><th class="num">AUROC</th><th>t=20 (긴 스트림 5명)</th><th class="num">MLPD</th><th class="num">AUROC</th></tr></thead>
+  <tbody>
+    <tr><td>copl</td><td class="num">−0.801 ± 0.063</td><td class="num">0.705</td><td>copl</td><td class="num">−0.728 ± 0.085</td><td class="num">0.719</td></tr>
+    <tr><td>pooled-CNN</td><td class="num">−0.829 ± 0.109</td><td class="num">0.659</td><td>pooled-CNN</td><td class="num">−0.674 ± 0.031</td><td class="num">0.727</td></tr>
+    <tr><td>kNN 투표</td><td class="num">−0.677 ± 0.029</td><td class="num">0.719</td><td>indep-CNN</td><td class="num">−0.961 ± 0.175</td><td class="num">0.626</td></tr>
+    <tr><td>참고 T-IV 계층 베이지안</td><td class="num">−0.692</td><td class="num">0.707</td><td>참고 T-IV</td><td class="num">−0.550</td><td class="num">0.777</td></tr>
+  </tbody>
+</table>
+<p class="label">진단</p>
+<ul>
+  <li><strong>보정 붕괴.</strong> AUROC는 베이지안과 같으나 MLPD는 0.11 나쁘다. 짧은 스트림 폴드에서 과확신 벌점이 크다(김진명 −1.25, 이강근 −0.92; pooled-CNN은 −1.46, −1.48). 원인: <code>CoPLRMTrainer</code>가 검증 AUROC로 모델을 고르므로 보정은 전혀 고려되지 않는다.</li>
+  <li><strong>시드 분산.</strong> 조현석 t=0이 시드별 −1.18 / −0.59 / −0.50. 단일 신경망 보상 모형이 불안정하다.</li>
+  <li><strong>적응이 \(t\le20\)에서 멈춰 있음.</strong> w_u 엔트로피가 t=20까지 \(\log U=2.83\)에 붙어 있고 최종 예산(수백 라벨)에서만 0으로 떨어진다. 투표 점수 \(c_u=(A_{\text{pos}}-A_{\text{neg}})v\)는 라벨 수에 비례하는데 softmax 온도는 고정이라 소수 라벨에서는 균등을 못 벗어난다. 튜닝이 온도 2.0(사실상 비적응)을 자주 고른 것도 같은 이유다.</li>
+  <li><strong>튜닝 일반화 격차.</strong> 내부 최적 −0.58~−0.67 대 외부 −0.98(강신길), −1.24(김진명). 내부 held-out을 라벨 많은 3명으로만 잡아 짧은 스트림을 대표하지 못했다.</li>
+  <li><strong>작동하는 부분.</strong> 최종 예산의 긴 스트림은 T-IV와 비슷하다(박재일 −0.51 vs −0.48, 조현석 −0.42 vs −0.40, 한규택 −0.60 vs −0.59). 모형은 라벨이 충분하면 작동한다. GCF 검증 AUROC는 0.53~0.66으로 임베딩 자체의 예측력은 약하다.</li>
+</ul>
+<p class="label">수정 (코드)</p>
+<ul>
+  <li>보상 모형과 pooled-CNN의 조기 종료를 검증 BCE 기준으로(<code>rm_select="loss"</code>), population 검증 셋으로 온도 보정(<code>rm_calibrate</code>), 보상 모형 앙상블 3개 기본(<code>rm_bayes="ensemble"</code>).</li>
+  <li><strong>scale-free adaptation</strong>(<code>adapt_normalize</code>): \(c_u\)를 사용자 축으로 표준화한 뒤 softmax. 온도가 라벨 수와 무관한 양에 작용하므로 t=5에서도 가중치가 움직인다. 원 CoPL과 다른 점이므로 논문에 수정으로 명시하고 ablation에 원 방식을 넣는다.</li>
+  <li>튜닝 내부 폴드에 가장 짧은 적격 스트림 포함(<code>tune_inner_mix</code>), 튜닝 중에는 단일 보상 모형(<code>tune_rm_bayes="none"</code>).</li>
+</ul>
+<p class="label">판정</p>
+<p><span class="verdict bad-v">RQ1 현재 미달</span>. 이 실행은 "원 CoPL 적응 규칙 + AUROC 기준 선택"의 결과로 보존하고(ablation의 비교선), 수정 후 재튜닝·재실행한다. 재실행 전 문제 폴드 4개(강신길, 김진명, 조현석, 한규택)로 수정 효과를 먼저 확인한다.</p>
+
 <h2 id="status">가설 현황표</h2>
 <table>
   <thead><tr><th>ID</th><th>가설</th><th>판정</th><th>근거</th><th>논문 반영</th></tr></thead>
@@ -129,7 +158,7 @@
     <tr><td>H3b.1</td><td>그래프 채널은 좁게</td><td>부분 지지 (VerAccel 필수, Pitch/Long 제거 유리)</td><td>E1</td><td>채널 절</td></tr>
     <tr><td>H3b.2, H3b.3</td><td>보상 모형 채널은 넓게 / 분리 최선</td><td>예정</td><td>channels 스테이지</td><td>채널 절</td></tr>
     <tr><td>H3.1~H3.4</td><td>희소화와 k</td><td>예정</td><td>sweep 스테이지</td><td>그래프 절</td></tr>
-    <tr><td>RQ1</td><td>CoPL &gt; pooled / indep</td><td>예정</td><td>main 스테이지</td><td>주 결과</td></tr>
+    <tr><td>RQ1</td><td>CoPL &gt; pooled / indep</td><td>1차 미달 (보정·적응 결함), 수정 후 재실행</td><td>E2</td><td>주 결과</td></tr>
     <tr><td>RQ4</td><td>튜닝 설정의 일반화</td><td>예정</td><td>tune 스테이지</td><td>부록</td></tr>
   </tbody>
 </table>

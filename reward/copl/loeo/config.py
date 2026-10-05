@@ -96,10 +96,15 @@ class Config:
     rm_layers: int = 2
     rm_num_heads: int = 8
     rm_max_len: int = 1000
-    rm_bayes: str = "none"                     # none | ensemble | mc_dropout
+    rm_bayes: str = "ensemble"                 # none | ensemble | mc_dropout  (ensemble: variance + calibration)
     rm_dropout: float = 0.0
     rm_mc_samples: int = 30
-    rm_ensemble_k: int = 5
+    rm_ensemble_k: int = 3
+    rm_select: str = "loss"                    # early stopping on validation BCE ('loss') or AUROC ('auc')
+    rm_calibrate: bool = True                  # temperature scaling fitted on the population validation set
+    # ---- adaptation (CoPL vote -> softmax over population users)
+    adapt_normalize: bool = True               # standardize the vote scores c_u before the softmax, so the
+                                               # temperature acts on a scale-free quantity independent of t
     # ---- test-time adaptation
     adapt_topk: int = 30
     adapt_use_neg: bool = True
@@ -123,8 +128,10 @@ class Config:
     # ---- tuning (stage "tune": inner LOEO inside each population set)
     tune_trials: int = 40
     tune_inner_folds: int = 3
+    tune_inner_mix: bool = True                # longest streams plus the shortest eligible one (short-stream coverage)
     tune_budgets: tuple = (0, 5, 10)
     tune_seed: int = 7
+    tune_rm_bayes: str = "none"                # single reward model during tuning (cost); main uses rm_bayes
     tune_space: dict = field(default_factory=lambda: {
         "gcf_emb_dim": [16, 32, 64],
         "item_item_weight": [0.25, 0.5, 1.0, 2.0],
@@ -155,6 +162,6 @@ class Config:
 
 
 FAST = dict(ae_epochs=5, vae_epochs=5, gcf_epochs=5, rm_epochs=5, indep_epochs=5, pooled_ft_epochs=1,
-            rm_ensemble_k=2, rm_mc_samples=5, n_offsets=2, enc_ks=(5, 10), sweep_ks=(5, 20),
+            rm_ensemble_k=2, rm_mc_samples=5, scatter_n1=4, n_offsets=2, enc_ks=(5, 10), sweep_ks=(5, 20),
             sweep_rules=("topk", "mutual"), tune_trials=2, tune_inner_folds=2, knn_k=10, adapt_topk=10,
             syn_n_evaluators=5, syn_min_episodes=20, syn_max_episodes=60, dtw_gamma=1.0)

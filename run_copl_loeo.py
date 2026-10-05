@@ -26,6 +26,10 @@ import ast
 import itertools
 import json
 import time
+import warnings
+
+# informational notice from torch.sparse_coo_tensor (invariant checks off by default); harmless here
+warnings.filterwarnings("ignore", message="Sparse invariant checks are implicitly disabled")
 from dataclasses import asdict, replace
 from pathlib import Path
 
@@ -218,9 +222,14 @@ def stage_tune(cfg, run, data, channels, fs, names, device):
         out = run.dir / "folds" / f"{name}_tune.json"
         rec = json.loads(out.read_text(encoding="utf-8")) if out.exists() else dict(name=name, trials={}, inner=[])
         pop_names, pop_data = D.population_split(data, name)
-        # inner held-out: the population evaluators with the most labels (both classes present)
+        # inner held-out evaluators: the longest population streams, plus the shortest eligible one so
+        # that the tuned setting is also scored on a short stream (tune_inner_mix)
         elig = D.fold_names(cfg, pop_data)[1]
-        inner = sorted(elig, key=lambda n: -len(elig[n][1]))[: cfg.tune_inner_folds]
+        by_len = sorted(elig, key=lambda n: -len(elig[n][1]))
+        if cfg.tune_inner_mix and len(by_len) > cfg.tune_inner_folds:
+            inner = by_len[: cfg.tune_inner_folds - 1] + [by_len[-1]]
+        else:
+            inner = by_len[: cfg.tune_inner_folds]
         rec["inner"] = inner
         seed = cfg.seeds[0]
         cache = {}
@@ -236,7 +245,7 @@ def stage_tune(cfg, run, data, channels, fs, names, device):
                     seed_all(seed)
                     cache[inner_name] = FD.prepare_fold(replace(cfg, seed=seed), in_data, in_pop, channels, fs, device)
                 fd = cache[inner_name]
-                c = replace(cfg, **tr, graph_rule="topk", cross_min=0)
+                c = replace(cfg, **tr, graph_rule="topk", cross_min=0, rm_bayes=cfg.tune_rm_bayes)
                 if (c.knn_k, c.graph_rule, c.cross_min) != (fd.cfg.knn_k, fd.cfg.graph_rule, fd.cfg.cross_min):
                     fd.rebuild_graph(c)                     # trials are all scored on the same rule
                 models = FD.train_models(c, fd, device, seed, verbose=0)
