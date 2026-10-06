@@ -7,8 +7,10 @@ Stages
   ablate    no item-item graph / no adaptation / oracle embedding (seed 0)
   sweep     graph rule x k x item_item_weight, encoder fitted once per fold (seed 0)
   channels  leave-one-channel-out + a_z only + IMU only, end to end (seed 0)
+  adapt     adaptation-rule grid (degree normalization x temperature x evidence) on models trained
+            once per fold (seed 0); test-time only, so cheap
   report    tables and figures from the fold json files
-  all       encoders, main, ablate, sweep, channels, report
+  all       encoders, main, ablate, sweep, channels, adapt, report
 
 Examples
   python run_copl_loeo.py --stage encoders
@@ -56,15 +58,23 @@ def _write(obj, path):
 
 
 def _tuned(cfg, run, name):
-    """Apply folds/<name>_tune.json if requested and present."""
+    """Apply folds/<name>_tune.json (from this run, or from cfg.tuned_from) if requested and present.
+
+    Fields the caller set explicitly on the command line (different from the Config default) are kept:
+    they are the probe, the tuned values fill in the rest.
+    """
     if not cfg.use_tuned:
         return cfg
-    p = run.dir / "folds" / f"{name}_tune.json"
+    base = Path(cfg.tuned_from) if cfg.tuned_from else run.dir
+    p = base / "folds" / f"{name}_tune.json"
     rec = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
     if "best" not in rec:
-        raise SystemExit(f"use_tuned=True but {p} has no result; run --stage tune first (same run folder)")
-    log(cfg, f"[tune] {name}: using {rec['best']}")
-    return replace(cfg, **rec["best"])
+        raise SystemExit(f"use_tuned=True but {p} has no result; run --stage tune first (same run folder or tuned_from)")
+    dflt = replace(Config(), **FAST) if cfg.fast else Config()
+    best = {k: v for k, v in rec["best"].items() if getattr(cfg, k) == getattr(dflt, k)}
+    kept = {k: getattr(cfg, k) for k in rec["best"] if k not in best}
+    log(cfg, f"[tune] {name}: using {best}" + (f"  (kept from command line: {kept})" if kept else ""))
+    return replace(cfg, **best)
 
 
 # ----------------------------------------------------------------------------- stage: main
@@ -85,7 +95,8 @@ ABLATIONS = {"no_item_item": dict(use_item_item=False), "no_adapt": dict(use_ada
              "unit_adapt": dict(adapt_evidence="unit"),            # standardized, no evidence growth
              "sqrt_adapt": dict(adapt_evidence="sqrt"),            # standardized * sqrt(t)
              "no_mix": dict(rm_mix_prob=0.0),                      # reward model trained on true users only
-             "no_calib": dict(rm_calibrate=False, rm_select="auc")}  # original model selection, no temperature
+             "no_calib": dict(rm_calibrate=False, rm_select="auc"),  # original model selection, no temperature
+             "degree_norm": dict(adapt_degree_norm=1.0)}           # per-item mean agreement instead of the raw sum
 
 
 def _variant_record(fold):
@@ -160,6 +171,38 @@ def stage_channels(cfg, run, data, channels, fs, names, device):
             rec["channels"][label] = dict(channels=list(subset), **_variant_record(fold))
             _write(rec, out)
             log(cfg, f"[channels] {name} {label}: " + "  ".join(f"t={t}: {v['mlpd']:.3f}" for t, v in fold["copl"].items()))
+
+
+# ----------------------------------------------------------------------------- stage: adapt
+def stage_adapt(cfg, run, data, channels, fs, names, device):
+    """Adaptation-rule grid.  Encoder, graph, GCF and reward model are trained once per fold (seed 0);
+    only the test-time vote -> softmax step changes, so each setting costs one evaluation pass."""
+    for name in names:
+        out = run.dir / "folds" / f"{name}_adapt.json"
+        rec = json.loads(out.read_text(encoding="utf-8")) if out.exists() else dict(name=name, adapt={})
+        cfg_f = _tuned(cfg, run, name)
+        pop_names, pop_data = D.population_split(data, name)
+        X_held, y_held = data[name]
+        seed = cfg.seeds[0]
+        fd = models = None
+        for alpha, temp, ev in itertools.product(cfg.adapt_sweep_norms, cfg.adapt_sweep_temps, cfg.adapt_sweep_evidence):
+            label = f"norm={alpha}/temp={temp}/ev={ev}"
+            if label in rec["adapt"]:
+                continue
+            if fd is None:
+                seed_all(seed)
+                fd = FD.prepare_fold(replace(cfg_f, seed=seed), pop_data, pop_names, channels, fs, device)
+                models = FD.train_models(cfg_f, fd, device, seed, verbose=0)
+            c = replace(cfg_f, adapt_degree_norm=float(alpha), adapt_user_softmax_temp=float(temp), adapt_evidence=ev)
+            tic = time.time()
+            res, lpd, info, wu = FD.evaluate_copl(c, fd, models, X_held, y_held, seed, device)
+            rec["adapt"][label] = dict(copl={str(t): v for t, v in res.items()},
+                                       lpd={str(t): v.tolist() for t, v in lpd.items()}, graph=fd.gstats, info=info,
+                                       w_u={str(t): v for t, v in wu.items()}, fit_stats=models.stats,
+                                       seconds=time.time() - tic)
+            _write(rec, out)
+            log(cfg, f"[adapt] {name} {label}: " + "  ".join(f"t={t}: {v['mlpd']:.3f} H={v['w_entropy']:.2f}"
+                                                              for t, v in res.items()))
 
 
 # ----------------------------------------------------------------------------- stage: encoders
@@ -274,7 +317,7 @@ def stage_report(cfg, run):
         summary["main"] = {r["method"] + f"/t={r['t']}": r["mean"] for r in rows if r["metric"] == "mlpd"}
     md_extra = []
     for key, suffix, label_key in (("ablate", "_ablate", "variant"), ("sweep", "_sweep", "graph"),
-                                   ("channels", "_channels", "channel_set")):
+                                   ("channels", "_channels", "channel_set"), ("adapt", "_adapt", "setting")):
         fv = CR.load_folds(run.dir, suffix)
         if fv:
             CR.normalize_variants(fv, key, cfg.budgets)      # per-fold t = n_ctx -> shared key "final"
@@ -298,7 +341,7 @@ def stage_report(cfg, run):
 
 
 # ----------------------------------------------------------------------------- main
-READ_ONLY = ("report", "ablate", "sweep", "channels", "tune")
+READ_ONLY = ("report", "ablate", "sweep", "channels", "adapt", "tune")
 
 
 def main(cfg=None):
@@ -306,7 +349,8 @@ def main(cfg=None):
     if cfg.fast:                                # FAST only fills fields the caller left at their defaults
         dflt = Config()
         cfg = replace(cfg, **{k: v for k, v in FAST.items() if getattr(cfg, k) == getattr(dflt, k)})
-    if cfg.timestamp is None and (cfg.stage in READ_ONLY or cfg.use_tuned):   # tuned main must reuse the tune folder
+    if cfg.timestamp is None and (cfg.stage in READ_ONLY or (cfg.use_tuned and not cfg.tuned_from)):
+        # read-only stages and a tuned main (tune results in the same folder) reuse the latest run folder
         existing = sorted(p.name for p in (Path("outputs") / cfg.run_name).glob("*")
                           if p.is_dir() and (p / "folds").is_dir() and p.name != "test")
         if existing and cfg.stage == "report" and not any((Path("outputs") / cfg.run_name / existing[-1] / "folds").glob("*.json")):
@@ -324,12 +368,12 @@ def main(cfg=None):
     names, elig = D.fold_names(cfg, data)
     log(cfg, f"[INFO] data={cfg.data} evaluators={len(data)} eligible={len(elig)} folds={len(names)} "
              f"channels={channels} fs={fs} device={device} stage={cfg.stage} -> {run.dir}")
-    stages = ["encoders", "main", "ablate", "sweep", "channels", "report"] if cfg.stage == "all" else [cfg.stage]
+    stages = ["encoders", "main", "ablate", "sweep", "channels", "adapt", "report"] if cfg.stage == "all" else [cfg.stage]
     R.write_json(asdict(cfg), run.dir / f"cfg_{cfg.stage}.json")
     for st in stages:
         tic = time.time()
         fn = {"main": stage_main, "ablate": stage_ablate, "sweep": stage_sweep, "channels": stage_channels,
-              "encoders": stage_encoders, "tune": stage_tune}.get(st)
+              "adapt": stage_adapt, "encoders": stage_encoders, "tune": stage_tune}.get(st)
         if fn is not None:
             fn(cfg, run, data, channels, fs, names, device)
         elif st == "report":
@@ -343,7 +387,7 @@ def main(cfg=None):
 
 def parse_args():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--stage", default=None, choices=["encoders", "tune", "main", "ablate", "sweep", "channels", "report", "all"])
+    ap.add_argument("--stage", default=None, choices=["encoders", "tune", "main", "ablate", "sweep", "channels", "adapt", "report", "all"])
     ap.add_argument("--data", default=None, choices=["real", "synthetic"])
     ap.add_argument("--timestamp", default=None)
     ap.add_argument("--fast", action="store_true")

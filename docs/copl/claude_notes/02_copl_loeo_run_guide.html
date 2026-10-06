@@ -74,10 +74,11 @@ reward/copl/similarity/__init__.py                   레지스트리에 새 인�
     <tr><td><code>ablate</code></td><td>no_item_item / no_adapt / oracle (시드 1)</td><td><code>folds/&lt;name&gt;_ablate.json</code></td><td>main의 3배 / 시드 1</td></tr>
     <tr><td><code>sweep</code></td><td>규칙 × k × λ_ii. 인코더는 폴드당 1회만 적합</td><td><code>folds/&lt;name&gt;_sweep.json</code></td><td>GCF+RM 재학습 × 격자 크기</td></tr>
     <tr><td><code>channels</code></td><td>LOCO 5 + a_z 단독 + IMU 3채널, 인코더부터 재적합</td><td><code>folds/&lt;name&gt;_channels.json</code></td><td>main × 7 / 시드 1</td></tr>
+    <tr><td><code>adapt</code></td><td>적응 규칙 격자 (degree 정규화 α × 온도 τ × evidence). 인코더·GCF·RM은 폴드당 1회만 학습하고 테스트 시 투표→softmax 단계만 바꿈</td><td><code>folds/&lt;name&gt;_adapt.json</code> (w_u 포함)</td><td>폴드당 학습 1회 + 설정당 수 초</td></tr>
     <tr><td><code>report</code></td><td>전부 집계</td><td><code>report/main.md, *.csv, *.png</code></td><td>초</td></tr>
   </tbody>
 </table>
-<p><code>--stage all</code>은 encoders, main, ablate, sweep, channels, report 순이다(tune 제외). 끝난 폴드 json은 건너뛰므로 중단 후 같은 <code>--timestamp</code>로 재개할 수 있고, report/ablate/sweep/channels/tune은 <code>--timestamp</code>를 생략하면 같은 <code>run_name</code>의 최신 폴더를 쓴다.</p>
+<p><code>--stage all</code>은 encoders, main, ablate, sweep, channels, adapt, report 순이다(tune 제외). 끝난 폴드 json은 건너뛰므로 중단 후 같은 <code>--timestamp</code>로 재개할 수 있고, report/ablate/sweep/channels/tune은 <code>--timestamp</code>를 생략하면 같은 <code>run_name</code>의 최신 폴더를 쓴다.</p>
 
 <h2 id="commands">3. 권장 순서와 명령</h2>
 <div class="note">모든 명령은 저장소 루트에서. <code>.venv\Scripts\python.exe</code>는 네 환경에 맞게. GPU가 있으면 자동으로 쓴다(<code>device=auto</code>).</div>
@@ -98,6 +99,11 @@ reward/copl/similarity/__init__.py                   레지스트리에 새 인�
 .venv\Scripts\python.exe run_copl_loeo.py --stage channels --set run_name=copl_loeo --set encoder=&lt;...&gt; --set use_tuned=True
 .venv\Scripts\python.exe run_copl_loeo.py --stage report   --set run_name=copl_loeo</pre>
 
+<h3>3.3b 다른 실행의 튜닝 결과 재사용, 적응 규칙 격자</h3>
+<pre>.venv\Scripts\python.exe run_copl_loeo.py --stage adapt --set run_name=copl_loeo_adapt --set use_tuned=True --set tuned_from=outputs/copl_loeo_final/&lt;timestamp&gt;
+.venv\Scripts\python.exe run_copl_loeo.py --stage report --set run_name=copl_loeo_adapt</pre>
+<p><code>tuned_from</code>은 다른 실행 폴더의 <code>folds/&lt;name&gt;_tune.json</code>을 적용한다(튜닝 5~6시간을 다시 쓰지 않기 위해). 명령줄에서 기본값과 다르게 준 필드는 튜닝값으로 덮지 않고 유지한다. <code>adapt</code>는 <code>adapt_sweep_norms × adapt_sweep_temps × adapt_sweep_evidence</code> 격자를 돌고 설정마다 w_u를 저장한다. 폴드 json만 있는 run이면 report는 <code>report/variants.md</code>를 쓴다.</p>
+
 <h3>3.4 결과 공유</h3>
 <pre>git add outputs
 git commit -m "Add copl_loeo &lt;stage&gt; run"
@@ -115,7 +121,11 @@ git push origin claude_session</pre>
     <tr><td><code>item_item_weight</code></td><td>0.5</td><td>GCF의 λ_ii</td></tr>
     <tr><td><code>rm_bayes</code></td><td>none</td><td>ensemble / mc_dropout이면 입자 지표(epistemic 등)와 신뢰 구간이 추가됨</td></tr>
     <tr><td><code>pooled_ft_epochs</code>, <code>pooled_ft_lr</code>, <code>pooled_ctx_weight</code></td><td>3, 1e-4, 1</td><td>Pooled-CNN을 (t, 오프셋)마다 population+context로 fine-tune</td></tr>
-    <tr><td><code>tune_space</code>, <code>tune_trials</code>, <code>tune_inner_folds</code>, <code>tune_budgets</code></td><td>7개 축, 40, 3, (0,5,10)</td><td>튜닝 탐색 공간과 예산</td></tr>
+    <tr><td><code>adapt_evidence</code>, <code>adapt_user_softmax_temp</code></td><td>none, 1.15</td><td>투표 점수의 t-의존 규칙(none = 원 CoPL, unit = 표준화, sqrt = 표준화 × √t)과 softmax 온도</td></tr>
+    <tr><td><code>adapt_degree_norm</code></td><td>0</td><td>α: 사용자 점수에 (n̄/n_u)^α를 곱한다. 0 = 원 합(라벨 많은 사용자로 쏠림, 03의 E5), 1 = 아이템당 평균 일치도</td></tr>
+    <tr><td><code>adapt_sweep_norms</code>, <code>adapt_sweep_temps</code>, <code>adapt_sweep_evidence</code></td><td>(0,0.5,1), (0.25,…,4), ("none",)</td><td><code>adapt</code> 스테이지 격자</td></tr>
+    <tr><td><code>tune_space</code>, <code>tune_trials</code>, <code>tune_inner_folds</code>, <code>tune_budgets</code></td><td>9개 축, 40, 3, (0,5,10,20)</td><td>튜닝 탐색 공간과 예산. 축: gcf_emb_dim, item_item_weight, knn_k, 온도, evidence, degree_norm, neg_weight, gcf_lr, rm_lr</td></tr>
+    <tr><td><code>use_tuned</code>, <code>tuned_from</code></td><td>False, ""</td><td>폴드별 튜닝 결과 적용 / 다른 run 폴더의 튜닝 결과 적용</td></tr>
     <tr><td><code>seeds</code></td><td>(42,)</td><td>인코더·GCF·RM·baseline 모두 시드별 재학습</td></tr>
     <tr><td><code>folds</code></td><td>()</td><td>디버그용 held-out 부분집합, 예: <code>--set folds="('강신길',)"</code></td></tr>
   </tbody>

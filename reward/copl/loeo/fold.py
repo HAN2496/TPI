@@ -184,15 +184,23 @@ def calibrate(model, loader, E_u, device):
 
 # ----------------------------------------------------------------------------- adaptation
 def adapt_user(cfg, gds, y_ctx, neigh_idx, neigh_w, E_u, device):
-    """CoPL vote -> softmax over population users; optionally standardized (scale-free) scores.
+    """CoPL vote -> softmax over population users.
 
-    The original score c_u = (A_pos - A_neg) v grows with the number of context labels, so a fixed
-    temperature gives near-uniform weights for small t.  With adapt_normalize the scores are
-    standardized across users before the softmax, which makes the temperature act on a quantity
-    whose scale does not depend on t.
+    The vote v puts +w (good) / -adapt_neg_weight*w (bad) on the k nearest population items of each
+    context episode, and the user score c_u = (A_pos - A_neg) v sums v over the items of user u.
+    Two knobs change the score before the softmax:
+
+    * adapt_degree_norm = alpha multiplies c_u by (n_bar / n_u)**alpha, n_u = number of items of
+      user u in the population graph and n_bar their mean.  The raw sum grows with n_u, so with
+      alpha = 0 the softmax drifts to the users with the most labels whatever their agreement (03
+      experiment log, E5); alpha = 1 makes c_u a per-item mean agreement, rescaled by n_bar so that
+      the overall scale (and hence the temperature range) stays comparable to alpha = 0.
+    * adapt_evidence sets how the scale depends on t: "none" keeps the raw (or degree-normalized)
+      score, which grows linearly with the number of context labels; "unit" standardizes across users
+      (scale-free); "sqrt" standardizes and multiplies by sqrt(t).
+
+    alpha = 0 and adapt_evidence = "none" reproduce the original CoPL rule exactly.
     """
-    if not cfg.adapt_normalize or cfg.adapt_evidence == "none":
-        return gds.adapt_test_user(y_ctx, neigh_idx, neigh_w, E_u, device=device)
     y_ctx = np.asarray(y_ctx).astype(np.int64)
     v = np.zeros((gds.Apos_bin.size(1),), dtype=np.float32)
     pos, neg = y_ctx == 1, y_ctx == 0
@@ -201,17 +209,32 @@ def adapt_user(cfg, gds, y_ctx, neigh_idx, neigh_w, E_u, device):
     if cfg.adapt_use_neg and neg.any():
         np.add.at(v, neigh_idx[neg].reshape(-1), -cfg.adapt_neg_weight * neigh_w[neg].reshape(-1))
     v_t = torch.tensor(v, dtype=torch.float32, device=device)
-    c_u = torch.spmm(gds.Apos_bin.to(device), v_t.unsqueeze(-1)).squeeze(-1)
-    if cfg.adapt_use_neg:
-        c_u = c_u - torch.spmm(gds.Aneg_bin.to(device), v_t.unsqueeze(-1)).squeeze(-1)
-    sd = c_u.std()
-    if not torch.isfinite(sd) or sd < 1e-8:
-        w_u = torch.ones_like(c_u) / c_u.numel()
+    Apos = gds.Apos_bin.to(device)
+    Aneg = gds.Aneg_bin.to(device) if (cfg.adapt_use_neg and gds.Aneg_bin is not None) else None
+    c_u = torch.spmm(Apos, v_t.unsqueeze(-1)).squeeze(-1)
+    if Aneg is not None:
+        c_u = c_u - torch.spmm(Aneg, v_t.unsqueeze(-1)).squeeze(-1)
+    alpha = float(getattr(cfg, "adapt_degree_norm", 0.0))
+    if alpha > 0:
+        n_u = torch.sparse.sum(Apos, dim=1).to_dense()
+        if gds.Aneg_bin is not None:
+            n_u = n_u + torch.sparse.sum(gds.Aneg_bin.to(device), dim=1).to_dense()
+        n_u = n_u.clamp_min(1.0)
+        c_u = c_u * (n_u.mean() / n_u).pow(alpha)
+    temp = max(1e-6, cfg.adapt_user_softmax_temp)
+    if not cfg.adapt_normalize or cfg.adapt_evidence == "none":
+        w_u = torch.softmax(c_u / temp, dim=0)
+        if torch.isnan(w_u).any() or float(w_u.sum().item()) < 1e-6:
+            w_u = torch.ones_like(w_u) / w_u.numel()
     else:
-        z = (c_u - c_u.mean()) / sd
-        if cfg.adapt_evidence == "sqrt":        # evidence accumulates: sharper with more labels
-            z = z * float(np.sqrt(len(y_ctx)))
-        w_u = torch.softmax(z / max(1e-6, cfg.adapt_user_softmax_temp), dim=0)
+        sd = c_u.std()
+        if not torch.isfinite(sd) or sd < 1e-8:
+            w_u = torch.ones_like(c_u) / c_u.numel()
+        else:
+            z = (c_u - c_u.mean()) / sd
+            if cfg.adapt_evidence == "sqrt":        # evidence accumulates: sharper with more labels
+                z = z * float(np.sqrt(len(y_ctx)))
+            w_u = torch.softmax(z / temp, dim=0)
     return (w_u.unsqueeze(-1) * E_u).sum(dim=0), w_u.detach().cpu().numpy()
 
 

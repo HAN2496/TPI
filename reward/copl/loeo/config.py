@@ -106,6 +106,12 @@ class Config:
     adapt_normalize: bool = True               # standardize the vote scores c_u before the softmax
     adapt_evidence: str = "none"               # "none" = original CoPL scale (grows with t; best in E4 at tau ~ 1),
                                                # "unit" = standardized (independent of t), "sqrt" = standardized * sqrt(t)
+    adapt_degree_norm: float = 0.0             # alpha: user score c_u * (n_bar/n_u)**alpha (n_u = items of user u); 0 =
+                                               # original sum, drifts to the users with the most labels (03 log, E5); 1 = mean
+    # ---- stage "adapt": adaptation-rule grid on models trained once per fold (seed 0)
+    adapt_sweep_norms: tuple = (0.0, 0.5, 1.0)
+    adapt_sweep_temps: tuple = (0.25, 0.5, 1.0, 2.0, 4.0)
+    adapt_sweep_evidence: tuple = ("none",)
     # ---- mixture-consistent reward-model training: the reward model is queried with convex mixtures of
     # population embeddings (cold start = mean, adaptation = softmax mixture), so it is trained on them too
     rm_mix_prob: float = 0.5                   # fraction of training rows whose user embedding is replaced by a mixture
@@ -143,11 +149,13 @@ class Config:
         "knn_k": [10, 30, 100],
         "adapt_user_softmax_temp": [0.25, 0.5, 1.0, 2.0, 4.0],
         "adapt_evidence": ["none", "unit", "sqrt"],
+        "adapt_degree_norm": [0.0, 0.5, 1.0],
         "adapt_neg_weight": [0.0, 0.5, 1.0],
         "gcf_lr": [2e-4, 7e-4, 2e-3],
         "rm_lr": [1e-4, 3e-4, 1e-3],
     })
     use_tuned: bool = False                    # main/ablate/sweep/channels read folds/<name>_tune.json if present
+    tuned_from: str = ""                       # run folder whose folds/<name>_tune.json to apply instead (reuse a tune)
     # ---- channels study (stage "channels")
     channel_configs: str = "loso"              # "loso" = LOCO 5 + a_z only + IMU only
     # ---- synthetic
@@ -158,7 +166,7 @@ class Config:
     syn_k_individual: int = 3
     rho_max: float = 0.95                      # used by the synthetic generator only
     # ---- run
-    stage: str = "main"                        # encoders | main | ablate | sweep | channels | tune | report | all
+    stage: str = "main"                        # encoders | main | ablate | sweep | channels | adapt | tune | report | all
     timestamp: str = None
     run_name: str = "copl_loeo"
     seed: int = 42
@@ -170,4 +178,5 @@ class Config:
 FAST = dict(ae_epochs=5, vae_epochs=5, gcf_epochs=5, rm_epochs=5, indep_epochs=5, pooled_ft_epochs=1,
             rm_ensemble_k=2, rm_mc_samples=5, scatter_n1=4, n_offsets=2, enc_ks=(5, 10), sweep_ks=(5, 20),
             sweep_rules=("topk", "mutual"), tune_trials=2, tune_inner_folds=2, knn_k=10, adapt_topk=10,
+            adapt_sweep_norms=(0.0, 1.0), adapt_sweep_temps=(1.0,),
             syn_n_evaluators=5, syn_min_episodes=20, syn_max_episodes=60, dtw_gamma=1.0)

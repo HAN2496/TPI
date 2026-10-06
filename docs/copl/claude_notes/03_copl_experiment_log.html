@@ -60,7 +60,7 @@
 <main>
 <header>
   <h1>03 · CoPL 실험 가설 기록</h1>
-  <div class="meta">계획서(01)의 가설을 실행 결과로 판정한다. 수치의 출처는 <code>outputs/copl_loeo/&lt;timestamp&gt;</code>. 평가자 가명 E1~E10은 T-IV 쪽 05 문서와 같다.</div>
+  <div class="meta">계획서(01)의 가설을 실행 결과로 판정한다. 수치의 출처는 <code>outputs/copl_loeo*/&lt;timestamp&gt;</code> (확정 실행은 <code>copl_loeo_final/20261005_162500</code>). 평가자 가명 E1~E10은 T-IV 쪽 05 문서와 같다.</div>
 </header>
 
 <h2 id="E1">E1. 인코더 × 채널 집합의 내재 지표 <span class="verdict mix-v">H2.2 지지(더 강하게), H2.1 보류, H3b.1 부분 지지</span></h2>
@@ -196,6 +196,109 @@
 </ul>
 <p><span class="verdict mix-v">판정</span>: 보정 + 앙상블 + mixture training + 원 적응 규칙으로 확정 설정을 잡고 전체 튜닝(규칙·온도 포함, 예산 0/5/10/20)과 main으로 간다. 논문의 ablation 표는 이 7종을 10폴드로 다시 낸다.</p>
 
+<h2 id="E5">E5. 확정 실행 2차: tune → main(시드 3) → ablate · sweep · channels <span class="verdict bad-v">RQ1 미달 (pooled와 동등), 적응의 degree 편향 발견</span></h2>
+<p class="meta">실행 <code>outputs/copl_loeo_final/20261005_162500</code> · 10폴드 · tune: 폴드마다 내부 3폴드(가장 긴 2명 + 가장 짧은 적격 1명) × 40회 · main: 폴드별 튜닝값, 시드 42·43·44 · ablate/sweep/channels: 튜닝값, 시드 42 · 총 약 7시간</p>
+
+<p class="label">주 결과 (macro MLPD ± 평가자 SE)</p>
+<table>
+  <thead><tr><th>방법</th><th class="num">t=0 (10명)</th><th class="num">5 (10)</th><th class="num">10 (8)</th><th class="num">20 (5)</th><th class="num">최종 (10)</th></tr></thead>
+  <tbody>
+    <tr><td>CoPL (튜닝, 시드 3)</td><td class="num">−0.720 ± 0.054</td><td class="num">−0.717 ± 0.040</td><td class="num">−0.666 ± 0.039</td><td class="num">−0.658 ± 0.086</td><td class="num">−0.707 ± 0.069</td></tr>
+    <tr><td>Pooled-CNN (보정, fine-tune)</td><td class="num">−0.726 ± 0.076</td><td class="num">−0.731 ± 0.083</td><td class="num">−0.649 ± 0.024</td><td class="num">−0.633 ± 0.025</td><td class="num">−0.713 ± 0.087</td></tr>
+    <tr><td>kNN vote (문맥 무관)</td><td class="num">−0.677 ± 0.029</td><td class="num">−0.677</td><td class="num">−0.697</td><td class="num">−0.727</td><td class="num">−0.677</td></tr>
+    <tr><td>Indep-CNN</td><td class="num">—</td><td class="num">−1.161 ± 0.246</td><td class="num">−1.114</td><td class="num">−0.850</td><td class="num">−0.919</td></tr>
+    <tr><td>CoPL − Pooled (평가자 단위 paired)</td><td class="num">+0.005 ± 0.030</td><td class="num">+0.013 ± 0.079</td><td class="num">−0.017 ± 0.041</td><td class="num">−0.024 ± 0.095</td><td class="num"></td></tr>
+  </tbody>
+</table>
+<p>AUROC는 CoPL이 cold start에서 0.743 (pooled 0.682, kNN 0.719), t=20에서 0.748 (pooled 0.731). 어느 예산에서도 CoPL과 pooled의 차이는 SE 안이다. cold start에서는 문맥을 전혀 쓰지 않는 kNN vote가 가장 좋다(CoPL − kNN = −0.044 ± 0.051). 시드 sd는 폴드 안에서 0.01~0.03(이지환 최종 0.058)으로 평가자 SE보다 작다.</p>
+
+<p class="label">평가자별 (CoPL / Pooled MLPD, 최종 w_u가 가장 많이 쏠린 population 사용자)</p>
+<table>
+  <thead><tr><th>평가자 (n, good 비율)</th><th class="num">t=0</th><th class="num">t=20</th><th class="num">최종</th><th class="num">ΔELPD 최종 − cold (CoPL)</th><th>최종 w_u 최대</th></tr></thead>
+  <tbody>
+    <tr><td>이지환 (1056, 0.41)</td><td class="num">−0.723 / −0.708</td><td class="num">−0.971 / −0.647</td><td class="num">−1.089 / −0.622</td><td class="num">−193 ± 11</td><td>박재일 1.00 (good 0.76)</td></tr>
+    <tr><td>박재일 (591, 0.76)</td><td class="num">−0.713 / −0.678</td><td class="num">−0.482 / −0.681</td><td class="num">−0.482 / −0.632</td><td class="num">+69 ± 11</td><td>한규택 1.00 (0.76)</td></tr>
+    <tr><td>한규택 (369, 0.76)</td><td class="num">−0.737 / −0.637</td><td class="num">−0.561 / −0.683</td><td class="num">−0.550 / −0.643</td><td class="num">+35 ± 9</td><td>박재일 1.00</td></tr>
+    <tr><td>조현석 (279, 0.24)</td><td class="num">−0.724 / −0.631</td><td class="num">−0.702 / −0.556</td><td class="num">−0.449 / −0.540</td><td class="num">+39 ± 5</td><td>이지환 0.28</td></tr>
+    <tr><td>강신길 (205, 0.62)</td><td class="num">−0.602 / −0.589</td><td class="num">−0.572 / −0.601</td><td class="num">−0.546 / −0.591</td><td class="num">+6 ± 7</td><td>박재일 0.93</td></tr>
+    <tr><td>김태근 (35, 0.51)</td><td class="num">−0.708 / −0.686</td><td class="num">—</td><td class="num">−0.707 / −0.684</td><td class="num">0</td><td>균등</td></tr>
+    <tr><td>김재호 (34, 0.47)</td><td class="num">−0.595 / −0.567</td><td class="num">—</td><td class="num">−0.594 / −0.565</td><td class="num">0</td><td>균등</td></tr>
+    <tr><td>김진명 (30, 0.47)</td><td class="num">−0.666 / −0.724</td><td class="num">—</td><td class="num">−0.893 / −0.747</td><td class="num">−3.4 ± 2.2</td><td>이지환 0.40</td></tr>
+    <tr><td>이강근 (18, 0.83)</td><td class="num">−1.173 / −1.393</td><td class="num">—</td><td class="num">−0.834 / −1.473</td><td class="num">+3.1 ± 1.2</td><td>—</td></tr>
+    <tr><td>신민철 (10, 0.60)</td><td class="num">−0.562 / −0.642</td><td class="num">—</td><td class="num">−0.930 / −0.630</td><td class="num">−1.8 ± 1.6</td><td>박재일 0.47</td></tr>
+  </tbody>
+</table>
+
+<p class="label">진단 1: 적응의 degree 편향</p>
+<p>사용자 점수는 아이템 합이다. \(I_u\)를 population 사용자 \(u\)의 아이템, \(s_i\in\{+1,-1\}\)을 그 라벨 부호, \(v_i\)를 문맥 라벨이 kNN 부착으로 아이템 \(i\)에 보낸 표라 하면</p>
+\[
+c_u=\sum_{i\in I_u}s_i\,v_i,\qquad w_u=\mathrm{softmax}_u(c_u/\tau),\qquad
+\mathbb E[c_u]\;\approx\;n_u\cdot\overline{(s\,v)}_u,\quad n_u=|I_u|
+\]
+<p>즉 평균 일치도가 같아도 \(c_u\)는 \(n_u\)에 비례한다. 결과가 그대로 보인다: 모든 평가자의 최종 w_u 최대는 population에서 가장 큰 사용자다(이지환 → 박재일 591, 박재일 → 한규택 369, 한규택·강신길·신민철 → 박재일, 조현석·김진명 → 이지환 1056). 원 규칙(evidence none)은 \(c_u\)가 \(t\)에 비례해 커지므로 \(t=528\)에서는 \(\tau\)와 무관하게 one-hot이 된다. 이지환(good 0.41)은 박재일(good 0.76)의 임베딩을 받아 −0.723 → −1.089로 무너지고, 이 한 폴드가 t≥10의 macro를 pooled 아래로 끌어내린다(이지환 제외 시 t=20 CoPL −0.579 vs pooled −0.630, 4폴드). oracle(자기 임베딩)은 이지환에서 −0.554이므로 보상 모형은 이지환을 표현할 수 있다. 문제는 적응이 엉뚱한 사용자를 고르는 것이다. 반대로 박재일 ↔ 한규택(둘 다 good 0.76)은 서로에게 one-hot으로 붙어 −0.48, −0.55로 큰 이득을 보는데, 이는 base rate가 같은 사용자를 찾은 효과다.</p>
+
+<p class="label">진단 2: 튜닝의 일반화 (RQ4)</p>
+<p>이지환 폴드의 내부 폴드는 박재일·한규택·신민철이고 내부 목적함수 최적은 −0.546 (none, τ=0.5: 가장 날카로운 설정), 40회 시도의 범위는 −0.64~−0.55로 좁다. 외부 결과는 −0.72(t=0)~−1.09(최종). 내부 폴드가 서로 base rate가 같은 박재일·한규택 쌍이라 "한 명에게 몰아주는" 설정이 보상받았다. 10폴드 중 6폴드가 evidence none, 4폴드가 unit을 골랐고 τ는 0.25~4 전부 등장한다. 튜닝값이 폴드 간에 안정적이지 않다. <span class="verdict bad-v">RQ4 기각</span>.</p>
+
+<p class="label">ablation (10폴드, 시드 42, 튜닝값; 기준 = sweep의 topk/k=30 행 −0.710 / −0.695 / −0.656 / −0.665 / −0.695)</p>
+<table>
+  <thead><tr><th>변형</th><th class="num">t=0</th><th class="num">5</th><th class="num">10</th><th class="num">20</th><th class="num">최종</th><th>해석</th></tr></thead>
+  <tbody>
+    <tr><td>no_adapt</td><td class="num">−0.709</td><td class="num">−0.709</td><td class="num">−0.676</td><td class="num">−0.691</td><td class="num">−0.709</td><td>적응 전체 효과: t=20에서 +0.03, 최종 +0.01 (이지환 포함)</td></tr>
+    <tr><td>no_item_item</td><td class="num">−0.732</td><td class="num">−0.701</td><td class="num">−0.661</td><td class="num">−0.663</td><td class="num">−0.686</td><td>기준과 같음. GCF 안의 item-item 전파는 기여 없음 (E4 재현)</td></tr>
+    <tr><td>no_mix</td><td class="num">−0.805</td><td class="num">−0.747</td><td class="num">−0.723</td><td class="num">−0.670</td><td class="num">−0.734</td><td>cold start 0.09 악화 (E4 재현). 단 이지환은 no_mix가 −0.601로 더 좋다</td></tr>
+    <tr><td>no_calib</td><td class="num">−0.756</td><td class="num">−0.764</td><td class="num">−0.679</td><td class="num">−0.677</td><td class="num">−0.752</td><td>보정 필요 (E4 재현)</td></tr>
+    <tr><td>unit_adapt</td><td class="num">−0.713</td><td class="num">−0.792</td><td class="num">−0.697</td><td class="num">−0.688</td><td class="num">−0.721</td><td>t=5 과집중 (E3 재현)</td></tr>
+    <tr><td>sqrt_adapt</td><td class="num">−0.702</td><td class="num">−0.832</td><td class="num">−0.690</td><td class="num">−0.687</td><td class="num">−0.714</td><td>t=5 과집중 (E4 재현)</td></tr>
+    <tr><td>oracle</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">−0.625</td><td>상한. 기준 −0.695, pooled −0.713보다 0.07~0.09 좋다</td></tr>
+  </tbody>
+</table>
+
+<p class="label">sweep (24 설정, 시드 42)</p>
+<p>규칙 4종 × k ∈ {5,…,100}에서 MLPD는 t별로 ±0.01 안에 있다(t=0: −0.700~−0.723, t=20: −0.651~−0.676, SE 0.04~0.09). epsilon/mutual은 그래프를 2~874개 성분으로 쪼개도 결과가 같다. no_item_item과 함께 읽으면 item-item 그래프의 희소화는 성능에 영향이 없다. <span class="verdict mix-v">H3.1~H3.4: k와 규칙은 무관</span>. 그래프가 하는 일은 테스트 시 kNN 부착뿐이고, 그 k는 <code>adapt_topk</code>(30, 고정)다.</p>
+
+<p class="label">channels (시드 42; 그래프와 RM 채널을 함께 바꿈)</p>
+<table>
+  <thead><tr><th>채널 집합</th><th class="num">t=0</th><th class="num">5</th><th class="num">10</th><th class="num">20</th><th class="num">최종</th></tr></thead>
+  <tbody>
+    <tr><td>full (5채널)</td><td class="num">−0.707</td><td class="num">−0.705</td><td class="num">−0.657</td><td class="num">−0.650</td><td class="num">−0.701</td></tr>
+    <tr><td>IMU 3채널</td><td class="num">−0.690</td><td class="num">−0.664</td><td class="num">−0.643</td><td class="num">−0.641</td><td class="num">−0.661</td></tr>
+    <tr><td>a_z 단독</td><td class="num">−0.692</td><td class="num">−0.663</td><td class="num">−0.654</td><td class="num">−0.645</td><td class="num">−0.642</td></tr>
+    <tr><td>without Bounce / Pitch / Long / Ver / Lat</td><td class="num" colspan="5">제거 하나당 변화 ±0.04 이내, SE(0.03~0.08) 안. Lat 제거가 가장 나쁘지만(최종 −0.742) 폴드별로 부호가 갈린다</td></tr>
+  </tbody>
+</table>
+<p>IMU 3채널과 a_z 단독이 모든 예산에서 전체보다 낫거나 같다. T-IV 결론(수직 가속도 하나로 충분)과 같은 방향이나 시드 1, SE 안이다. <span class="verdict mix-v">H3b.1 지지(약함)</span>. 그래프 채널 / RM 채널 분리(H3b.2, H3b.3)는 돌리지 않았다.</p>
+
+<p class="label">불확실성</p>
+<p>앙상블 3개의 epistemic 평균은 0.005로 aleatoric 0.17~0.20의 1/40이고 t에 따라 줄지 않는다. 오답 예측 AUROC는 0.56~0.60으로 평탄하다. 앙상블 3개는 사용 가능한 epistemic 신호를 주지 못한다.</p>
+
+<p><span class="verdict bad-v">판정</span>: RQ1 미달. CoPL은 보정된 pooled-CNN과 어느 예산에서도 구분되지 않고 cold start에서는 kNN vote보다 나쁘다. 원인은 (1) 적응 점수의 degree 편향으로 라벨이 가장 많은 사용자로 쏠리는 것, (2) 내부 폴드 쌍이 서로 닮아 날카로운 설정이 튜닝에서 선택되는 것. 두 번째는 첫 번째가 고쳐지면 완화된다(쏠림이 평균 일치도로 결정되면 base rate가 다른 사용자에게 one-hot이 되지 않는다). E6으로 간다.</p>
+
+<h2 id="E6">E6. degree 정규화 적응 <span class="verdict todo-v">설계 완료, 실행 대기</span></h2>
+<p class="label">가설</p>
+\[
+\tilde c_u=c_u\Big(\frac{\bar n}{n_u}\Big)^{\alpha},\qquad \bar n=\frac1U\sum_u n_u,\qquad w_u=\mathrm{softmax}_u(\tilde c_u/\tau)
+\]
+<p>\(\alpha=1\)이면 \(\tilde c_u\)는 아이템당 평균 일치도(× \(\bar n\), 척도 유지)이고 \(\alpha=0\)이 원 규칙이다. H6a: \(\alpha=1\)에서 이지환의 ΔELPD(최종 − cold start) ≥ 0이 되고 w_u가 base rate가 비슷한 사용자(김재호·김진명·김태근, good 0.47~0.51)로 간다. H6b: 10폴드 macro가 t=10, 20에서 pooled 이상이 된다. H6c: 박재일·한규택의 이득(−0.48, −0.55)은 유지된다(평균 일치도로도 서로가 최선이어야 한다).</p>
+<p class="label">설계</p>
+<p>코드: <code>adapt_degree_norm</code>(α) 필드, <code>fold.adapt_user</code>가 모든 규칙을 한 경로로 계산(α=0, none이면 원 규칙과 동일), <code>adapt</code> 스테이지(폴드당 학습 1회, 격자 α ∈ {0, 0.5, 1} × τ ∈ {0.25, 0.5, 1, 2, 4} × evidence, w_u 저장), ablation <code>degree_norm</code>(α=1), <code>tune_space</code>에 α 추가, <code>tuned_from</code>으로 기존 튜닝 재사용.</p>
+<p>1단계(진단, 약 20분): 확정 실행의 튜닝값과 학습을 그대로 두고 적응 규칙만 격자로 바꾼다.</p>
+<pre>.venv\Scripts\python.exe run_copl_loeo.py --stage adapt --set run_name=copl_loeo_adapt --set use_tuned=True --set tuned_from=outputs/copl_loeo_final/20261005_162500 --set adapt_sweep_evidence="('none','unit')"
+.venv\Scripts\python.exe run_copl_loeo.py --stage report --set run_name=copl_loeo_adapt
+git add outputs
+git commit -m "Add copl_loeo_adapt run"
+git push origin claude_session</pre>
+<p>판정은 <code>report/variants.md</code>의 adapt 표와 폴드 json의 w_u로 한다. 격자에서 (α, τ)를 테스트 폴드 성능으로 고르면 선택 편향이 생기므로, 1단계는 H6a~H6c의 방향 확인용이다.</p>
+<p>2단계(엄밀, 약 7시간): H6a가 성립하면 α를 포함한 tune_space로 다시 튜닝하고 main(시드 3) → ablate → report를 돌린다. 내부 폴드 선택은 그대로 둔다(변경하면 E5와 비교가 안 된다).</p>
+<pre>.venv\Scripts\python.exe run_copl_loeo.py --stage tune   --set run_name=copl_loeo_final2
+.venv\Scripts\python.exe run_copl_loeo.py --stage main   --set run_name=copl_loeo_final2 --set use_tuned=True --set seeds="(42,43,44)"
+.venv\Scripts\python.exe run_copl_loeo.py --stage ablate --set run_name=copl_loeo_final2 --set use_tuned=True
+.venv\Scripts\python.exe run_copl_loeo.py --stage report --set run_name=copl_loeo_final2
+git add outputs
+git commit -m "Add copl_loeo_final2 runs"
+git push origin claude_session</pre>
+<p>sweep과 channels는 E5에서 k·규칙·채널이 무관함을 보였으므로 2단계에서 다시 돌리지 않는다. 주 결과가 바뀌면 그때 재실행한다.</p>
+
 <h2 id="status">가설 현황표</h2>
 <table>
   <thead><tr><th>ID</th><th>가설</th><th>판정</th><th>근거</th><th>논문 반영</th></tr></thead>
@@ -204,10 +307,12 @@
     <tr><td>H2.2</td><td>ISO bank ≥ AE/VAE</td><td>지지 (AE, VAE가 최하위)</td><td>E1</td><td>인코더 표, 기본값 변경</td></tr>
     <tr><td>H2.3</td><td>scattering ≈ AE</td><td>뒤집혀 성립 (scattering이 최선)</td><td>E1</td><td>인코더 확정 = scatter</td></tr>
     <tr><td>H3b.1</td><td>그래프 채널은 좁게</td><td>부분 지지 (VerAccel 필수, Pitch/Long 제거 유리)</td><td>E1</td><td>채널 절</td></tr>
-    <tr><td>H3b.2, H3b.3</td><td>보상 모형 채널은 넓게 / 분리 최선</td><td>예정</td><td>channels 스테이지</td><td>채널 절</td></tr>
-    <tr><td>H3.1~H3.4</td><td>희소화와 k</td><td>예정</td><td>sweep 스테이지</td><td>그래프 절</td></tr>
-    <tr><td>RQ1</td><td>CoPL &gt; pooled / indep</td><td>1차 미달 (보정·적응 결함), 수정 후 재실행</td><td>E2</td><td>주 결과</td></tr>
-    <tr><td>RQ4</td><td>튜닝 설정의 일반화</td><td>예정</td><td>tune 스테이지</td><td>부록</td></tr>
+    <tr><td>H3b.1</td><td>end-to-end 채널: IMU/a_z만으로 충분</td><td>지지(약함, 시드 1, SE 안)</td><td>E5 channels</td><td>채널 절</td></tr>
+    <tr><td>H3b.2, H3b.3</td><td>보상 모형 채널은 넓게 / 분리 최선</td><td>미실행</td><td>—</td><td>채널 절 (분리 실행 필요)</td></tr>
+    <tr><td>H3.1~H3.4</td><td>희소화와 k</td><td>기각 방향: k·규칙 무관(±0.01), item-item 전파 기여 없음</td><td>E4, E5 sweep·ablate</td><td>그래프 절 (부정 결과)</td></tr>
+    <tr><td>RQ1</td><td>CoPL &gt; pooled / indep</td><td>미달: pooled와 동등, cold start는 kNN vote가 우세. 적응의 degree 편향이 원인</td><td>E2, E5</td><td>주 결과 (E6 후 재판정)</td></tr>
+    <tr><td>RQ4</td><td>튜닝 설정의 일반화</td><td>기각: 내부 −0.55 vs 외부 −0.72~−1.09 (이지환), 폴드 간 튜닝값 불안정</td><td>E5 tune</td><td>부록</td></tr>
+    <tr><td>H6a~H6c</td><td>degree 정규화가 쏠림을 고치고 이지환 붕괴를 없앤다</td><td>예정</td><td>E6 adapt 스테이지</td><td>적응 절</td></tr>
   </tbody>
 </table>
 </main>

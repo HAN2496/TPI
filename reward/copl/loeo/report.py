@@ -19,7 +19,7 @@ def load_folds(run_dir, suffix=""):
         stem = p.stem
         if suffix:
             stem = stem[: -len(suffix)]
-        elif any(stem.endswith(s) for s in ("_encoders", "_ablate", "_sweep", "_channels", "_tune")):
+        elif any(stem.endswith(s) for s in ("_encoders", "_ablate", "_sweep", "_channels", "_adapt", "_tune")):
             continue
         out[stem] = json.loads(p.read_text(encoding="utf-8"))
     return out
