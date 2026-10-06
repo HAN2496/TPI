@@ -1,0 +1,1026 @@
+{
+  "name": "신민철",
+  "channels": {
+    "full": {
+      "channels": [
+        "Pitch_rate_6D",
+        "Bounce_rate_6D",
+        "IMU_VerAccelVal",
+        "IMU_LongAccelVal",
+        "IMU_LatAccelVal"
+      ],
+      "copl": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.5761342895032497,
+          "elpd": -2.8806714475162485,
+          "brier": 0.19786071910774486,
+          "auroc": 1.0,
+          "auprc": 1.0,
+          "ece": 0.2795458714167277,
+          "cal_slope": 152.50034897974064,
+          "cal_intercept": -107.37782306316572,
+          "mlpd_plugin": -0.5760949428075669,
+          "ece_plugin": 0.2802165781719649,
+          "cal_slope_plugin": 147.85976959834332,
+          "epi_mean": 0.0075390099317132805,
+          "ale_mean": 0.20564106179756153,
+          "epi_ale_spearman": 0.3,
+          "correctness_auroc_epi": 0.6666666666666667,
+          "correctness_auroc_total": 1.0,
+          "aurc_epi": 0.2966666666666667,
+          "eaurc_epi": 0.16666666666666669,
+          "auroc_ci_lo": 0.41666666666666663,
+          "auroc_ci_hi": 1.0,
+          "auroc_ci_width": 0.5833333333333334,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "w_entropy": 2.833213344056216,
+          "n_offsets": 1.0,
+          "reliable_frac": 0.0
+        },
+        "5": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.8278046528102067,
+          "elpd": -4.139023264051033,
+          "brier": 0.2955189400170483,
+          "auroc": 0.5,
+          "auprc": 0.7555555555555555,
+          "ece": 0.32065373659133917,
+          "cal_slope": 0.8078051589982852,
+          "cal_intercept": -0.9240997404983646,
+          "mlpd_plugin": -0.8289436168885279,
+          "ece_plugin": 0.3205516201538804,
+          "cal_slope_plugin": 0.9999597050803415,
+          "epi_mean": 0.0015208349852197025,
+          "ale_mean": 0.13489239572751593,
+          "epi_ale_spearman": 0.8999999999999998,
+          "correctness_auroc_epi": 0.33333333333333337,
+          "correctness_auroc_total": 0.5,
+          "aurc_epi": 0.4133333333333333,
+          "eaurc_epi": 0.28333333333333327,
+          "auroc_ci_lo": 0.0,
+          "auroc_ci_hi": 1.0,
+          "auroc_ci_width": 1.0,
+          "reliable": 0.0,
+          "t": 5.0,
+          "offset": 0.0,
+          "w_entropy": 2.1845951945052287,
+          "n_offsets": 1.0,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.3159776432973465,
+          -1.0798413139606944,
+          -0.38927899823221107,
+          -0.24159875075818474,
+          -0.8539747412678118
+        ],
+        "5": [
+          -0.18364169315624249,
+          -1.8759502612290846,
+          -0.23739920563349148,
+          -0.11559343651463976,
+          -1.7264386675175754
+        ]
+      },
+      "graph": {
+        "n_items": 2672,
+        "n_edges": 54568,
+        "rho_cross": 0.6933367541416214,
+        "mean_degree": 40.84431137724551,
+        "min_degree": 30,
+        "n_components": 1,
+        "n_isolated_users": 0,
+        "gamma": null
+      },
+      "info": {
+        "n_ctx": 5,
+        "n_hold": 5,
+        "budgets": [
+          0,
+          5
+        ],
+        "offsets": [
+          0
+        ]
+      },
+      "fit_stats": {
+        "encoder/42": {
+          "seconds": 2.577558994293213
+        },
+        "copl/42": {
+          "gcf_val_auc": 0.604225352112676,
+          "rm_val_auc": 0.817488262910798,
+          "rm_temperature": [
+            1.189207115002721,
+            1.3348398541700341,
+            1.1224620483093728
+          ],
+          "seconds_gcf": 1.341719388961792,
+          "seconds_rm": 18.312156915664673,
+          "n_train_users": 17,
+          "n_items": 2672
+        }
+      },
+      "seconds": 22.393309116363525
+    },
+    "without_Pitch_rate_6D": {
+      "channels": [
+        "Bounce_rate_6D",
+        "IMU_VerAccelVal",
+        "IMU_LongAccelVal",
+        "IMU_LatAccelVal"
+      ],
+      "copl": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.5633077887252853,
+          "elpd": -2.8165389436264268,
+          "brier": 0.19024671090414988,
+          "auroc": 1.0,
+          "auprc": 1.0,
+          "ece": 0.27819951375325525,
+          "cal_slope": 113.57420788601762,
+          "cal_intercept": -77.73859677382548,
+          "mlpd_plugin": -0.5599716802171515,
+          "ece_plugin": 0.27721131751276945,
+          "cal_slope_plugin": 92.66311189101955,
+          "epi_mean": 0.004350931712321918,
+          "ale_mean": 0.2140613172717257,
+          "epi_ale_spearman": -0.49999999999999994,
+          "correctness_auroc_epi": 0.16666666666666669,
+          "correctness_auroc_total": 1.0,
+          "aurc_epi": 0.6133333333333333,
+          "eaurc_epi": 0.4833333333333333,
+          "auroc_ci_lo": 0.41666666666666663,
+          "auroc_ci_hi": 1.0,
+          "auroc_ci_width": 0.5833333333333334,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "w_entropy": 2.833213344056216,
+          "n_offsets": 1.0,
+          "reliable_frac": 0.0
+        },
+        "5": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.7483780094356588,
+          "elpd": -3.741890047178294,
+          "brier": 0.2720376108713648,
+          "auroc": 1.0,
+          "auprc": 1.0,
+          "ece": 0.22828101317087812,
+          "cal_slope": 127.9759710472438,
+          "cal_intercept": -187.66465534767354,
+          "mlpd_plugin": -0.7523683723499182,
+          "ece_plugin": 0.23187303530132886,
+          "cal_slope_plugin": 98.86940487064645,
+          "epi_mean": 0.0022721071139632917,
+          "ale_mean": 0.13965883777954766,
+          "epi_ale_spearman": 0.49999999999999994,
+          "correctness_auroc_epi": 0.5,
+          "correctness_auroc_total": 1.0,
+          "aurc_epi": 0.3466666666666667,
+          "eaurc_epi": 0.21666666666666667,
+          "auroc_ci_lo": 0.0,
+          "auroc_ci_hi": 1.0,
+          "auroc_ci_width": 1.0,
+          "reliable": 0.0,
+          "t": 5.0,
+          "offset": 0.0,
+          "w_entropy": 2.3504723142603092,
+          "n_offsets": 1.0,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.38937943736538183,
+          -1.0529527896723299,
+          -0.35025713389325697,
+          -0.2728074765109657,
+          -0.7511421061844926
+        ],
+        "5": [
+          -0.19815011039138594,
+          -1.6311909342327786,
+          -0.18951069456383676,
+          -0.11646192983404557,
+          -1.606576378156247
+        ]
+      },
+      "graph": {
+        "n_items": 2672,
+        "n_edges": 53508,
+        "rho_cross": 0.7013904462884055,
+        "mean_degree": 40.050898203592816,
+        "min_degree": 30,
+        "n_components": 1,
+        "n_isolated_users": 0,
+        "gamma": null
+      },
+      "info": {
+        "n_ctx": 5,
+        "n_hold": 5,
+        "budgets": [
+          0,
+          5
+        ],
+        "offsets": [
+          0
+        ]
+      },
+      "fit_stats": {
+        "encoder/42": {
+          "seconds": 2.1840245723724365
+        },
+        "copl/42": {
+          "gcf_val_auc": 0.5783450704225352,
+          "rm_val_auc": 0.8148474178403755,
+          "rm_temperature": [
+            1.1224620483093728,
+            1.2599210498948732,
+            1.4142135623730947
+          ],
+          "seconds_gcf": 1.1062569618225098,
+          "seconds_rm": 17.77611470222473,
+          "n_train_users": 17,
+          "n_items": 2672
+        }
+      },
+      "seconds": 21.247013330459595
+    },
+    "without_Bounce_rate_6D": {
+      "channels": [
+        "Pitch_rate_6D",
+        "IMU_VerAccelVal",
+        "IMU_LongAccelVal",
+        "IMU_LatAccelVal"
+      ],
+      "copl": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.5809946112082996,
+          "elpd": -2.904973056041498,
+          "brier": 0.20056381428264877,
+          "auroc": 1.0,
+          "auprc": 1.0,
+          "ece": 0.15465689500172933,
+          "cal_slope": 84.87113309027038,
+          "cal_intercept": -47.78662805366007,
+          "mlpd_plugin": -0.5803770639218866,
+          "ece_plugin": 0.15632001153936484,
+          "cal_slope_plugin": 72.10974804458355,
+          "epi_mean": 0.004191875093975265,
+          "ale_mean": 0.21093319873402647,
+          "epi_ale_spearman": 0.3,
+          "correctness_auroc_epi": 0.5,
+          "correctness_auroc_total": 1.0,
+          "aurc_epi": 0.3466666666666667,
+          "eaurc_epi": 0.21666666666666667,
+          "auroc_ci_lo": 0.125,
+          "auroc_ci_hi": 1.0,
+          "auroc_ci_width": 0.875,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "w_entropy": 2.833213344056216,
+          "n_offsets": 1.0,
+          "reliable_frac": 0.0
+        },
+        "5": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.6748425355275371,
+          "elpd": -3.3742126776376855,
+          "brier": 0.24338109881106867,
+          "auroc": 0.6666666666666666,
+          "auprc": 0.8055555555555556,
+          "ece": 0.206769859790802,
+          "cal_slope": 2.1497146347776157,
+          "cal_intercept": -2.098468273995458,
+          "mlpd_plugin": -0.6762520782836139,
+          "ece_plugin": 0.20840558265690684,
+          "cal_slope_plugin": 2.1913566521295365,
+          "epi_mean": 0.00276965280554838,
+          "ale_mean": 0.17280481414120769,
+          "epi_ale_spearman": 0.9999999999999999,
+          "correctness_auroc_epi": 0.6666666666666667,
+          "correctness_auroc_total": 0.6666666666666667,
+          "aurc_epi": 0.2966666666666667,
+          "eaurc_epi": 0.16666666666666669,
+          "auroc_ci_lo": 0.0,
+          "auroc_ci_hi": 1.0,
+          "auroc_ci_width": 1.0,
+          "reliable": 0.0,
+          "t": 5.0,
+          "offset": 0.0,
+          "w_entropy": 2.074609779314197,
+          "n_offsets": 1.0,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.4237492428494012,
+          -0.9379863425271621,
+          -0.3619384253291419,
+          -0.21692155702628535,
+          -0.9643774883095079
+        ],
+        "5": [
+          -0.34448625902907004,
+          -1.543442861940809,
+          -0.27015721333896425,
+          -0.11412820934964997,
+          -1.101998133979192
+        ]
+      },
+      "graph": {
+        "n_items": 2672,
+        "n_edges": 54664,
+        "rho_cross": 0.6914971462022538,
+        "mean_degree": 40.91616766467066,
+        "min_degree": 30,
+        "n_components": 1,
+        "n_isolated_users": 0,
+        "gamma": null
+      },
+      "info": {
+        "n_ctx": 5,
+        "n_hold": 5,
+        "budgets": [
+          0,
+          5
+        ],
+        "offsets": [
+          0
+        ]
+      },
+      "fit_stats": {
+        "encoder/42": {
+          "seconds": 2.102433919906616
+        },
+        "copl/42": {
+          "gcf_val_auc": 0.5367957746478873,
+          "rm_val_auc": 0.8161580594679186,
+          "rm_temperature": [
+            1.4142135623730947,
+            1.2599210498948732,
+            1.2599210498948732
+          ],
+          "seconds_gcf": 1.1587986946105957,
+          "seconds_rm": 17.80677056312561,
+          "n_train_users": 17,
+          "n_items": 2672
+        }
+      },
+      "seconds": 21.261434078216553
+    },
+    "without_IMU_VerAccelVal": {
+      "channels": [
+        "Pitch_rate_6D",
+        "Bounce_rate_6D",
+        "IMU_LongAccelVal",
+        "IMU_LatAccelVal"
+      ],
+      "copl": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.674041098069563,
+          "elpd": -3.370205490347815,
+          "brier": 0.242904395948616,
+          "auroc": 0.5,
+          "auprc": 0.7555555555555555,
+          "ece": 0.2495088438193003,
+          "cal_slope": 0.47943340072859275,
+          "cal_intercept": 0.17394485986496244,
+          "mlpd_plugin": -0.6746048702283656,
+          "ece_plugin": 0.24905008891926544,
+          "cal_slope_plugin": 0.4670063422873892,
+          "epi_mean": 0.006922521122877967,
+          "ale_mean": 0.22362204554032208,
+          "epi_ale_spearman": 0.6,
+          "correctness_auroc_epi": 0.5,
+          "correctness_auroc_total": 0.5,
+          "aurc_epi": 0.3466666666666667,
+          "eaurc_epi": 0.21666666666666667,
+          "auroc_ci_lo": 0.0,
+          "auroc_ci_hi": 1.0,
+          "auroc_ci_width": 1.0,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "w_entropy": 2.833213344056216,
+          "n_offsets": 1.0,
+          "reliable_frac": 0.0
+        },
+        "5": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.7517959625037168,
+          "elpd": -3.758979812518584,
+          "brier": 0.27625082494576186,
+          "auroc": 0.5,
+          "auprc": 0.7555555555555555,
+          "ece": 0.35781767368316647,
+          "cal_slope": 0.07574407420471793,
+          "cal_intercept": 0.3210340021096976,
+          "mlpd_plugin": -0.7532116655559724,
+          "ece_plugin": 0.35864850377762936,
+          "cal_slope_plugin": 0.06883075862688534,
+          "epi_mean": 0.0015760816819695358,
+          "ale_mean": 0.18129271255922724,
+          "epi_ale_spearman": 0.7,
+          "correctness_auroc_epi": 0.6666666666666667,
+          "correctness_auroc_total": 0.5,
+          "aurc_epi": 0.2966666666666667,
+          "eaurc_epi": 0.16666666666666669,
+          "auroc_ci_lo": 0.0,
+          "auroc_ci_hi": 1.0,
+          "auroc_ci_width": 1.0,
+          "reliable": 0.0,
+          "t": 5.0,
+          "offset": 0.0,
+          "w_entropy": 2.4608605128217635,
+          "n_offsets": 1.0,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.6561611931739134,
+          -1.0823905509834664,
+          -0.5678916616856352,
+          -0.25614293953457173,
+          -0.8076191449702286
+        ],
+        "5": [
+          -0.5478901511499281,
+          -1.5624612858898501,
+          -0.2902740451898318,
+          -0.12946575351958875,
+          -1.2288885767693858
+        ]
+      },
+      "graph": {
+        "n_items": 2672,
+        "n_edges": 53929,
+        "rho_cross": 0.6953030836841032,
+        "mean_degree": 40.36601796407186,
+        "min_degree": 30,
+        "n_components": 1,
+        "n_isolated_users": 0,
+        "gamma": null
+      },
+      "info": {
+        "n_ctx": 5,
+        "n_hold": 5,
+        "budgets": [
+          0,
+          5
+        ],
+        "offsets": [
+          0
+        ]
+      },
+      "fit_stats": {
+        "encoder/42": {
+          "seconds": 2.06072735786438
+        },
+        "copl/42": {
+          "gcf_val_auc": 0.5426643192488262,
+          "rm_val_auc": 0.8046557120500782,
+          "rm_temperature": [
+            1.189207115002721,
+            1.2599210498948732,
+            1.1224620483093728
+          ],
+          "seconds_gcf": 1.176593542098999,
+          "seconds_rm": 18.430838346481323,
+          "n_train_users": 17,
+          "n_items": 2672
+        }
+      },
+      "seconds": 21.80979824066162
+    },
+    "without_IMU_LongAccelVal": {
+      "channels": [
+        "Pitch_rate_6D",
+        "Bounce_rate_6D",
+        "IMU_VerAccelVal",
+        "IMU_LatAccelVal"
+      ],
+      "copl": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.5687427646786777,
+          "elpd": -2.8437138233933883,
+          "brier": 0.20119656357997745,
+          "auroc": 1.0,
+          "auprc": 1.0,
+          "ece": 0.2720386346181234,
+          "cal_slope": 109.13077460460751,
+          "cal_intercept": -100.57586039660627,
+          "mlpd_plugin": -0.5696043705455374,
+          "ece_plugin": 0.27202883592783694,
+          "cal_slope_plugin": 97.17337453660878,
+          "epi_mean": 0.0015255426370129517,
+          "ale_mean": 0.17862548562697972,
+          "epi_ale_spearman": 0.6,
+          "correctness_auroc_epi": 1.0,
+          "correctness_auroc_total": 1.0,
+          "aurc_epi": 0.13,
+          "eaurc_epi": 0.0,
+          "auroc_ci_lo": 0.5,
+          "auroc_ci_hi": 1.0,
+          "auroc_ci_width": 0.5,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "w_entropy": 2.833213344056216,
+          "n_offsets": 1.0,
+          "reliable_frac": 0.0
+        },
+        "5": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.8231206518095705,
+          "elpd": -4.115603259047853,
+          "brier": 0.29510870850258814,
+          "auroc": 0.8333333333333333,
+          "auprc": 0.9166666666666665,
+          "ece": 0.3444866061210633,
+          "cal_slope": 8.582395112048006,
+          "cal_intercept": -15.290000258966478,
+          "mlpd_plugin": -0.8264350634818645,
+          "ece_plugin": 0.3452877953371227,
+          "cal_slope_plugin": 8.691804865199309,
+          "epi_mean": 0.0006070699021651176,
+          "ale_mean": 0.11114202889127896,
+          "epi_ale_spearman": 0.6,
+          "correctness_auroc_epi": 0.8333333333333334,
+          "correctness_auroc_total": 0.8333333333333334,
+          "aurc_epi": 0.19666666666666666,
+          "eaurc_epi": 0.06666666666666665,
+          "auroc_ci_lo": 0.25,
+          "auroc_ci_hi": 1.0,
+          "auroc_ci_width": 0.75,
+          "reliable": 0.0,
+          "t": 5.0,
+          "offset": 0.0,
+          "w_entropy": 2.1957140398809583,
+          "n_offsets": 1.0,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.16010343860192844,
+          -1.214315951961857,
+          -0.31745575212420835,
+          -0.16882801028266495,
+          -0.9830106704227297
+        ],
+        "5": [
+          -0.09880192065319075,
+          -1.8988891843421543,
+          -0.16891831649854278,
+          -0.09433012605776403,
+          -1.8546637114962012
+        ]
+      },
+      "graph": {
+        "n_items": 2672,
+        "n_edges": 54257,
+        "rho_cross": 0.7075953333210462,
+        "mean_degree": 40.61152694610779,
+        "min_degree": 30,
+        "n_components": 1,
+        "n_isolated_users": 0,
+        "gamma": null
+      },
+      "info": {
+        "n_ctx": 5,
+        "n_hold": 5,
+        "budgets": [
+          0,
+          5
+        ],
+        "offsets": [
+          0
+        ]
+      },
+      "fit_stats": {
+        "encoder/42": {
+          "seconds": 2.0851993560791016
+        },
+        "copl/42": {
+          "gcf_val_auc": 0.6428403755868545,
+          "rm_val_auc": 0.8049687010954617,
+          "rm_temperature": [
+            1.059463094359295,
+            1.3348398541700341,
+            1.3348398541700341
+          ],
+          "seconds_gcf": 1.1557624340057373,
+          "seconds_rm": 20.79425287246704,
+          "n_train_users": 17,
+          "n_items": 2672
+        }
+      },
+      "seconds": 24.247596502304077
+    },
+    "without_IMU_LatAccelVal": {
+      "channels": [
+        "Pitch_rate_6D",
+        "Bounce_rate_6D",
+        "IMU_VerAccelVal",
+        "IMU_LongAccelVal"
+      ],
+      "copl": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.6359645574483668,
+          "elpd": -3.1798227872418336,
+          "brier": 0.2265090604942135,
+          "auroc": 0.8333333333333333,
+          "auprc": 0.9166666666666665,
+          "ece": 0.2895666797955831,
+          "cal_slope": 4.538901985169183,
+          "cal_intercept": -3.3693257293685046,
+          "mlpd_plugin": -0.6369622966864859,
+          "ece_plugin": 0.2899141163578616,
+          "cal_slope_plugin": 4.425371838552408,
+          "epi_mean": 0.0019211409309659664,
+          "ale_mean": 0.20157180439758354,
+          "epi_ale_spearman": 0.09999999999999999,
+          "correctness_auroc_epi": 0.6666666666666667,
+          "correctness_auroc_total": 0.8333333333333334,
+          "aurc_epi": 0.2966666666666667,
+          "eaurc_epi": 0.16666666666666669,
+          "auroc_ci_lo": 0.0,
+          "auroc_ci_hi": 1.0,
+          "auroc_ci_width": 1.0,
+          "reliable": 0.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "w_entropy": 2.833213344056216,
+          "n_offsets": 1.0,
+          "reliable_frac": 0.0
+        },
+        "5": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -1.0248002585186242,
+          "elpd": -5.124001292593121,
+          "brier": 0.3369223496560959,
+          "auroc": 0.3333333333333333,
+          "auprc": 0.7,
+          "ece": 0.30808133284250894,
+          "cal_slope": 0.1118478483787929,
+          "cal_intercept": 0.1454096848239321,
+          "mlpd_plugin": -1.0381500962891075,
+          "ece_plugin": 0.39871915837644295,
+          "cal_slope_plugin": -0.021935055070267214,
+          "epi_mean": 0.001017802482336568,
+          "ale_mean": 0.08227478483504977,
+          "epi_ale_spearman": 0.7,
+          "correctness_auroc_epi": 0.6666666666666667,
+          "correctness_auroc_total": 0.33333333333333337,
+          "aurc_epi": 0.2966666666666667,
+          "eaurc_epi": 0.16666666666666669,
+          "auroc_ci_lo": 0.0,
+          "auroc_ci_hi": 1.0,
+          "auroc_ci_width": 1.0,
+          "reliable": 0.0,
+          "t": 5.0,
+          "offset": 0.0,
+          "w_entropy": 2.166001835493511,
+          "n_offsets": 1.0,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.3269856209483851,
+          -1.190478928502396,
+          -0.42999455660969244,
+          -0.19438751445384486,
+          -1.0379761667275154
+        ],
+        "5": [
+          -0.1214980070828853,
+          -2.535295567288293,
+          -0.1180404863535941,
+          -0.05523656744026058,
+          -2.2939306644280886
+        ]
+      },
+      "graph": {
+        "n_items": 2672,
+        "n_edges": 53936,
+        "rho_cross": 0.6902069118955799,
+        "mean_degree": 40.37125748502994,
+        "min_degree": 30,
+        "n_components": 1,
+        "n_isolated_users": 0,
+        "gamma": null
+      },
+      "info": {
+        "n_ctx": 5,
+        "n_hold": 5,
+        "budgets": [
+          0,
+          5
+        ],
+        "offsets": [
+          0
+        ]
+      },
+      "fit_stats": {
+        "encoder/42": {
+          "seconds": 2.3204598426818848
+        },
+        "copl/42": {
+          "gcf_val_auc": 0.6431338028169015,
+          "rm_val_auc": 0.8371283255086072,
+          "rm_temperature": [
+            1.189207115002721,
+            1.189207115002721,
+            1.1224620483093728
+          ],
+          "seconds_gcf": 1.2994065284729004,
+          "seconds_rm": 18.952407598495483,
+          "n_train_users": 17,
+          "n_items": 2672
+        }
+      },
+      "seconds": 22.72445058822632
+    },
+    "imu_only": {
+      "channels": [
+        "IMU_VerAccelVal",
+        "IMU_LongAccelVal",
+        "IMU_LatAccelVal"
+      ],
+      "copl": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.5225595939529237,
+          "elpd": -2.6127979697646184,
+          "brier": 0.17262666474558067,
+          "auroc": 1.0,
+          "auprc": 1.0,
+          "ece": 0.3856909513473512,
+          "cal_slope": 25.319521745113704,
+          "cal_intercept": -17.037292601399137,
+          "mlpd_plugin": -0.5205720577134456,
+          "ece_plugin": 0.38408076756199827,
+          "cal_slope_plugin": 24.87715977074336,
+          "epi_mean": 0.002911645726428702,
+          "ale_mean": 0.21112318945081796,
+          "epi_ale_spearman": -0.49999999999999994,
+          "correctness_auroc_epi": 0.33333333333333337,
+          "correctness_auroc_total": 1.0,
+          "aurc_epi": 0.5466666666666666,
+          "eaurc_epi": 0.41666666666666663,
+          "auroc_ci_lo": 1.0,
+          "auroc_ci_hi": 1.0,
+          "auroc_ci_width": 0.0,
+          "reliable": 1.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "w_entropy": 2.833213344056216,
+          "n_offsets": 1.0,
+          "reliable_frac": 1.0
+        },
+        "5": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.692861769541999,
+          "elpd": -3.464308847709995,
+          "brier": 0.2519297291969182,
+          "auroc": 1.0,
+          "auprc": 1.0,
+          "ece": 0.4047304590543112,
+          "cal_slope": 63.3411963364715,
+          "cal_intercept": -91.86968269510872,
+          "mlpd_plugin": -0.6975463200578363,
+          "ece_plugin": 0.40474381614239285,
+          "cal_slope_plugin": 58.26014587267194,
+          "epi_mean": 0.001820195888729851,
+          "ale_mean": 0.151587265931573,
+          "epi_ale_spearman": 0.6,
+          "correctness_auroc_epi": 0.8333333333333334,
+          "correctness_auroc_total": 1.0,
+          "aurc_epi": 0.19666666666666666,
+          "eaurc_epi": 0.06666666666666665,
+          "auroc_ci_lo": 0.0,
+          "auroc_ci_hi": 1.0,
+          "auroc_ci_width": 1.0,
+          "reliable": 0.0,
+          "t": 5.0,
+          "offset": 0.0,
+          "w_entropy": 2.2808514617984645,
+          "n_offsets": 1.0,
+          "reliable_frac": 0.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.31974168273975345,
+          -0.9000970564808213,
+          -0.2725659517802233,
+          -0.3130488043101494,
+          -0.807344474453671
+        ],
+        "5": [
+          -0.1725384492449138,
+          -1.5742155203226555,
+          -0.19024526065013336,
+          -0.1702074625968975,
+          -1.3571021548953945
+        ]
+      },
+      "graph": {
+        "n_items": 2672,
+        "n_edges": 53413,
+        "rho_cross": 0.7061763990039878,
+        "mean_degree": 39.979790419161674,
+        "min_degree": 30,
+        "n_components": 1,
+        "n_isolated_users": 0,
+        "gamma": null
+      },
+      "info": {
+        "n_ctx": 5,
+        "n_hold": 5,
+        "budgets": [
+          0,
+          5
+        ],
+        "offsets": [
+          0
+        ]
+      },
+      "fit_stats": {
+        "encoder/42": {
+          "seconds": 1.660888910293579
+        },
+        "copl/42": {
+          "gcf_val_auc": 0.6937206572769953,
+          "rm_val_auc": 0.7982785602503912,
+          "rm_temperature": [
+            1.2599210498948732,
+            1.1224620483093728,
+            1.2599210498948732
+          ],
+          "seconds_gcf": 1.1749136447906494,
+          "seconds_rm": 19.224196195602417,
+          "n_train_users": 17,
+          "n_items": 2672
+        }
+      },
+      "seconds": 22.1922709941864
+    },
+    "only_IMU_VerAccelVal": {
+      "channels": [
+        "IMU_VerAccelVal"
+      ],
+      "copl": {
+        "0": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.5342501483840408,
+          "elpd": -2.671250741920204,
+          "brier": 0.17691294697600213,
+          "auroc": 1.0,
+          "auprc": 1.0,
+          "ece": 0.3910713533560435,
+          "cal_slope": 44.60550362060174,
+          "cal_intercept": -34.23677615198839,
+          "mlpd_plugin": -0.5342430171918865,
+          "ece_plugin": 0.3909428245033399,
+          "cal_slope_plugin": 44.7459380594117,
+          "epi_mean": 0.0010763776792485301,
+          "ale_mean": 0.21344082126054237,
+          "epi_ale_spearman": 0.7,
+          "correctness_auroc_epi": 1.0,
+          "correctness_auroc_total": 1.0,
+          "aurc_epi": 0.13,
+          "eaurc_epi": 0.0,
+          "auroc_ci_lo": 1.0,
+          "auroc_ci_hi": 1.0,
+          "auroc_ci_width": 0.0,
+          "reliable": 1.0,
+          "t": 0.0,
+          "offset": 0.0,
+          "w_entropy": 2.833213344056216,
+          "n_offsets": 1.0,
+          "reliable_frac": 1.0
+        },
+        "5": {
+          "n": 5.0,
+          "n_pos": 3.0,
+          "mlpd": -0.7296871839920247,
+          "elpd": -3.6484359199601233,
+          "brier": 0.26483459102839957,
+          "auroc": 1.0,
+          "auprc": 1.0,
+          "ece": 0.21560026407241822,
+          "cal_slope": 89.2581761798955,
+          "cal_intercept": -131.8493150528378,
+          "mlpd_plugin": -0.7297408503920281,
+          "ece_plugin": 0.21567589276256005,
+          "cal_slope_plugin": 85.2182597737793,
+          "epi_mean": 4.977809243058573e-05,
+          "ale_mean": 0.14975204687351157,
+          "epi_ale_spearman": -0.49999999999999994,
+          "correctness_auroc_epi": 0.33333333333333337,
+          "correctness_auroc_total": 1.0,
+          "aurc_epi": 0.5466666666666666,
+          "eaurc_epi": 0.41666666666666663,
+          "auroc_ci_lo": 1.0,
+          "auroc_ci_hi": 1.0,
+          "auroc_ci_width": 0.0,
+          "reliable": 1.0,
+          "t": 5.0,
+          "offset": 0.0,
+          "w_entropy": 1.2173769118827342,
+          "n_offsets": 1.0,
+          "reliable_frac": 1.0
+        }
+      },
+      "lpd": {
+        "0": [
+          -0.3302853633437981,
+          -1.0246799527658874,
+          -0.30734262667278817,
+          -0.305577682896281,
+          -0.7033651162414494
+        ],
+        "5": [
+          -0.1914302119071752,
+          -1.6163591192394249,
+          -0.17658452790942636,
+          -0.17608593658900037,
+          -1.4879761243150968
+        ]
+      },
+      "graph": {
+        "n_items": 2672,
+        "n_edges": 53318,
+        "rho_cross": 0.7218950448253872,
+        "mean_degree": 39.90868263473054,
+        "min_degree": 30,
+        "n_components": 1,
+        "n_isolated_users": 0,
+        "gamma": null
+      },
+      "info": {
+        "n_ctx": 5,
+        "n_hold": 5,
+        "budgets": [
+          0,
+          5
+        ],
+        "offsets": [
+          0
+        ]
+      },
+      "fit_stats": {
+        "encoder/42": {
+          "seconds": 0.7672324180603027
+        },
+        "copl/42": {
+          "gcf_val_auc": 0.4721244131455399,
+          "rm_val_auc": 0.7830985915492957,
+          "rm_temperature": [
+            1.189207115002721,
+            1.1224620483093728,
+            1.189207115002721
+          ],
+          "seconds_gcf": 1.1307857036590576,
+          "seconds_rm": 17.412530660629272,
+          "n_train_users": 17,
+          "n_items": 2672
+        }
+      },
+      "seconds": 19.438392162322998
+    }
+  }
+}

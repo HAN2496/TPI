@@ -1,0 +1,741 @@
+{
+  "name": "김재호",
+  "trials": {
+    "{\"adapt_evidence\": \"unit\", \"adapt_neg_weight\": 0.5, \"adapt_user_softmax_temp\": 2.0, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.002, \"item_item_weight\": 0.5, \"knn_k\": 100, \"rm_lr\": 0.0001}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 0.5,
+        "knn_k": 100,
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_evidence": "unit",
+        "adapt_neg_weight": 0.5,
+        "gcf_lr": 0.002,
+        "rm_lr": 0.0001
+      },
+      "scores": {
+        "이지환": -0.6628705916321781,
+        "박재일": -0.621005798305133,
+        "신민철": -0.5453110272650485
+      },
+      "score": -0.6097291390674532
+    },
+    "{\"adapt_evidence\": \"sqrt\", \"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 0.5, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.002, \"item_item_weight\": 2.0, \"knn_k\": 10, \"rm_lr\": 0.0001}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 2.0,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 0.5,
+        "adapt_evidence": "sqrt",
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.002,
+        "rm_lr": 0.0001
+      },
+      "scores": {
+        "이지환": -0.8762454254166846,
+        "박재일": -0.5599909284995063,
+        "신민철": -0.6133080131958764
+      },
+      "score": -0.6831814557040223
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_neg_weight\": 1.0, \"adapt_user_softmax_temp\": 0.25, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0007, \"item_item_weight\": 0.5, \"knn_k\": 30, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 0.5,
+        "knn_k": 30,
+        "adapt_user_softmax_temp": 0.25,
+        "adapt_evidence": "unit",
+        "adapt_neg_weight": 1.0,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.7210275427560008,
+        "박재일": -0.5566168067868268,
+        "신민철": -0.582784850365928
+      },
+      "score": -0.6201430666362518
+    },
+    "{\"adapt_evidence\": \"none\", \"adapt_neg_weight\": 0.5, \"adapt_user_softmax_temp\": 0.5, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0002, \"item_item_weight\": 1.0, \"knn_k\": 30, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 1.0,
+        "knn_k": 30,
+        "adapt_user_softmax_temp": 0.5,
+        "adapt_evidence": "none",
+        "adapt_neg_weight": 0.5,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.7402125413337718,
+        "박재일": -0.6533630756229363,
+        "신민철": -0.4513969732127734
+      },
+      "score": -0.6149908633898272
+    },
+    "{\"adapt_evidence\": \"sqrt\", \"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 0.25, \"gcf_emb_dim\": 32, \"gcf_lr\": 0.0007, \"item_item_weight\": 1.0, \"knn_k\": 30, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 32,
+        "item_item_weight": 1.0,
+        "knn_k": 30,
+        "adapt_user_softmax_temp": 0.25,
+        "adapt_evidence": "sqrt",
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.9640536954553199,
+        "박재일": -0.5387901434537415,
+        "신민철": -0.6937056191586863
+      },
+      "score": -0.7321831526892493
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_neg_weight\": 1.0, \"adapt_user_softmax_temp\": 0.5, \"gcf_emb_dim\": 16, \"gcf_lr\": 0.0007, \"item_item_weight\": 0.5, \"knn_k\": 100, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 16,
+        "item_item_weight": 0.5,
+        "knn_k": 100,
+        "adapt_user_softmax_temp": 0.5,
+        "adapt_evidence": "unit",
+        "adapt_neg_weight": 1.0,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.7511141528142503,
+        "박재일": -0.5451023518856984,
+        "신민철": -0.694968767975874
+      },
+      "score": -0.6637284242252742
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_neg_weight\": 0.5, \"adapt_user_softmax_temp\": 1.0, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0007, \"item_item_weight\": 0.5, \"knn_k\": 30, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 0.5,
+        "knn_k": 30,
+        "adapt_user_softmax_temp": 1.0,
+        "adapt_evidence": "unit",
+        "adapt_neg_weight": 0.5,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.8139581221674796,
+        "박재일": -0.5562833442462377,
+        "신민철": -0.559628153666947
+      },
+      "score": -0.6432898733602215
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 2.0, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0002, \"item_item_weight\": 1.0, \"knn_k\": 30, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 1.0,
+        "knn_k": 30,
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_evidence": "unit",
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.9290617081930415,
+        "박재일": -0.5835025290947439,
+        "신민철": -0.5036534875224361
+      },
+      "score": -0.6720725749367404
+    },
+    "{\"adapt_evidence\": \"none\", \"adapt_neg_weight\": 0.5, \"adapt_user_softmax_temp\": 4.0, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0002, \"item_item_weight\": 0.25, \"knn_k\": 10, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 0.25,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 4.0,
+        "adapt_evidence": "none",
+        "adapt_neg_weight": 0.5,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.7296425752405238,
+        "박재일": -0.6152537881861527,
+        "신민철": -0.46299770773084514
+      },
+      "score": -0.6026313570525073
+    },
+    "{\"adapt_evidence\": \"sqrt\", \"adapt_neg_weight\": 1.0, \"adapt_user_softmax_temp\": 0.25, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.002, \"item_item_weight\": 0.5, \"knn_k\": 30, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 0.5,
+        "knn_k": 30,
+        "adapt_user_softmax_temp": 0.25,
+        "adapt_evidence": "sqrt",
+        "adapt_neg_weight": 1.0,
+        "gcf_lr": 0.002,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.7649612117605322,
+        "박재일": -0.5520998526684286,
+        "신민철": -0.546882863391912
+      },
+      "score": -0.6213146426069577
+    },
+    "{\"adapt_evidence\": \"none\", \"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 0.25, \"gcf_emb_dim\": 32, \"gcf_lr\": 0.0002, \"item_item_weight\": 2.0, \"knn_k\": 100, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 32,
+        "item_item_weight": 2.0,
+        "knn_k": 100,
+        "adapt_user_softmax_temp": 0.25,
+        "adapt_evidence": "none",
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.7005550944621867,
+        "박재일": -0.6033997033077971,
+        "신민철": -0.5756520234638378
+      },
+      "score": -0.6265356070779405
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 2.0, \"gcf_emb_dim\": 16, \"gcf_lr\": 0.0007, \"item_item_weight\": 0.5, \"knn_k\": 100, \"rm_lr\": 0.0001}": {
+      "params": {
+        "gcf_emb_dim": 16,
+        "item_item_weight": 0.5,
+        "knn_k": 100,
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_evidence": "unit",
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.0001
+      },
+      "scores": {
+        "이지환": -0.6896204763801133,
+        "박재일": -0.6232098634149907,
+        "신민철": -0.5654141456533675
+      },
+      "score": -0.6260814951494905
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 0.25, \"gcf_emb_dim\": 32, \"gcf_lr\": 0.0007, \"item_item_weight\": 0.25, \"knn_k\": 10, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 32,
+        "item_item_weight": 0.25,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 0.25,
+        "adapt_evidence": "unit",
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.9535453985415224,
+        "박재일": -0.5430021615946977,
+        "신민철": -0.6649077405817041
+      },
+      "score": -0.7204851002393081
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_neg_weight\": 1.0, \"adapt_user_softmax_temp\": 1.0, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0002, \"item_item_weight\": 0.25, \"knn_k\": 10, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 0.25,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 1.0,
+        "adapt_evidence": "unit",
+        "adapt_neg_weight": 1.0,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.7162616857662321,
+        "박재일": -0.571155520640933,
+        "신민철": -0.5505802695874757
+      },
+      "score": -0.612665825331547
+    },
+    "{\"adapt_evidence\": \"sqrt\", \"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 0.25, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0007, \"item_item_weight\": 0.25, \"knn_k\": 100, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 0.25,
+        "knn_k": 100,
+        "adapt_user_softmax_temp": 0.25,
+        "adapt_evidence": "sqrt",
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.8976561906397055,
+        "박재일": -0.5717993269397595,
+        "신민철": -0.6153233430910405
+      },
+      "score": -0.6949262868901686
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_neg_weight\": 0.5, \"adapt_user_softmax_temp\": 2.0, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.002, \"item_item_weight\": 0.5, \"knn_k\": 100, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 0.5,
+        "knn_k": 100,
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_evidence": "unit",
+        "adapt_neg_weight": 0.5,
+        "gcf_lr": 0.002,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.8132690981777174,
+        "박재일": -0.6126232706331453,
+        "신민철": -0.5280124230006298
+      },
+      "score": -0.6513015972704975
+    },
+    "{\"adapt_evidence\": \"none\", \"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 1.0, \"gcf_emb_dim\": 32, \"gcf_lr\": 0.0007, \"item_item_weight\": 2.0, \"knn_k\": 100, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 32,
+        "item_item_weight": 2.0,
+        "knn_k": 100,
+        "adapt_user_softmax_temp": 1.0,
+        "adapt_evidence": "none",
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.7195728144655165,
+        "박재일": -0.5780261513243297,
+        "신민철": -0.5863236539917049
+      },
+      "score": -0.6279742065938504
+    },
+    "{\"adapt_evidence\": \"sqrt\", \"adapt_neg_weight\": 0.5, \"adapt_user_softmax_temp\": 0.5, \"gcf_emb_dim\": 32, \"gcf_lr\": 0.0002, \"item_item_weight\": 0.25, \"knn_k\": 100, \"rm_lr\": 0.0001}": {
+      "params": {
+        "gcf_emb_dim": 32,
+        "item_item_weight": 0.25,
+        "knn_k": 100,
+        "adapt_user_softmax_temp": 0.5,
+        "adapt_evidence": "sqrt",
+        "adapt_neg_weight": 0.5,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.0001
+      },
+      "scores": {
+        "이지환": -0.8066378636790438,
+        "박재일": -0.5558927388963536,
+        "신민철": -0.6199276628636892
+      },
+      "score": -0.6608194218130289
+    },
+    "{\"adapt_evidence\": \"sqrt\", \"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 4.0, \"gcf_emb_dim\": 32, \"gcf_lr\": 0.002, \"item_item_weight\": 2.0, \"knn_k\": 10, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 32,
+        "item_item_weight": 2.0,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 4.0,
+        "adapt_evidence": "sqrt",
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.002,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.9132376767211539,
+        "박재일": -0.5429284761615286,
+        "신민철": -0.6076038329589097
+      },
+      "score": -0.6879233286138641
+    },
+    "{\"adapt_evidence\": \"none\", \"adapt_neg_weight\": 1.0, \"adapt_user_softmax_temp\": 2.0, \"gcf_emb_dim\": 32, \"gcf_lr\": 0.002, \"item_item_weight\": 0.5, \"knn_k\": 10, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 32,
+        "item_item_weight": 0.5,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_evidence": "none",
+        "adapt_neg_weight": 1.0,
+        "gcf_lr": 0.002,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.6973020659330121,
+        "박재일": -0.6089070019332886,
+        "신민철": -0.5919842049475692
+      },
+      "score": -0.6327310909379567
+    },
+    "{\"adapt_evidence\": \"sqrt\", \"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 2.0, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.002, \"item_item_weight\": 2.0, \"knn_k\": 10, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 2.0,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_evidence": "sqrt",
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.002,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.9398818478592115,
+        "박재일": -0.5667944528857587,
+        "신민철": -0.6128215502669042
+      },
+      "score": -0.7064992836706248
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_neg_weight\": 1.0, \"adapt_user_softmax_temp\": 0.25, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.002, \"item_item_weight\": 0.5, \"knn_k\": 10, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 0.5,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 0.25,
+        "adapt_evidence": "unit",
+        "adapt_neg_weight": 1.0,
+        "gcf_lr": 0.002,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.7442408309674503,
+        "박재일": -0.552371452278565,
+        "신민철": -0.5397339581027636
+      },
+      "score": -0.6121154137829262
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 0.5, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.002, \"item_item_weight\": 0.25, \"knn_k\": 10, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 0.25,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 0.5,
+        "adapt_evidence": "unit",
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.002,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.9336884835863336,
+        "박재일": -0.5598730311316897,
+        "신민철": -0.5942977539817443
+      },
+      "score": -0.6959530895665892
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_neg_weight\": 1.0, \"adapt_user_softmax_temp\": 4.0, \"gcf_emb_dim\": 32, \"gcf_lr\": 0.002, \"item_item_weight\": 0.25, \"knn_k\": 30, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 32,
+        "item_item_weight": 0.25,
+        "knn_k": 30,
+        "adapt_user_softmax_temp": 4.0,
+        "adapt_evidence": "unit",
+        "adapt_neg_weight": 1.0,
+        "gcf_lr": 0.002,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.6632217305624791,
+        "박재일": -0.6025334487115468,
+        "신민철": -0.5490111076724689
+      },
+      "score": -0.6049220956488316
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 1.0, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0007, \"item_item_weight\": 0.5, \"knn_k\": 100, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 0.5,
+        "knn_k": 100,
+        "adapt_user_softmax_temp": 1.0,
+        "adapt_evidence": "unit",
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.8896059852883238,
+        "박재일": -0.561530180963116,
+        "신민철": -0.5920546414370601
+      },
+      "score": -0.6810636025628333
+    },
+    "{\"adapt_evidence\": \"none\", \"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 0.25, \"gcf_emb_dim\": 32, \"gcf_lr\": 0.0002, \"item_item_weight\": 0.5, \"knn_k\": 100, \"rm_lr\": 0.0001}": {
+      "params": {
+        "gcf_emb_dim": 32,
+        "item_item_weight": 0.5,
+        "knn_k": 100,
+        "adapt_user_softmax_temp": 0.25,
+        "adapt_evidence": "none",
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.0001
+      },
+      "scores": {
+        "이지환": -0.6197345130149409,
+        "박재일": -0.6561674343885134,
+        "신민철": -0.5480502439888029
+      },
+      "score": -0.6079840637974191
+    },
+    "{\"adapt_evidence\": \"sqrt\", \"adapt_neg_weight\": 1.0, \"adapt_user_softmax_temp\": 4.0, \"gcf_emb_dim\": 16, \"gcf_lr\": 0.002, \"item_item_weight\": 1.0, \"knn_k\": 100, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 16,
+        "item_item_weight": 1.0,
+        "knn_k": 100,
+        "adapt_user_softmax_temp": 4.0,
+        "adapt_evidence": "sqrt",
+        "adapt_neg_weight": 1.0,
+        "gcf_lr": 0.002,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.7028296677052861,
+        "박재일": -0.5515914836040724,
+        "신민철": -0.5854379076413503
+      },
+      "score": -0.6132863529835696
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_neg_weight\": 0.5, \"adapt_user_softmax_temp\": 4.0, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.002, \"item_item_weight\": 2.0, \"knn_k\": 100, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 2.0,
+        "knn_k": 100,
+        "adapt_user_softmax_temp": 4.0,
+        "adapt_evidence": "unit",
+        "adapt_neg_weight": 0.5,
+        "gcf_lr": 0.002,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.7284870233949117,
+        "박재일": -0.6255018013065592,
+        "신민철": -0.502945624821204
+      },
+      "score": -0.6189781498408916
+    },
+    "{\"adapt_evidence\": \"none\", \"adapt_neg_weight\": 0.5, \"adapt_user_softmax_temp\": 4.0, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0007, \"item_item_weight\": 1.0, \"knn_k\": 100, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 1.0,
+        "knn_k": 100,
+        "adapt_user_softmax_temp": 4.0,
+        "adapt_evidence": "none",
+        "adapt_neg_weight": 0.5,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.7598707068637242,
+        "박재일": -0.6152358763067481,
+        "신민철": -0.48587156618423183
+      },
+      "score": -0.6203260497849014
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_neg_weight\": 0.5, \"adapt_user_softmax_temp\": 2.0, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0002, \"item_item_weight\": 2.0, \"knn_k\": 10, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 2.0,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_evidence": "unit",
+        "adapt_neg_weight": 0.5,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.8155938270330597,
+        "박재일": -0.5669491712254405,
+        "신민철": -0.4978969140306476
+      },
+      "score": -0.6268133040963826
+    },
+    "{\"adapt_evidence\": \"sqrt\", \"adapt_neg_weight\": 1.0, \"adapt_user_softmax_temp\": 1.0, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.002, \"item_item_weight\": 0.25, \"knn_k\": 10, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 0.25,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 1.0,
+        "adapt_evidence": "sqrt",
+        "adapt_neg_weight": 1.0,
+        "gcf_lr": 0.002,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.6983796238925802,
+        "박재일": -0.5694407732781162,
+        "신민철": -0.5922014749858687
+      },
+      "score": -0.620007290718855
+    },
+    "{\"adapt_evidence\": \"sqrt\", \"adapt_neg_weight\": 0.5, \"adapt_user_softmax_temp\": 0.25, \"gcf_emb_dim\": 16, \"gcf_lr\": 0.002, \"item_item_weight\": 0.25, \"knn_k\": 10, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 16,
+        "item_item_weight": 0.25,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 0.25,
+        "adapt_evidence": "sqrt",
+        "adapt_neg_weight": 0.5,
+        "gcf_lr": 0.002,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.9447115913368036,
+        "박재일": -0.5626072871775492,
+        "신민철": -0.6822863773300984
+      },
+      "score": -0.7298684186148171
+    },
+    "{\"adapt_evidence\": \"none\", \"adapt_neg_weight\": 1.0, \"adapt_user_softmax_temp\": 2.0, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0002, \"item_item_weight\": 0.5, \"knn_k\": 30, \"rm_lr\": 0.0001}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 0.5,
+        "knn_k": 30,
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_evidence": "none",
+        "adapt_neg_weight": 1.0,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.0001
+      },
+      "scores": {
+        "이지환": -0.6354338117509175,
+        "박재일": -0.6567844194641712,
+        "신민철": -0.5006561563179588
+      },
+      "score": -0.5976247958443491
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_neg_weight\": 1.0, \"adapt_user_softmax_temp\": 0.5, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.002, \"item_item_weight\": 0.5, \"knn_k\": 100, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 0.5,
+        "knn_k": 100,
+        "adapt_user_softmax_temp": 0.5,
+        "adapt_evidence": "unit",
+        "adapt_neg_weight": 1.0,
+        "gcf_lr": 0.002,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.7324193707196401,
+        "박재일": -0.5602192820086379,
+        "신민철": -0.5466886559280866
+      },
+      "score": -0.6131091028854548
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 0.25, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0007, \"item_item_weight\": 2.0, \"knn_k\": 30, \"rm_lr\": 0.0001}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 2.0,
+        "knn_k": 30,
+        "adapt_user_softmax_temp": 0.25,
+        "adapt_evidence": "unit",
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.0001
+      },
+      "scores": {
+        "이지환": -0.8463172216188849,
+        "박재일": -0.5546429039741984,
+        "신민철": -0.62718743968365
+      },
+      "score": -0.6760491884255777
+    },
+    "{\"adapt_evidence\": \"sqrt\", \"adapt_neg_weight\": 1.0, \"adapt_user_softmax_temp\": 2.0, \"gcf_emb_dim\": 64, \"gcf_lr\": 0.0007, \"item_item_weight\": 2.0, \"knn_k\": 100, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 64,
+        "item_item_weight": 2.0,
+        "knn_k": 100,
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_evidence": "sqrt",
+        "adapt_neg_weight": 1.0,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.7535537246952974,
+        "박재일": -0.5693094065034493,
+        "신민철": -0.5308682435686048
+      },
+      "score": -0.6179104582557838
+    },
+    "{\"adapt_evidence\": \"none\", \"adapt_neg_weight\": 1.0, \"adapt_user_softmax_temp\": 0.25, \"gcf_emb_dim\": 16, \"gcf_lr\": 0.002, \"item_item_weight\": 0.25, \"knn_k\": 100, \"rm_lr\": 0.0001}": {
+      "params": {
+        "gcf_emb_dim": 16,
+        "item_item_weight": 0.25,
+        "knn_k": 100,
+        "adapt_user_softmax_temp": 0.25,
+        "adapt_evidence": "none",
+        "adapt_neg_weight": 1.0,
+        "gcf_lr": 0.002,
+        "rm_lr": 0.0001
+      },
+      "scores": {
+        "이지환": -0.6249658576393422,
+        "박재일": -0.6612472685091824,
+        "신민철": -0.5330253543414119
+      },
+      "score": -0.6064128268299788
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_neg_weight\": 0.0, \"adapt_user_softmax_temp\": 1.0, \"gcf_emb_dim\": 16, \"gcf_lr\": 0.0007, \"item_item_weight\": 0.25, \"knn_k\": 10, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 16,
+        "item_item_weight": 0.25,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 1.0,
+        "adapt_evidence": "unit",
+        "adapt_neg_weight": 0.0,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.8876395254242175,
+        "박재일": -0.5267383848810441,
+        "신민철": -0.7387875585198054
+      },
+      "score": -0.7177218229416891
+    },
+    "{\"adapt_evidence\": \"sqrt\", \"adapt_neg_weight\": 0.5, \"adapt_user_softmax_temp\": 2.0, \"gcf_emb_dim\": 16, \"gcf_lr\": 0.0002, \"item_item_weight\": 1.0, \"knn_k\": 10, \"rm_lr\": 0.0003}": {
+      "params": {
+        "gcf_emb_dim": 16,
+        "item_item_weight": 1.0,
+        "knn_k": 10,
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_evidence": "sqrt",
+        "adapt_neg_weight": 0.5,
+        "gcf_lr": 0.0002,
+        "rm_lr": 0.0003
+      },
+      "scores": {
+        "이지환": -0.8798874272720991,
+        "박재일": -0.5828130864831036,
+        "신민철": -0.5777704157922178
+      },
+      "score": -0.6801569765158068
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_neg_weight\": 0.5, \"adapt_user_softmax_temp\": 0.5, \"gcf_emb_dim\": 16, \"gcf_lr\": 0.0007, \"item_item_weight\": 0.25, \"knn_k\": 30, \"rm_lr\": 0.001}": {
+      "params": {
+        "gcf_emb_dim": 16,
+        "item_item_weight": 0.25,
+        "knn_k": 30,
+        "adapt_user_softmax_temp": 0.5,
+        "adapt_evidence": "unit",
+        "adapt_neg_weight": 0.5,
+        "gcf_lr": 0.0007,
+        "rm_lr": 0.001
+      },
+      "scores": {
+        "이지환": -0.8818152384604039,
+        "박재일": -0.547837375849621,
+        "신민철": -0.6842538083742321
+      },
+      "score": -0.7046354742280857
+    }
+  },
+  "inner": [
+    "이지환",
+    "박재일",
+    "신민철"
+  ],
+  "best": {
+    "gcf_emb_dim": 64,
+    "item_item_weight": 0.5,
+    "knn_k": 30,
+    "adapt_user_softmax_temp": 2.0,
+    "adapt_evidence": "none",
+    "adapt_neg_weight": 1.0,
+    "gcf_lr": 0.0002,
+    "rm_lr": 0.0001
+  },
+  "best_score": -0.5976247958443491
+}

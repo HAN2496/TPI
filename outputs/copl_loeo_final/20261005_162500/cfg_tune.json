@@ -1,0 +1,233 @@
+{
+  "data": "real",
+  "dataset_root": "datasets",
+  "evaluators": [],
+  "folds": [],
+  "channels": [
+    "Pitch_rate_6D",
+    "Bounce_rate_6D",
+    "IMU_VerAccelVal",
+    "IMU_LongAccelVal",
+    "IMU_LatAccelVal"
+  ],
+  "graph_channels": [],
+  "rm_channels": [],
+  "around": [
+    -2.0,
+    2.0
+  ],
+  "downsample": 2,
+  "smooth": [
+    10.0,
+    2
+  ],
+  "min_labels": 10,
+  "min_per_class": 3,
+  "pop_min_labels": 0,
+  "pop_min_per_class": 0,
+  "val_size": 0.1,
+  "budgets": [
+    0,
+    5,
+    10,
+    20
+  ],
+  "include_final": true,
+  "ctx_frac": 0.5,
+  "n_offsets": 3,
+  "seeds": [
+    42
+  ],
+  "reliable_w_max": 0.3,
+  "encoder": "scatter",
+  "enc_list": [
+    "ae",
+    "vae",
+    "pca",
+    "scatter",
+    "isobank",
+    "raw_rbf"
+  ],
+  "enc_channel_sets": "loso",
+  "enc_ks": [
+    5,
+    10,
+    20,
+    30,
+    50,
+    100
+  ],
+  "mutual": false,
+  "knn_k": 30,
+  "gamma_mul": 1.0,
+  "pca_dim": 16,
+  "dtw_gamma": 1.0,
+  "ae_latent_dim": 8,
+  "ae_epochs": 300,
+  "ae_lr": 0.001,
+  "ae_batch_size": 128,
+  "ae_hidden_channels": 32,
+  "ae_metric": "cosine",
+  "ae_temperature": 0.2,
+  "vae_latent_dim": 16,
+  "vae_epochs": 300,
+  "vae_lr": 0.001,
+  "vae_kl_weight": 0.05,
+  "vae_batch_size": 128,
+  "vae_hidden_channels": 32,
+  "vae_metric": "cosine",
+  "vae_temperature": 0.2,
+  "scatter_n1": 8,
+  "scatter_pca_dim": 0,
+  "isobank_rho_max": 0.95,
+  "graph_rule": "topk",
+  "cross_min": 0,
+  "sweep_ks": [
+    5,
+    10,
+    20,
+    30,
+    50,
+    100
+  ],
+  "sweep_rules": [
+    "topk",
+    "mutual",
+    "epsilon",
+    "cross_forced"
+  ],
+  "sweep_item_item_weights": [
+    0.5
+  ],
+  "gcf_model": "gcf",
+  "gcf_m_i_type": "b",
+  "gcf_loss_type": "bce_diversity",
+  "gcf_emb_dim": 32,
+  "gcf_layers": 2,
+  "gcf_dropout": 0.0,
+  "item_item_weight": 0.5,
+  "gcf_lr": 0.00068,
+  "gcf_weight_decay": 0.001,
+  "gcf_lambda_reg": 0.0,
+  "gcf_epochs": 50,
+  "use_pos_weight": true,
+  "gcf_loss_kwargs": {
+    "w_ii": 2.0,
+    "lambda_div": 0.5,
+    "margin": 0.5,
+    "temperature": 0.1
+  },
+  "rm_model": "cnn",
+  "rm_hidden": 32,
+  "rm_mlp_hidden": 64,
+  "rm_lr": 0.00026,
+  "rm_weight_decay": 0.0,
+  "rm_lambda_reg": 1e-06,
+  "rm_epochs": 100,
+  "rm_batch_size": 256,
+  "rm_num_experts": 3,
+  "rm_mole_rank": 6,
+  "rm_mole_tau": 2.0,
+  "rm_kernel_size": 3,
+  "rm_layers": 2,
+  "rm_num_heads": 8,
+  "rm_max_len": 1000,
+  "rm_bayes": "ensemble",
+  "rm_dropout": 0.0,
+  "rm_mc_samples": 30,
+  "rm_ensemble_k": 3,
+  "rm_select": "loss",
+  "rm_calibrate": true,
+  "adapt_normalize": true,
+  "adapt_evidence": "none",
+  "rm_mix_prob": 0.5,
+  "rm_mix_alpha": 1.0,
+  "adapt_topk": 30,
+  "adapt_use_neg": true,
+  "adapt_neg_weight": 1.0,
+  "adapt_user_softmax_temp": 1.15,
+  "use_item_item": true,
+  "use_adapt": true,
+  "oracle": false,
+  "pooled": true,
+  "indep": true,
+  "knn_vote": true,
+  "pooled_ft_epochs": 3,
+  "pooled_ft_lr": 0.0001,
+  "pooled_ctx_weight": 1.0,
+  "indep_epochs": 60,
+  "indep_min_labels": 5,
+  "knn_vote_k": 30,
+  "knn_vote_alpha": 1.0,
+  "tune_trials": 40,
+  "tune_inner_folds": 3,
+  "tune_inner_mix": true,
+  "tune_budgets": [
+    0,
+    5,
+    10,
+    20
+  ],
+  "tune_seed": 7,
+  "tune_rm_bayes": "none",
+  "tune_space": {
+    "gcf_emb_dim": [
+      16,
+      32,
+      64
+    ],
+    "item_item_weight": [
+      0.25,
+      0.5,
+      1.0,
+      2.0
+    ],
+    "knn_k": [
+      10,
+      30,
+      100
+    ],
+    "adapt_user_softmax_temp": [
+      0.25,
+      0.5,
+      1.0,
+      2.0,
+      4.0
+    ],
+    "adapt_evidence": [
+      "none",
+      "unit",
+      "sqrt"
+    ],
+    "adapt_neg_weight": [
+      0.0,
+      0.5,
+      1.0
+    ],
+    "gcf_lr": [
+      0.0002,
+      0.0007,
+      0.002
+    ],
+    "rm_lr": [
+      0.0001,
+      0.0003,
+      0.001
+    ]
+  },
+  "use_tuned": false,
+  "channel_configs": "loso",
+  "syn_n_evaluators": 8,
+  "syn_min_episodes": 30,
+  "syn_max_episodes": 160,
+  "syn_k_common": 6,
+  "syn_k_individual": 3,
+  "rho_max": 0.95,
+  "stage": "tune",
+  "timestamp": "20261005_162500",
+  "run_name": "copl_loeo_final",
+  "seed": 42,
+  "device": "auto",
+  "verbose": 1,
+  "fast": false
+}
