@@ -401,7 +401,7 @@ git push origin claude_session</pre>
 </ul>
 <p><span class="verdict ok-v">판정</span>: <code>adapt_rule=loglik</code>을 기본으로 채택한다. 투표 규칙(α=0 원형, α=1 정규화)은 ablation으로만 남긴다. E9로 확정 실행.</p>
 
-<h2 id="E9">E9. 확정 실행 3차: τ 튜닝 → main(시드 3) → ablate <span class="verdict todo-v">설계 완료, 실행 대기</span></h2>
+<h2 id="E9">E9. 확정 실행 3차: τ 튜닝 → main(시드 3) → ablate <span class="verdict ok-v">RQ1 지지 (t=20에서 pooled보다 0.08 nat, 2 SE), H9c 지지, H9a 부분</span></h2>
 <p class="label">가설</p>
 <p>H9a (RQ4 재판정): 내부 폴드로 고른 τ가 외부에서도 작동한다. 폴드별 내부 최적 점수와 외부 MLPD(t ∈ {5,10,20} 평균)의 차이가 E5(이지환 0.2~0.5)보다 작고 부호가 폴드마다 뒤집히지 않는다. H9b (RQ1 재판정): 시드 3 평균에서 CoPL − pooled 가 t=20에서 평가자 단위 paired SE 이상 양수이고 t=5, 10에서 음수가 아니다. H9c: ablation 순서 loglik &gt; vote_norm &gt; vote_orig, no_item_item ≈ 기본, no_mix·no_calib는 기본보다 나쁨(E5 재현).</p>
 <p class="label">설계</p>
@@ -415,6 +415,60 @@ git commit -m "Add copl_loeo_final2 runs (tune tau, main, ablate)"
 git push origin claude_session</pre>
 <p>sweep·channels는 E5 결과를 그대로 쓴다(그래프 희소화는 GCF 임베딩에만 영향을 주고 E5에서 무관했다; loglik 규칙은 그래프를 쓰지 않으므로 더욱 무관하다). 채널 분리 실험(H3b.2/3)은 main 결과가 확정된 뒤 별도로 판단한다.</p>
 
+<p class="label">결과 (<code>outputs/copl_loeo_final2/20261007_233243</code> · tune 10 격자 × 내부 3폴드 · main 시드 42·43·44 · ablate 시드 42)</p>
+<table>
+  <thead><tr><th>macro MLPD ± 평가자 SE</th><th class="num">t=0 (10명)</th><th class="num">5 (10)</th><th class="num">10 (8)</th><th class="num">20 (5)</th><th class="num">최종 (10)</th></tr></thead>
+  <tbody>
+    <tr><td><strong>CoPL (loglik 적응, τ 튜닝)</strong></td><td class="num">−0.722 ± 0.057</td><td class="num"><strong>−0.670</strong> ± 0.042</td><td class="num"><strong>−0.626</strong> ± 0.040</td><td class="num"><strong>−0.555</strong> ± 0.038</td><td class="num"><strong>−0.629</strong> ± 0.047</td></tr>
+    <tr><td>Pooled-CNN</td><td class="num">−0.728 ± 0.082</td><td class="num">−0.736 ± 0.090</td><td class="num">−0.647 ± 0.023</td><td class="num">−0.637 ± 0.025</td><td class="num">−0.718 ± 0.094</td></tr>
+    <tr><td>kNN vote</td><td class="num"><strong>−0.677</strong> ± 0.029</td><td class="num">−0.677</td><td class="num">−0.697</td><td class="num">−0.727</td><td class="num">−0.677</td></tr>
+    <tr><td>Indep-CNN</td><td class="num">—</td><td class="num">−1.161</td><td class="num">−1.113</td><td class="num">−0.849</td><td class="num">−0.917</td></tr>
+    <tr><td>CoPL − Pooled (평가자 단위 paired)</td><td class="num">+0.007 ± 0.032</td><td class="num">+0.066 ± 0.076</td><td class="num">+0.021 ± 0.034</td><td class="num"><strong>+0.082 ± 0.038</strong></td><td class="num">+0.089 ± 0.071</td></tr>
+    <tr><td>E5 (투표 적응) CoPL</td><td class="num">−0.720</td><td class="num">−0.717</td><td class="num">−0.666</td><td class="num">−0.658</td><td class="num">−0.707</td></tr>
+  </tbody>
+</table>
+<p>AUROC t=20: CoPL 0.758 vs pooled 0.726; Brier 0.186 vs 0.223; ECE 0.125 vs 0.210. 시드 sd(폴드 내 평균)는 0.025 / 0.023 / 0.019 / 0.011 (t=0/5/10/20)로 평가자 SE보다 작다. 긴 스트림 5명의 paired ΔELPD(CoPL − pooled, t=20): 박재일 +60 ± 9, 한규택 +21 ± 8, 조현석 +10 ± 4, 강신길 +5 ± 4, 이지환 −16 ± 7 (이지환은 t=5 +34, 최종 +32로 t=20 오프셋에서만 음수).</p>
+
+<p class="label">평가자별 최종 (CoPL / pooled), 튜닝된 τ, 내부 최적 점수 vs 외부 (t ∈ {5,10,20} 평균)</p>
+<table>
+  <thead><tr><th>평가자</th><th class="num">t=5</th><th class="num">t=20</th><th class="num">최종</th><th>최종 w_u 최대</th><th class="num">τ / evidence</th><th class="num">내부 → 외부</th></tr></thead>
+  <tbody>
+    <tr><td>이지환</td><td class="num">−0.604 / −0.668</td><td class="num">−0.690 / −0.661</td><td class="num">−0.572 / −0.633</td><td>이혜인 0.34 (H 1.47)</td><td class="num">2 / none</td><td class="num">−0.540 → −0.641</td></tr>
+    <tr><td>박재일</td><td class="num">−0.505 / −0.693</td><td class="num">−0.480 / −0.683</td><td class="num">−0.480 / −0.633</td><td>한규택 0.98</td><td class="num">1 / none</td><td class="num">−0.583 → −0.489</td></tr>
+    <tr><td>한규택</td><td class="num">−0.610 / −0.706</td><td class="num">−0.566 / −0.680</td><td class="num">−0.549 / −0.642</td><td>박재일 0.91</td><td class="num">1 / none</td><td class="num">−0.565 → −0.599</td></tr>
+    <tr><td>조현석</td><td class="num">−0.715 / −0.584</td><td class="num">−0.488 / −0.557</td><td class="num">−0.486 / −0.543</td><td>이지환 0.15 (H 2.60)</td><td class="num">1 / unit</td><td class="num">−0.552 → −0.562</td></tr>
+    <tr><td>강신길</td><td class="num">−0.572 / −0.595</td><td class="num">−0.552 / −0.603</td><td class="num">−0.555 / −0.593</td><td>김재호 0.42</td><td class="num">2 / none</td><td class="num">−0.561 → −0.585</td></tr>
+    <tr><td>김태근</td><td class="num">−0.721 / −0.690</td><td class="num">—</td><td class="num">−0.709 / −0.683</td><td>균등에 가까움</td><td class="num">1 / none</td><td class="num">−0.558 → −0.702</td></tr>
+    <tr><td>김재호</td><td class="num">−0.623 / −0.563</td><td class="num">—</td><td class="num">−0.597 / −0.563</td><td>강신길 0.21</td><td class="num">1 / none</td><td class="num">−0.564 → −0.630</td></tr>
+    <tr><td>김진명</td><td class="num">−0.919 / −0.710</td><td class="num">—</td><td class="num">−0.897 / −0.724</td><td>구정모 0.17</td><td class="num">1 / none</td><td class="num">−0.552 → −0.881</td></tr>
+    <tr><td>이강근</td><td class="num">−0.858 / −1.531</td><td class="num">—</td><td class="num">−0.873 / −1.548</td><td>균등에 가까움</td><td class="num">1 / unit</td><td class="num">−0.553 → −0.858</td></tr>
+    <tr><td>신민철</td><td class="num">−0.571 / −0.621</td><td class="num">—</td><td class="num">−0.571 / −0.621</td><td>균등에 가까움</td><td class="num">1 / none</td><td class="num">−0.693 → −0.571</td></tr>
+  </tbody>
+</table>
+
+<p class="label">ablation (10폴드, 시드 42, 튜닝값; 기본 = main 시드 42에 해당)</p>
+<table>
+  <thead><tr><th>변형</th><th class="num">t=0</th><th class="num">5</th><th class="num">10</th><th class="num">20</th><th class="num">최종</th><th>해석</th></tr></thead>
+  <tbody>
+    <tr><td>no_adapt</td><td class="num">−0.717</td><td class="num">−0.717</td><td class="num">−0.684</td><td class="num">−0.702</td><td class="num">−0.717</td><td>적응 전체 효과 = t=20에서 0.15 nat</td></tr>
+    <tr><td>vote_orig (E5 규칙)</td><td class="num">−0.711</td><td class="num">−0.701</td><td class="num">−0.659</td><td class="num">−0.644</td><td class="num">−0.678</td><td>loglik보다 t=20에서 0.09 나쁨</td></tr>
+    <tr><td>vote_norm (E7 최선 투표)</td><td class="num">−0.706</td><td class="num">−0.697</td><td class="num">−0.662</td><td class="num">−0.658</td><td class="num">−0.634</td><td>최종에서는 vote_orig보다 낫고 t=20에서는 비슷</td></tr>
+    <tr><td>no_item_item</td><td class="num">−0.713</td><td class="num">−0.673</td><td class="num">−0.633</td><td class="num">−0.553</td><td class="num">−0.642</td><td>기본과 같음 (세 번째 재현). 아이템–아이템 전파는 불필요</td></tr>
+    <tr><td>no_mix</td><td class="num">−0.779</td><td class="num">−0.735</td><td class="num">−0.692</td><td class="num">−0.615</td><td class="num">−0.680</td><td>모든 예산에서 나쁨. mixture training은 loglik 규칙에서도 필요</td></tr>
+    <tr><td>no_calib</td><td class="num">−0.709</td><td class="num">−0.678</td><td class="num">−0.649</td><td class="num">−0.570</td><td class="num">−0.648</td><td>t ≤ 10에서 나쁨, t=20에서는 근접. 우도는 보정된 확률로 계산해야 함</td></tr>
+    <tr><td>oracle</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">−0.614</td><td>기본 최종 −0.629(시드 3) / 시드 42 기준과 0.01~0.02 차이. 적응이 상한에 거의 닿음</td></tr>
+  </tbody>
+</table>
+
+<ul>
+  <li><strong>RQ1 지지.</strong> t=20에서 CoPL − pooled = +0.082 ± 0.038 (평가자 단위, 5명), paired ΔELPD는 5명 중 4명 양수. t=5, 10, 최종도 양수(SE 안). cold start는 pooled와 같고 kNN vote가 여전히 가장 좋다. 이득은 확률 품질(Brier, ECE)에 먼저 나타난다(T-IV와 같은 패턴).</li>
+  <li><strong>H9c 지지.</strong> loglik &gt; 두 투표 규칙(t=20에서 0.09~0.10), no_item_item ≈ 기본, no_mix·no_calib 나쁨. vote_norm과 vote_orig의 순서는 예산에 따라 갈린다.</li>
+  <li><strong>H9a 부분.</strong> 튜닝된 τ는 10폴드 중 8폴드가 1, 2폴드가 2로 안정적이고 격자 10개의 내부 점수 폭은 0.04~0.08로 좁다. 긴 스트림에서는 내부 → 외부 격차가 0.03~0.10으로 E5(0.2~0.5)보다 훨씬 작다. 그러나 짧은 스트림(김진명 −0.55 → −0.88, 김태근 −0.56 → −0.70, 이강근 −0.55 → −0.86)에서는 격차가 그대로다. 내부 폴드가 긴 스트림 2명 + 신민철(문맥 5개)이라 짧은 스트림의 과확신을 τ가 보지 못한다. τ=1(정확한 posterior)이 선택되었다는 것은 긴 스트림 기준으로는 식힐 필요가 없다는 뜻이고, 짧은 스트림에는 식혀야 한다(E8: τ=10에서 김진명 −0.05).</li>
+  <li><strong>짧은 스트림.</strong> 김진명(−0.92 vs pooled −0.71), 김태근·김재호(−0.03~−0.06)는 pooled보다 나쁘고 이강근·신민철은 크게 좋다. 라벨 30개 안팎의 평가자 5명에서 결과가 갈리는 것은 T-IV와 같다.</li>
+  <li><strong>불확실성.</strong> 앙상블 3개의 epistemic은 0.005로 평탄, 오답 예측 AUROC 0.57~0.60. CoPL 논문에서 불확실성은 주장하지 않는다.</li>
+</ul>
+<p><span class="verdict ok-v">판정</span>: 이 실행을 CoPL 논문의 주 결과로 쓴다. 남은 선택: (1) 짧은 스트림을 위한 τ의 t-의존 식힘(예: 내부 폴드 구성을 긴 1 + 짧은 2로 바꾸거나 τ(t) 스케줄)은 주 결과를 바꾸지 않는 보강이므로 논문 초안 뒤에 판단한다. (2) 그래프 채널 / RM 채널 분리(H3b.2/3)는 loglik 규칙이 그래프를 쓰지 않으므로 RM 채널 연구로 축소한다. (3) ablation의 시드 3 반복은 표의 SE를 줄이는 용도로만 필요하다.</p>
+
 <h2 id="status">가설 현황표</h2>
 <table>
   <thead><tr><th>ID</th><th>가설</th><th>판정</th><th>근거</th><th>논문 반영</th></tr></thead>
@@ -426,12 +480,12 @@ git push origin claude_session</pre>
     <tr><td>H3b.1</td><td>end-to-end 채널: IMU/a_z만으로 충분</td><td>지지(약함, 시드 1, SE 안)</td><td>E5 channels</td><td>채널 절</td></tr>
     <tr><td>H3b.2, H3b.3</td><td>보상 모형 채널은 넓게 / 분리 최선</td><td>미실행</td><td>—</td><td>채널 절 (분리 실행 필요)</td></tr>
     <tr><td>H3.1~H3.4</td><td>희소화와 k</td><td>기각 방향: k·규칙 무관(±0.01), item-item 전파 기여 없음</td><td>E4, E5 sweep·ablate</td><td>그래프 절 (부정 결과)</td></tr>
-    <tr><td>RQ1</td><td>CoPL &gt; pooled / indep</td><td>미달: pooled와 동등, cold start는 kNN vote가 우세. 적응의 degree 편향이 원인</td><td>E2, E5</td><td>주 결과 (E6 후 재판정)</td></tr>
-    <tr><td>RQ4</td><td>튜닝 설정의 일반화</td><td>기각: 내부 −0.55 vs 외부 −0.72~−1.09 (이지환), 폴드 간 튜닝값 불안정</td><td>E5 tune</td><td>부록</td></tr>
+    <tr><td>RQ1</td><td>CoPL &gt; pooled / indep</td><td>투표 적응으로는 미달(E5); loglik 적응으로 지지: t=20 +0.082 ± 0.038, t=5·10·최종 양수. cold start는 pooled와 같고 kNN vote가 우세</td><td>E5, E9</td><td>주 결과</td></tr>
+    <tr><td>RQ4</td><td>튜닝 설정의 일반화</td><td>E5 기각 → E9 부분: τ는 폴드 간 안정(1 또는 2), 긴 스트림 격차 0.03~0.10, 짧은 스트림 격차 0.15~0.3 남음</td><td>E5, E9</td><td>부록 + 한계</td></tr>
     <tr><td>H6a~H6c</td><td>degree 정규화가 쏠림을 고치고 이지환 붕괴를 없앤다</td><td>H6a 지지(이지환 −0.98 → −0.56), H6c 기각(강신길·조현석 악화: 작은 사용자로 쏠림)</td><td>E6</td><td>적응 절 (편향 분석)</td></tr>
     <tr><td>H7a~H7c</td><td>pseudo-count 수축 + 표의 양 정규화가 폴드 무관하게 작동</td><td>기각: 수축은 이지환을 다시 무너뜨림, 어떤 설정도 10폴드 전부 통과 못 함(최선 8/10, α=1·κ=0·τ=1 최종 −0.632)</td><td>E7</td><td>적응 절 (투표 규칙의 한계)</td></tr>
     <tr><td>H8a~H8d</td><td>보상 모형 우도 posterior가 그래프 투표를 대체</td><td>H8a·H8c 지지(t=20 −0.560 vs pooled −0.633, 이지환·강신길 동시 해결), H8b 9/10(김진명만 손해), H8d 혼합. 기본 규칙 채택</td><td>E8</td><td>적응 절 (제안 규칙), 주 결과</td></tr>
-    <tr><td>H9a~H9c</td><td>τ 튜닝의 일반화, 시드 3 주 결과, ablation 순서</td><td>예정</td><td>E9</td><td>주 결과, ablation 표, 부록(튜닝)</td></tr>
+    <tr><td>H9a~H9c</td><td>τ 튜닝의 일반화, 시드 3 주 결과, ablation 순서</td><td>H9a 부분(긴 스트림만), H9b 지지, H9c 지지(loglik &gt; vote, no_item_item ≈ 기본, no_mix·no_calib 나쁨)</td><td>E9</td><td>주 결과, ablation 표, 부록(튜닝)</td></tr>
   </tbody>
 </table>
 </main>
