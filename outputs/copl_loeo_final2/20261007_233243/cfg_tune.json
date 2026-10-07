@@ -221,7 +221,7 @@
   "syn_k_individual": 3,
   "rho_max": 0.95,
   "stage": "tune",
-  "timestamp": null,
+  "timestamp": "20261007_233243",
   "run_name": "copl_loeo_final2",
   "seed": 42,
   "device": "auto",
