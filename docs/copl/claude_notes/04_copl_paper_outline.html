@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04 · CoPL 논문 개요</title>
+<script>
+  MathJax = { tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+              options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] } };
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<style>
+  :root {
+    --bg: #fbfbf9; --fg: #1d1f24; --muted: #5d6270; --line: #e3e3dc;
+    --card: #ffffff; --accent: #1f5f8b; --accent-soft: #e4eef6;
+    --warn: #8a4b08; --warn-soft: #fbeedc; --ok: #2b6a3f; --ok-soft: #e3f1e6;
+    --bad: #8b2b2b; --bad-soft: #f6e3e3; --code: #f1f1ec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14161a; --fg: #e6e6e1; --muted: #a0a4ad; --line: #2c3037;
+      --card: #1b1e24; --accent: #7fb3d9; --accent-soft: #1f2c39;
+      --warn: #e2a463; --warn-soft: #332614; --ok: #8fd19f; --ok-soft: #16301e;
+      --bad: #e08a8a; --bad-soft: #3a1f1f; --code: #23272e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --fg: #e6e6e1; --muted: #a0a4ad; --line: #2c3037;
+    --card: #1b1e24; --accent: #7fb3d9; --accent-soft: #1f2c39;
+    --warn: #e2a463; --warn-soft: #332614; --ok: #8fd19f; --ok-soft: #16301e;
+    --bad: #e08a8a; --bad-soft: #3a1f1f; --code: #23272e;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 16px/1.7 -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", Roboto, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 32px 16px 64px; }
+  header { border-bottom: 1px solid var(--line); padding-bottom: 16px; margin-bottom: 28px; }
+  h1 { font-size: 1.7rem; margin: 0 0 6px; line-height: 1.3; }
+  .meta { color: var(--muted); font-size: 0.92rem; }
+  h2 { font-size: 1.3rem; margin: 44px 0 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+  h3 { font-size: 1.05rem; margin: 26px 0 8px; }
+  p { margin: 10px 0; }
+  p.label { color: var(--muted); font-size: 0.86rem; text-transform: uppercase; letter-spacing: 0.04em; margin: 18px 0 4px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; margin: 14px 0; }
+  th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }
+  pre { background: var(--code); padding: 12px 14px; border-radius: 8px; overflow-x: auto; font-size: 0.86rem; line-height: 1.5; }
+  ul, ol { padding-left: 22px; }
+  li { margin: 4px 0; }
+  .note { background: var(--accent-soft); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 6px; margin: 14px 0; }
+  .warn { background: var(--warn-soft); border-left: 3px solid var(--warn); padding: 10px 14px; border-radius: 6px; margin: 14px 0; }
+  .toc { columns: 2; column-gap: 32px; font-size: 0.95rem; }
+  .toc li { break-inside: avoid; }
+  mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; margin: 10px 0 !important; }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>04 · CoPL 논문 개요</h1>
+  <div class="meta">
+    투고 순서 IEEE IV 2027 → IEEE T-ITS 확장 · 2026-10-08 ·
+    수치 출처 <code>outputs/copl_loeo_final2/20261007_233243</code> (주 결과·ablation), <code>copl_loeo_final/20261005_162500</code> (투표 적응, sweep, channels), <code>copl_loeo/20261005_022135</code> (인코더), adapt/adapt2/adapt3 (적응 규칙 분석) · 실험 기록 03
+  </div>
+</header>
+
+<ul class="toc">
+  <li><a href="#q">1. 중심 질문과 기여</a></li>
+  <li><a href="#venue">2. 투고처와 두 버전</a></li>
+  <li><a href="#sep">3. T-IV 논문과의 분리 규칙</a></li>
+  <li><a href="#struct">4. IV 버전 절 구성</a></li>
+  <li><a href="#tables">5. 표와 그림</a></li>
+  <li><a href="#ext">6. T-ITS 확장에서 더하는 것</a></li>
+  <li><a href="#limits">7. 한계로 적을 것</a></li>
+  <li><a href="#todo">8. 투고 전 남은 일</a></li>
+</ul>
+
+<h2 id="q">1. 중심 질문과 기여</h2>
+<p>계획서(01)의 중심 질문은 "CF를 가능하게 하는 유일한 다리인 아이템 유사도 그래프를 어떻게 만들 것인가"였다. E5~E9에서 그래프 희소화와 아이템–아이템 전파는 성능에 무관했고, 성능을 가른 것은 적응 규칙이었다. 중심 질문을 옮긴다.</p>
+<div class="note">
+<strong>중심 질문.</strong> 라벨이 \(t\)개뿐인 새 탑승자를 population 탑승자들의 어떤 혼합으로 볼 것인가. CoPL의 그래프 투표 적응은 왜 실차 데이터에서 실패하고, 무엇으로 대체해야 하는가.
+</div>
+<p class="label">기여 (IV 버전)</p>
+<ol>
+  <li><strong>CoPL 적응의 결함 분석.</strong> 사용자 점수 \(c_u=\sum_{i\in I_u}s_iv_i\)가 아이템 수 \(n_u\)에 비례해, 적응 가중치가 일치도와 무관하게 라벨이 가장 많은 사용자로 쏠린다(degree 편향). 정규화·수축은 편향의 방향만 바꾸며 10폴드를 동시에 만족하는 설정이 없다.</li>
+  <li><strong>우도 기반 사용자 posterior 적응.</strong> 보상 모형이 문맥 라벨에 주는 로그우도로 population 사용자 위의 tempered posterior를 만들어 임베딩을 혼합한다. 그래프와 kNN 부착이 필요 없다. 라벨 20개에서 보정된 pooled-CNN보다 0.08 nat 좋고(평가자 단위 2 SE), 투표 적응보다 0.09 nat 좋다.</li>
+  <li><strong>실차 LOEO 검증과 부정 결과.</strong> 17명·2627 에피소드의 leave-one-evaluator-out에서, (a) 학습 인코더(AE/VAE)는 고정 Gabor scattering에 진다, (b) 아이템–아이템 전파와 그래프 희소화는 성능에 무관하다, (c) 계산 비용은 사용자 수 × 문맥 길이의 순전파뿐이다.</li>
+</ol>
+<p class="label">제목 후보</p>
+<ul>
+  <li>Who Is This Occupant? Likelihood-Based User Posteriors for Few-Label Personalization of Ride-Comfort Preferences</li>
+  <li>Fixing Test-Time Adaptation in Collaborative Preference Learning: From Graph Votes to Reward-Model Posteriors</li>
+  <li>Few-Label Personalization of Binary Ride Feedback by Mixing Population Occupants</li>
+</ul>
+
+<h2 id="venue">2. 투고처와 두 버전</h2>
+<table>
+  <thead><tr><th></th><th>IEEE IV 2027</th><th>IEEE T-ITS (확장)</th></tr></thead>
+  <tbody>
+    <tr><td>분량</td><td>기본 6쪽, 초과 유료 (CFP에서 상한 확인)</td><td>제한 완화, 보통 10~14쪽</td></tr>
+    <tr><td>초점</td><td>기여 1·2 + 주 결과 표 + ablation</td><td>기여 1·2·3 전부 + 인코더 연구 + 그래프 부정 결과 + 짧은 스트림 분석 + 튜닝 일반화</td></tr>
+    <tr><td>표</td><td>데이터, 주 결과, ablation (3개)</td><td>+ 인코더, 적응 규칙 격자, sweep/channels, 튜닝</td></tr>
+    <tr><td>그림</td><td>개요도, MLPD 곡선, \(w_u\) 비교 (3개)</td><td>+ τ 교환, 인코더 산점도, 폴드별 막대</td></tr>
+    <tr><td>실험 추가</td><td>없음 (현재 수치로 작성)</td><td>짧은 스트림용 τ 식힘, RM 채널 연구, ablation 시드 3</td></tr>
+  </tbody>
+</table>
+<p>IV 리뷰를 받은 뒤 T-ITS로 확장하는 것이 애초 계획이다. IV 원고를 쓰면서 T-ITS에 들어갈 절을 미리 별도 파일로 모아 두면 확장 비용이 줄어든다.</p>
+
+<h2 id="sep">3. T-IV 논문과의 분리 규칙</h2>
+<ul>
+  <li>베이스라인은 Pooled-CNN, Indep-CNN, kNN vote만. 계층 베이지안 모형과 비교하지 않는다. 본문에서 T-IV 결과를 인용하거나 "우리의 다른 논문"을 언급하지 않는다.</li>
+  <li>데이터·프로토콜 서술은 독립적으로 다시 쓴다(같은 데이터이므로 사실은 같되 문장을 공유하지 않는다). 평가자 가명 E1~E10은 같은 매핑을 쓴다(이지환 E1, 박재일 E2, 한규택 E3, 조현석 E4, 강신길 E5, 김태근 E6, 김재호 E7, 김진명 E8, 이강근 E9, 신민철 E10).</li>
+  <li>피처 bank는 쓰지 않는다. 입력은 파형(5채널, 50 Hz, 4 s)이고 인코더는 Gabor scattering, 보상 모형은 CNN이다.</li>
+  <li>불확실성(epistemic/aleatoric, 신뢰 구간)은 주장하지 않는다. 앙상블 3개의 epistemic은 신호가 없었다(E5, E9).</li>
+  <li>"수직 가속도만으로 충분" 류의 센서 결론은 채널 연구가 시드 1·SE 안이므로 IV 버전에서는 뺀다. T-ITS에서 RM 채널 연구를 다시 돌린 뒤 넣는다.</li>
+  <li>두 논문의 동시 투고 여부와 상호 인용은 투고 시점에 결정한다. 동시 투고면 인용하지 않는다.</li>
+</ul>
+
+<h2 id="struct">4. IV 버전 절 구성</h2>
+
+<h3>I. Introduction (0.75쪽)</h3>
+<p>탑승자마다 다른 승차감 판단, 라벨은 적다. 협업 필터링 관점(CoPL)은 "다른 탑승자의 라벨을 빌려 쓰기"를 러닝으로 구현한다. 실차 데이터에 옮기면 추천 데이터와 다른 구조가 나타난다: 에피소드는 한 사람의 것이라 사용자–아이템 그래프가 별들의 합이고, 사용자 사이를 잇는 것은 아이템 유사도뿐이다. 이 구조에서 CoPL의 테스트 시 적응이 어떻게 실패하는지 보이고, 보상 모형 자체로 적합도를 재는 posterior 적응으로 바꾼다. 기여 3개를 나열하고 결과 미리보기(라벨 20개에서 pooled 대비 +0.08 nat, 투표 대비 +0.09 nat).</p>
+
+<h3>II. Related Work (0.5쪽)</h3>
+<p>(a) 객관적·주관적 승차감 평가와 개인화 섀시 제어, (b) 인간 피드백 선호 학습과 보상 모형, 사용자 조건부 보상 모형, (c) 협업 필터링의 cold start와 그래프 기반 CF(LightGCN), CoPL, (d) 모형 선택으로서의 적응: Bayesian model averaging, tempered/power posterior (Grünwald의 safe Bayes 계열). (d)가 제안 규칙의 근거다.</p>
+
+<h3>III. Problem and the CoPL Pipeline (1쪽)</h3>
+<p>라벨 \(y\in\{0,1\}\) (1 = good), 에피소드 파형 \(x\in\mathbb R^{C\times T}\). population \(\mathcal D_{1:U}\), 새 탑승자 \(\star\)의 문맥 \(\mathcal D_{\star,t}\). 목표:</p>
+\[
+p(y_{\star j}=1\mid x_{\star j},\ \mathcal D_{\star,t},\ \mathcal D_{1:U})
+\]
+<p>CoPL 파이프라인을 우리 표기로: (1) 인코더 \(z=\phi(x)\)와 아이템–아이템 kNN 그래프 \(A_{ii}\); (2) 사용자–아이템 그래프 \(A_+, A_-\)와 \(A_{ii}\) 위의 LightGCN식 전파로 \(e_u, e_i\); (3) 보상 모형 \(r(x;e)\), 학습 손실은 BCE; (4) 테스트 시 적응: 문맥 에피소드를 kNN으로 population 아이템에 부착해 표 \(v\)를 만들고</p>
+\[
+c_u=\sum_{i\in I_u}s_i\,v_i,\qquad w_u=\mathrm{softmax}_u(c_u/\tau),\qquad \hat e_\star=\sum_u w_ue_u,\qquad \hat p_{\star j}=\sigma\big(r(x_{\star j};\hat e_\star)\big)
+\]
+<p>별 그래프 관찰: 각 아이템은 한 사용자에게만 속하므로 \(A_+,A_-\)만으로는 사용자 간 전파가 없다. 이 관찰이 III의 끝이고 IV·V의 동기다.</p>
+<p>우리가 바꾼 학습 세부(짧게): 검증 BCE 조기 종료, 온도 보정, 앙상블 3, 혼합 임베딩 학습(mixture-consistent training: 학습 행의 절반에서 \(e_u\)를 Dirichlet 혼합 \(\sum_u\pi_ue_u\)로 대체). 이유: cold start는 \(\bar e\), 적응 결과는 혼합이므로 보상 모형이 혼합 임베딩을 학습 중에 봐야 한다. ablation에서 효과를 보인다.</p>
+
+<h3>IV. Why the Vote Fails: Degree Bias (0.75쪽)</h3>
+\[
+\mathbb E[c_u]\;\approx\;n_u\cdot\overline{(s\,v)}_u,\qquad n_u=|I_u|
+\]
+<p>평균 일치도가 같아도 \(c_u\)는 \(n_u\)에 비례하므로 softmax는 큰 사용자로 간다. 원 규칙에서 \(c_u\)는 \(t\)에 비례해 커지므로 \(t\)가 크면 \(\tau\)와 무관하게 one-hot이다. 실측: 10명 모두 최종 \(w_u\)의 최대가 population에서 가장 큰 사용자였다(E5). 가장 긴 스트림 E1(good 41%)이 E2(good 76%)의 임베딩을 받아 MLPD −0.72 → −1.09. oracle(자기 임베딩) −0.55이므로 보상 모형이 아니라 선택의 문제다.</p>
+<p>정규화 \(\tilde c_u=c_u(\bar n/n_u)^\alpha\)와 수축 \(\tilde c_u=c_u\frac{\bar d+\kappa}{d_u+\kappa}\)를 시도한 결과를 한 문단으로: \(\alpha=1\)은 E1을 살리지만(−0.56) 작은 사용자로 쏠려 E5가 무너지고(−0.55 → −0.72), 어떤 \(\kappa>0\)도 E1을 다시 무너뜨린다. 36 설정 중 10폴드 전부에서 기준(max(pooled, no-adapt)) − 0.02 이상인 것이 없다(최선 8/10). 결론: kNN 부착은 라벨 일치의 대리 지표이고, 정규화로 고쳐지는 신호가 아니다.</p>
+
+<h3>V. Likelihood-Based User Posterior (0.75쪽)</h3>
+\[
+\ell_u(t)=\sum_{i\le t}\Big[y_{\star i}\log\sigma\big(r(x_{\star i};e_u)\big)+(1-y_{\star i})\log\big(1-\sigma(r(x_{\star i};e_u))\big)\Big],\qquad
+w_u=\frac{\exp(\ell_u/\tau)}{\sum_{u'}\exp(\ell_{u'}/\tau)}
+\]
+<p>\(\tau=1\)이면 균등 사전분포 아래 "새 탑승자가 사용자 \(u\)다"의 posterior, \(\tau>1\)이면 모형 오지정에 대한 tempered posterior. 성질: 그래프·kNN 부착 불필요, degree 편향 없음, 증거가 \(t\)에 비례해 쌓임, 비용은 \(U\times t\) 순전파. 보상 모형이 보정되어 있어야 \(\ell_u\)가 nat 척도를 가진다는 점(no_calib ablation이 뒷받침). \(\tau\)와 표준화 여부는 population 안의 내부 LOEO로 고른다. 선택된 \(\tau\)는 10폴드 중 8폴드가 1, 2폴드가 2.</p>
+
+<h3>VI. Experiments (2쪽)</h3>
+<ul>
+  <li><strong>데이터.</strong> 17명 두 클래스 라벨, 적격(라벨 ≥ 10, 클래스당 ≥ 3) 10명, 에피소드 2627, 5채널(IMU \(a_x,a_y,a_z\), 6D bounce·pitch rate), 창 −2~+2 s, 50 Hz. 표 I.</li>
+  <li><strong>프로토콜.</strong> LOEO, 기록 순 문맥/holdout 절반, 예산 \(t\in\{0,5,10,20,n_{\mathrm{ctx}}\}\), 오프셋 3, 시드 3, 평가자 단위 SE, paired ΔELPD. 튜닝은 폴드마다 내부 LOEO 3폴드(가장 긴 2 + 가장 짧은 1). GCF·RM 하이퍼파라미터는 40회 무작위 탐색, 적응 \(\tau\)·표준화는 격자 10.</li>
+  <li><strong>베이스라인.</strong> Pooled-CNN(보정, 예산마다 population + 문맥으로 fine-tune), Indep-CNN(문맥만), kNN vote(인코더 공간에서 population 아이템 라벨 투표, 문맥 무관). 각각 "개인 없음", "전이 없음", "학습 없음"을 분리한다.</li>
+  <li><strong>지표.</strong> MLPD(주), AUROC, Brier, ECE.</li>
+  <li><strong>주 결과 (표 II, 그림 2).</strong> 아래 5절 표. 문장: cold start는 pooled와 같고 kNN vote가 최선(−0.677); \(t=5\)부터 CoPL이 pooled 위; \(t=20\)에서 +0.082 ± 0.038(5명 중 4명 양수); 이득은 Brier·ECE에 먼저(0.186 vs 0.223, 0.125 vs 0.210); 시드 sd 0.01~0.03.</li>
+  <li><strong>Ablation (표 III).</strong> no_adapt, vote_orig, vote_norm, no_item_item, no_mix, no_calib, oracle. 문장: 적응 효과 0.15 nat, loglik이 투표보다 0.09~0.10, 아이템–아이템 전파 무관, 혼합 학습·보정 필요, oracle과 0.01~0.02 차이.</li>
+  <li><strong>적응 가중치 (그림 3).</strong> 투표 vs 우도의 최종 \(w_u\) 히트맵. 투표는 열(가장 큰 사용자) 하나에 몰리고, 우도는 base rate가 맞는 사용자로 간다(E2 ↔ E3, E4 → E1, E1 → 이혜인).</li>
+  <li><strong>짧은 스트림.</strong> 라벨 30개 안팎 5명은 갈린다(E9·E10 큰 이득, E8 큰 손해, E6·E7 ±0.03~0.06). 내부 폴드가 긴 스트림 위주라 \(\tau=1\)이 선택되고 짧은 스트림은 과확신. 한계로 넘긴다.</li>
+</ul>
+
+<h3>VII. Discussion and Limitations (0.5쪽)</h3>
+<p>적응 = 사용자 선택 문제라는 관점, 증거 척도(nat)의 중요성, 그래프의 역할 재평가(인코더는 kNN vote 베이스라인과 GCF 입력으로만 기여), 평가자 수의 한계, 라벨 단순성, 폐루프 제어는 범위 밖.</p>
+
+<h3>VIII. Conclusion (0.25쪽)</h3>
+
+<h2 id="tables">5. 표와 그림</h2>
+
+<p class="label">표 I. 데이터</p>
+<p>T-IV 05 문서의 E1~E10 표와 같은 수치(에피소드, good, bad, \(n_{\mathrm{ctx}}\), \(n_{\mathrm{hold}}\)). 문장은 새로 쓴다.</p>
+
+<p class="label">표 II. 주 결과 (macro ± 평가자 SE, 시드 3)</p>
+<table>
+  <thead><tr><th>예산</th><th>방법</th><th class="num">MLPD</th><th class="num">AUROC</th><th class="num">Brier</th><th class="num">ECE</th></tr></thead>
+  <tbody>
+    <tr><td rowspan="3">\(t=0\) (10)</td><td>Pooled</td><td class="num">−0.728 ± 0.082</td><td class="num">0.680</td><td class="num">0.255</td><td class="num">0.281</td></tr>
+    <tr><td>kNN vote</td><td class="num">−0.677 ± 0.029</td><td class="num">0.719</td><td class="num">0.241</td><td class="num">0.282</td></tr>
+    <tr><td>CoPL-LP</td><td class="num">−0.722 ± 0.057</td><td class="num">0.748</td><td class="num">0.257</td><td class="num">0.289</td></tr>
+    <tr><td rowspan="4">\(t=5\) (10)</td><td>Pooled</td><td class="num">−0.736 ± 0.090</td><td class="num">0.704</td><td class="num">0.257</td><td class="num">0.267</td></tr>
+    <tr><td>Indep</td><td class="num">−1.161 ± 0.246</td><td class="num">0.592</td><td class="num">0.300</td><td class="num">0.261</td></tr>
+    <tr><td>kNN vote</td><td class="num">−0.677</td><td class="num">0.719</td><td class="num">0.241</td><td class="num">0.282</td></tr>
+    <tr><td>CoPL-LP</td><td class="num">−0.670 ± 0.042</td><td class="num">0.707</td><td class="num">0.234</td><td class="num">0.229</td></tr>
+    <tr><td rowspan="4">\(t=10\) (8)</td><td>Pooled</td><td class="num">−0.647 ± 0.023</td><td class="num">0.726</td><td class="num">0.228</td><td class="num">0.220</td></tr>
+    <tr><td>Indep</td><td class="num">−1.113</td><td class="num">0.606</td><td class="num">0.301</td><td class="num">0.248</td></tr>
+    <tr><td>kNN vote</td><td class="num">−0.697</td><td class="num">0.649</td><td class="num">0.250</td><td class="num">0.251</td></tr>
+    <tr><td>CoPL-LP</td><td class="num">−0.626 ± 0.040</td><td class="num">0.718</td><td class="num">0.216</td><td class="num">0.174</td></tr>
+    <tr><td rowspan="4">\(t=20\) (5)</td><td>Pooled</td><td class="num">−0.637 ± 0.025</td><td class="num">0.726</td><td class="num">0.223</td><td class="num">0.210</td></tr>
+    <tr><td>Indep</td><td class="num">−0.849</td><td class="num">0.617</td><td class="num">0.256</td><td class="num">0.235</td></tr>
+    <tr><td>kNN vote</td><td class="num">−0.727</td><td class="num">0.643</td><td class="num">0.264</td><td class="num">0.257</td></tr>
+    <tr><td>CoPL-LP</td><td class="num"><strong>−0.555 ± 0.038</strong></td><td class="num"><strong>0.758</strong></td><td class="num"><strong>0.186</strong></td><td class="num"><strong>0.125</strong></td></tr>
+    <tr><td rowspan="4">\(t=n_{\mathrm{ctx}}\) (10)</td><td>Pooled</td><td class="num">−0.718 ± 0.094</td><td class="num">0.704</td><td class="num">0.248</td><td class="num">0.248</td></tr>
+    <tr><td>Indep</td><td class="num">−0.917</td><td class="num">0.725</td><td class="num">0.281</td><td class="num">0.266</td></tr>
+    <tr><td>kNN vote</td><td class="num">−0.677</td><td class="num">0.719</td><td class="num">0.241</td><td class="num">0.282</td></tr>
+    <tr><td>CoPL-LP</td><td class="num">−0.629 ± 0.047</td><td class="num">0.709</td><td class="num">0.217</td><td class="num">0.197</td></tr>
+  </tbody>
+</table>
+<p>CoPL-LP = 제안(likelihood posterior). 각주: paired CoPL − Pooled: +0.007 ± 0.032, +0.066 ± 0.076, +0.021 ± 0.034, +0.082 ± 0.038, +0.089 ± 0.071. 긴 스트림 5명의 \(t=20\) paired ΔELPD: E2 +60 ± 9, E3 +21 ± 8, E4 +10 ± 4, E5 +5 ± 4, E1 −16 ± 7.</p>
+
+<p class="label">표 III. Ablation (10폴드, 시드 1, MLPD)</p>
+<table>
+  <thead><tr><th>변형</th><th class="num">t=0</th><th class="num">5</th><th class="num">10</th><th class="num">20</th><th class="num">최종</th></tr></thead>
+  <tbody>
+    <tr><td>CoPL-LP (기준, 시드 3)</td><td class="num">−0.722</td><td class="num">−0.670</td><td class="num">−0.626</td><td class="num">−0.555</td><td class="num">−0.629</td></tr>
+    <tr><td>no adaptation (cold start 고정)</td><td class="num">−0.717</td><td class="num">−0.717</td><td class="num">−0.684</td><td class="num">−0.702</td><td class="num">−0.717</td></tr>
+    <tr><td>vote (CoPL 원형, τ=0.5)</td><td class="num">−0.711</td><td class="num">−0.701</td><td class="num">−0.659</td><td class="num">−0.644</td><td class="num">−0.678</td></tr>
+    <tr><td>vote, degree-normalized (α=1, τ=1)</td><td class="num">−0.706</td><td class="num">−0.697</td><td class="num">−0.662</td><td class="num">−0.658</td><td class="num">−0.634</td></tr>
+    <tr><td>no item–item propagation</td><td class="num">−0.713</td><td class="num">−0.673</td><td class="num">−0.633</td><td class="num">−0.553</td><td class="num">−0.642</td></tr>
+    <tr><td>no mixture training</td><td class="num">−0.779</td><td class="num">−0.735</td><td class="num">−0.692</td><td class="num">−0.615</td><td class="num">−0.680</td></tr>
+    <tr><td>no calibration</td><td class="num">−0.709</td><td class="num">−0.678</td><td class="num">−0.649</td><td class="num">−0.570</td><td class="num">−0.648</td></tr>
+    <tr><td>oracle embedding (상한)</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">−0.614</td></tr>
+  </tbody>
+</table>
+<p>기준 행은 시드 3 평균이므로 각주에 "시드 42 단독 기준과의 차이 0.01 이내"를 적거나, 기준도 시드 42로 통일한다(폴드 json의 per_seed에서 바로 계산 가능).</p>
+
+<p class="label">그림 1. 개요도</p>
+<p>왼쪽: 별 그래프(사용자–아이템)와 아이템–아이템 kNN 다리, GCF, 보상 모형. 오른쪽: 적응의 두 경로. 위는 CoPL 투표(kNN 부착 → \(c_u\) → softmax, "degree 편향" 표시), 아래는 제안(문맥 에피소드를 \(U\)개 임베딩으로 각각 평가 → \(\ell_u\) → tempered softmax). 둘 다 \(\hat e_\star\)로 모여 보상 모형으로 들어간다. T-IV의 <code>make_framework.py</code>와 같은 방식으로 matplotlib 초안을 만든다.</p>
+
+<p class="label">그림 2. MLPD(위)와 AUROC(아래) 대 \(t\)</p>
+<p>CoPL-LP, Pooled, kNN vote, Indep. <code>report/curve_mlpd.png</code>, <code>curve_auroc.png</code>가 초안. 평가자 SE 막대, \(t=20\)은 5명 표시.</p>
+
+<p class="label">그림 3. 최종 \(w_u\) 히트맵: 투표(E5 실행) vs 우도(E9 실행)</p>
+<p>행 = held-out 평가자, 열 = population 사용자(아이템 수 내림차순 정렬). 투표는 첫 열(들)에 몰리고, 우도는 흩어지되 base rate가 맞는 열로 간다. <code>report/wu_heatmap.png</code> 두 개를 나란히. 열 정렬을 아이템 수로 바꾸는 코드 수정 필요.</p>
+
+<p class="label">그림 4 (T-ITS). τ 교환</p>
+<p>E8 격자: τ별 긴 스트림 5명의 \(t=20\) macro(τ 작을수록 좋음)와 짧은 스트림 5명의 최종 macro(τ 클수록 좋음)를 한 축에. tempered posterior가 필요한 이유를 한 장으로.</p>
+
+<p class="label">그림 5 (T-ITS). 인코더 산점도</p>
+<p>72개 (인코더, 채널 집합) 조합의 population 투표 AUROC 대 held-out 투표 AUROC (Spearman 0.78). AE/VAE가 좌하단, scattering이 우상단.</p>
+
+<h2 id="ext">6. T-ITS 확장에서 더하는 것</h2>
+<ol>
+  <li><strong>인코더 연구 절</strong> (E1): 6 인코더 × 12 채널 집합, held-out 투표 AUROC/MLPD 표(scatter 0.719 / −0.677, raw RBF 0.592, ISO bank 0.608, PCA 0.556, VAE 0.542, AE 0.546), 내재 지표와 외재 성능의 상관(0.78), 재구성 목적 잠재 공간이 라벨 무관 변동을 보존한다는 해석.</li>
+  <li><strong>그래프 부정 결과 절</strong> (E5 sweep): 규칙 4 × k 6 = 24 설정이 ±0.01 안, epsilon/mutual이 그래프를 2~874 성분으로 쪼개도 무관, no_item_item ≈ 기본의 세 번 재현. "별 그래프에서 GCF 전파는 아이템 임베딩을 사용자 임베딩의 함수로 만들 뿐 사용자 간 정보를 섞지 못한다"는 해석.</li>
+  <li><strong>적응 규칙 격자 절</strong> (E6~E8): 정규화 α, 수축 κ, 분모 종류, τ, 표준화의 전체 표. "폴드별 최선 설정"의 상한(−0.591, oracle −0.625보다 좋음)과 단일 설정의 격차.</li>
+  <li><strong>짧은 스트림과 τ 식힘</strong>: 내부 폴드 구성 변경(긴 1 + 짧은 2) 또는 τ(t) 스케줄을 돌려 E8의 손해가 줄어드는지. 추가 실행 필요(tune 75분 + main 10분).</li>
+  <li><strong>RM 채널 연구</strong>: loglik 규칙은 그래프를 쓰지 않으므로 채널은 보상 모형 입력만 바꾼다. LOCO 5 + IMU + \(a_z\) 단독, 시드 3. 추가 실행 필요(약 1시간).</li>
+  <li><strong>튜닝 일반화 부록</strong> (E5, E9): 내부 최적 vs 외부, τ의 폴드 간 안정성.</li>
+  <li><strong>계산 비용</strong>: 적응 1회의 순전파 수와 벽시계(GPU/CPU), 투표 규칙 대비.</li>
+</ol>
+
+<h2 id="limits">7. 한계로 적을 것</h2>
+<ul>
+  <li>평가자 17명, 적격 10명, \(t=20\) 결과는 긴 스트림 5명. 평가자 단위 구간은 넓다.</li>
+  <li>짧은 스트림(라벨 30개 안팎)에서 결과가 갈리고, E8은 pooled보다 0.2 nat 나쁘다. 내부 폴드가 긴 스트림 위주라 τ가 짧은 스트림의 과확신을 보지 못한다.</li>
+  <li>cold start는 pooled와 같고 kNN vote보다 나쁘다. 제안의 이득은 라벨 5개 이후다.</li>
+  <li>적응은 "population 사용자의 혼합"이라는 가정 안에 있다. 어느 population 사용자와도 닮지 않은 탑승자는 oracle 상한 자체가 낮다(E8 oracle −0.86).</li>
+  <li>라벨은 good/bad 이진, 피드백 시점·맥락 의존은 모형화하지 않는다. 폐루프 제어는 범위 밖.</li>
+  <li>GCF·RM 하이퍼파라미터는 투표 적응 시절의 튜닝값을 재사용했다(적응 규칙과 무관한 축이지만 공동 재튜닝은 하지 않았다).</li>
+</ul>
+
+<h2 id="todo">8. 투고 전 남은 일</h2>
+<p class="label">IV 버전 (추가 실험 없음)</p>
+<ol>
+  <li>ablation 기준 행을 시드 42로 통일하거나 각주 처리.</li>
+  <li>그림 1 초안 스크립트(<code>docs/copl/my_papers/figures/make_overview.py</code>), 그림 2 재생성(선 스타일·범례), 그림 3 열 정렬 수정 후 두 실행 히트맵 나란히.</li>
+  <li>원고 디렉터리 <code>docs/copl/my_papers/</code> (IEEEtran conference), 참고문헌 (CoPL, LightGCN, 보정 Guo 2017, tempered posterior Grünwald, 승차감 평가 문헌은 T-IV와 겹치되 독립적으로 선택).</li>
+  <li>메타데이터 공란: 차량·도로·센서 사양, 모집·윤리, 하드웨어. T-IV와 같은 항목.</li>
+</ol>
+<p class="label">T-ITS 확장 (추가 실험 2개, 각 1~2시간)</p>
+<ol>
+  <li>짧은 스트림용 τ: <code>tune_inner_mix</code> 구성 변경 또는 τ(t) 스케줄 구현 → tune → main.</li>
+  <li>RM 채널 연구: channels 스테이지를 RM 채널만 바꾸도록 옵션 추가 → 시드 3.</li>
+  <li>ablation 시드 3.</li>
+</ol>
+<div class="warn">결정이 필요한 것: (1) 제목, (2) 제안 규칙의 이름(본문에서는 CoPL-LP로 가칭), (3) IV 2027 CFP의 분량·마감 확인, (4) T-IV 논문과의 동시 투고 여부.</div>
+</main>
+</body>
+</html>
