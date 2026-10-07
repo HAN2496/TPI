@@ -185,15 +185,20 @@ def stage_adapt(cfg, run, data, channels, fs, names, device):
         X_held, y_held = data[name]
         seed = cfg.seeds[0]
         fd = models = None
-        for alpha, temp, ev in itertools.product(cfg.adapt_sweep_norms, cfg.adapt_sweep_temps, cfg.adapt_sweep_evidence):
-            label = f"norm={alpha}/temp={temp}/ev={ev}"
+        for alpha, by, kap, temp, ev in itertools.product(cfg.adapt_sweep_norms, cfg.adapt_sweep_norm_by,
+                                                          cfg.adapt_sweep_shrinks, cfg.adapt_sweep_temps,
+                                                          cfg.adapt_sweep_evidence):
+            if alpha == 0 and (by != cfg.adapt_sweep_norm_by[0] or kap != cfg.adapt_sweep_shrinks[0]):
+                continue                                      # alpha = 0 ignores the size and the shrinkage
+            label = f"norm={alpha}/by={by}/shrink={kap}/temp={temp}/ev={ev}"
             if label in rec["adapt"]:
                 continue
             if fd is None:
                 seed_all(seed)
                 fd = FD.prepare_fold(replace(cfg_f, seed=seed), pop_data, pop_names, channels, fs, device)
                 models = FD.train_models(cfg_f, fd, device, seed, verbose=0)
-            c = replace(cfg_f, adapt_degree_norm=float(alpha), adapt_user_softmax_temp=float(temp), adapt_evidence=ev)
+            c = replace(cfg_f, adapt_degree_norm=float(alpha), adapt_norm_by=by, adapt_shrink=float(kap),
+                        adapt_user_softmax_temp=float(temp), adapt_evidence=ev)
             tic = time.time()
             res, lpd, info, wu = FD.evaluate_copl(c, fd, models, X_held, y_held, seed, device)
             rec["adapt"][label] = dict(copl={str(t): v for t, v in res.items()},

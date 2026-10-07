@@ -190,11 +190,14 @@ def adapt_user(cfg, gds, y_ctx, neigh_idx, neigh_w, E_u, device):
     context episode, and the user score c_u = (A_pos - A_neg) v sums v over the items of user u.
     Two knobs change the score before the softmax:
 
-    * adapt_degree_norm = alpha multiplies c_u by (n_bar / n_u)**alpha, n_u = number of items of
-      user u in the population graph and n_bar their mean.  The raw sum grows with n_u, so with
-      alpha = 0 the softmax drifts to the users with the most labels whatever their agreement (03
-      experiment log, E5); alpha = 1 makes c_u a per-item mean agreement, rescaled by n_bar so that
-      the overall scale (and hence the temperature range) stays comparable to alpha = 0.
+    * adapt_degree_norm = alpha multiplies c_u by ((d_bar + kappa) / (d_u + kappa))**alpha, where
+      d_u is a size of user u (adapt_norm_by = "items": n_u = items of u in the population graph;
+      "mass": m_u = sum_{i in I_u} |v_i|, the vote mass that reached u), d_bar their mean over users
+      and kappa = adapt_shrink * d_bar a pseudo-count.  The raw sum (alpha = 0) grows with the size,
+      so the softmax drifts to the users with the most labels whatever their agreement (03 log, E5);
+      alpha = 1, kappa = 0 is a per-item (or per-unit-mass) mean agreement, which instead over-weights
+      tiny users whose mean is noise (E6); kappa > 0 shrinks small users toward neutral.  Rescaling by
+      d_bar keeps the overall scale, and hence the temperature range, comparable across settings.
     * adapt_evidence sets how the scale depends on t: "none" keeps the raw (or degree-normalized)
       score, which grows linearly with the number of context labels; "unit" standardizes across users
       (scale-free); "sqrt" standardizes and multiplies by sqrt(t).
@@ -216,11 +219,19 @@ def adapt_user(cfg, gds, y_ctx, neigh_idx, neigh_w, E_u, device):
         c_u = c_u - torch.spmm(Aneg, v_t.unsqueeze(-1)).squeeze(-1)
     alpha = float(getattr(cfg, "adapt_degree_norm", 0.0))
     if alpha > 0:
-        n_u = torch.sparse.sum(Apos, dim=1).to_dense()
-        if gds.Aneg_bin is not None:
-            n_u = n_u + torch.sparse.sum(gds.Aneg_bin.to(device), dim=1).to_dense()
-        n_u = n_u.clamp_min(1.0)
-        c_u = c_u * (n_u.mean() / n_u).pow(alpha)
+        Aneg_all = gds.Aneg_bin.to(device) if gds.Aneg_bin is not None else None
+        if getattr(cfg, "adapt_norm_by", "items") == "mass":
+            a_t = v_t.abs().unsqueeze(-1)
+            d_u = torch.spmm(Apos, a_t).squeeze(-1)
+            if Aneg_all is not None:
+                d_u = d_u + torch.spmm(Aneg_all, a_t).squeeze(-1)
+        else:
+            d_u = torch.sparse.sum(Apos, dim=1).to_dense()
+            if Aneg_all is not None:
+                d_u = d_u + torch.sparse.sum(Aneg_all, dim=1).to_dense()
+        d_bar = d_u.mean().clamp_min(1e-12)
+        kappa = float(getattr(cfg, "adapt_shrink", 0.0)) * d_bar
+        c_u = c_u * ((d_bar + kappa) / (d_u + kappa).clamp_min(1e-12)).pow(alpha)
     temp = max(1e-6, cfg.adapt_user_softmax_temp)
     if not cfg.adapt_normalize or cfg.adapt_evidence == "none":
         w_u = torch.softmax(c_u / temp, dim=0)

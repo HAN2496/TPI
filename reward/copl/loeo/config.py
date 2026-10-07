@@ -106,12 +106,16 @@ class Config:
     adapt_normalize: bool = True               # standardize the vote scores c_u before the softmax
     adapt_evidence: str = "none"               # "none" = original CoPL scale (grows with t; best in E4 at tau ~ 1),
                                                # "unit" = standardized (independent of t), "sqrt" = standardized * sqrt(t)
-    adapt_degree_norm: float = 0.0             # alpha: user score c_u * (n_bar/n_u)**alpha (n_u = items of user u); 0 =
-                                               # original sum, drifts to the users with the most labels (03 log, E5); 1 = mean
+    adapt_degree_norm: float = 0.0             # alpha: c_u * ((d_bar+kappa)/(d_u+kappa))**alpha; 0 = original sum (drifts to
+                                               # the largest users, 03 log E5); 1 = mean agreement (over-weights tiny users, E6)
+    adapt_norm_by: str = "items"               # d_u = "items": n_u (items of user u) | "mass": vote mass that reached u
+    adapt_shrink: float = 0.0                  # kappa = adapt_shrink * d_bar: pseudo-count shrinking small users to neutral
     # ---- stage "adapt": adaptation-rule grid on models trained once per fold (seed 0)
     adapt_sweep_norms: tuple = (0.0, 0.5, 1.0)
     adapt_sweep_temps: tuple = (0.25, 0.5, 1.0, 2.0, 4.0)
     adapt_sweep_evidence: tuple = ("none",)
+    adapt_sweep_norm_by: tuple = ("items",)
+    adapt_sweep_shrinks: tuple = (0.0,)
     # ---- mixture-consistent reward-model training: the reward model is queried with convex mixtures of
     # population embeddings (cold start = mean, adaptation = softmax mixture), so it is trained on them too
     rm_mix_prob: float = 0.5                   # fraction of training rows whose user embedding is replaced by a mixture

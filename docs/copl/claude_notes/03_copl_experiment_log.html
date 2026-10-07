@@ -274,7 +274,7 @@ c_u=\sum_{i\in I_u}s_i\,v_i,\qquad w_u=\mathrm{softmax}_u(c_u/\tau),\qquad
 
 <p><span class="verdict bad-v">판정</span>: RQ1 미달. CoPL은 보정된 pooled-CNN과 어느 예산에서도 구분되지 않고 cold start에서는 kNN vote보다 나쁘다. 원인은 (1) 적응 점수의 degree 편향으로 라벨이 가장 많은 사용자로 쏠리는 것, (2) 내부 폴드 쌍이 서로 닮아 날카로운 설정이 튜닝에서 선택되는 것. 두 번째는 첫 번째가 고쳐지면 완화된다(쏠림이 평균 일치도로 결정되면 base rate가 다른 사용자에게 one-hot이 되지 않는다). E6으로 간다.</p>
 
-<h2 id="E6">E6. degree 정규화 적응 <span class="verdict todo-v">설계 완료, 실행 대기</span></h2>
+<h2 id="E6">E6. degree 정규화 적응 <span class="verdict mix-v">H6a 지지, H6c 기각: 편향의 방향만 바뀜</span></h2>
 <p class="label">가설</p>
 \[
 \tilde c_u=c_u\Big(\frac{\bar n}{n_u}\Big)^{\alpha},\qquad \bar n=\frac1U\sum_u n_u,\qquad w_u=\mathrm{softmax}_u(\tilde c_u/\tau)
@@ -299,6 +299,43 @@ git commit -m "Add copl_loeo_final2 runs"
 git push origin claude_session</pre>
 <p>sweep과 channels는 E5에서 k·규칙·채널이 무관함을 보였으므로 2단계에서 다시 돌리지 않는다. 주 결과가 바뀌면 그때 재실행한다.</p>
 
+<p class="label">결과 (1단계, <code>outputs/copl_loeo_adapt/20261006_230451</code>, 10폴드, 시드 42, E5 튜닝값, 격자 α × τ × evidence = 30 설정)</p>
+<table>
+  <thead><tr><th>설정 (evidence none)</th><th class="num">macro t=20</th><th class="num">macro 최종</th><th class="num">이지환 최종 (w_u 최대)</th><th class="num">박재일</th><th class="num">한규택</th><th class="num">조현석</th><th class="num">강신길 (w_u 최대)</th></tr></thead>
+  <tbody>
+    <tr><td>α=0, τ=0.5 (E5 설정)</td><td class="num">−0.635</td><td class="num">−0.674</td><td class="num">−0.981 (박재일 1.0)</td><td class="num">−0.483</td><td class="num">−0.550</td><td class="num">−0.468</td><td class="num">−0.546 (박재일)</td></tr>
+    <tr><td>α=0.5, τ=0.5</td><td class="num">−0.635</td><td class="num">−0.658</td><td class="num">−0.993 (박재일 0.93)</td><td class="num">−0.483</td><td class="num">−0.550</td><td class="num">−0.453</td><td class="num">−0.529</td></tr>
+    <tr><td>α=1, τ=0.5</td><td class="num">−0.639</td><td class="num">−0.651</td><td class="num">−0.557 (구정모 1.0)</td><td class="num">−0.476</td><td class="num">−0.561</td><td class="num">−0.571</td><td class="num">−0.720 (신민철 0.99)</td></tr>
+    <tr><td>α=1, τ=1</td><td class="num">−0.660</td><td class="num">−0.642</td><td class="num">−0.557 (구정모 1.0)</td><td class="num">−0.478</td><td class="num">−0.561</td><td class="num">−0.594</td><td class="num">−0.629 (신민철 0.80)</td></tr>
+    <tr><td>pooled</td><td class="num">−0.633</td><td class="num">−0.713</td><td class="num">−0.622</td><td class="num">−0.632</td><td class="num">−0.643</td><td class="num">−0.540</td><td class="num">−0.591</td></tr>
+    <tr><td>폴드별 최선 설정 (상한, 선택 편향 있음)</td><td class="num">−0.552</td><td class="num">−0.591</td><td class="num">−0.557</td><td class="num">−0.474</td><td class="num">−0.550</td><td class="num">−0.445</td><td class="num">−0.527</td></tr>
+    <tr><td>oracle 임베딩 (E5)</td><td class="num"></td><td class="num">−0.625</td><td class="num">−0.554</td><td class="num">−0.488</td><td class="num">−0.546</td><td class="num">−0.453</td><td class="num">−0.596</td></tr>
+  </tbody>
+</table>
+<ul>
+  <li><strong>H6a 지지.</strong> α=1이면 이지환의 w_u가 박재일을 떠나 구정모(라벨이 적은 비적격 사용자)로 가고 최종 MLPD −0.981 → −0.557, oracle(−0.554)과 같다. 붕괴는 degree 편향이 원인이었다.</li>
+  <li><strong>H6b 부분.</strong> α=1, τ=1에서 macro 최종 −0.642 (pooled −0.713)로 전 설정 중 최선이지만 t=20은 −0.660으로 pooled(−0.633)보다 나쁘다. cold start는 설정과 무관하게 −0.716이다.</li>
+  <li><strong>H6c 기각.</strong> 박재일·한규택은 유지되지만 강신길(−0.546 → −0.720, 신민철 10개 아이템에 one-hot)과 조현석(−0.468 → −0.571)이 나빠진다. 평균 일치도는 아이템이 적은 사용자에서 잡음이라 α=1은 작은 사용자로 쏠린다. α=0은 큰 사용자로, α=1은 작은 사용자로 쏠리는 것이고 α=0.5는 둘 다 못 고친다(이지환 −0.993).</li>
+  <li><strong>상한.</strong> 폴드마다 최선 설정을 고르면 최종 −0.591로 oracle 임베딩(−0.625)보다도 좋다. 사용자 혼합이라는 틀 자체는 충분히 좋은 임베딩을 만든다. 부족한 것은 폴드에 무관하게 작동하는 선택 규칙 하나다.</li>
+</ul>
+<p><span class="verdict mix-v">판정</span>: 2단계(재튜닝)로 가지 않는다. 정규화 축 하나로는 안 되고, 작은 사용자를 중립으로 당기는 수축이 필요하다. E7.</p>
+
+<h2 id="E7">E7. 수축된 일치도 (pseudo-count) 적응 <span class="verdict todo-v">설계 완료, 실행 대기</span></h2>
+<p class="label">가설</p>
+<p>사용자 \(u\)에 도달한 표의 양을 \(m_u=\sum_{i\in I_u}|v_i|\)라 하자. \(c_u/m_u\in[-1,1]\)은 부호 있는 일치율이고 그 분산은 \(1/m_u\)에 비례한다. 분산이 큰 작은 사용자를 중립(0)으로 당기는 수축 추정량은</p>
+\[
+\tilde c_u=c_u\cdot\frac{\bar d+\kappa}{d_u+\kappa},\qquad d_u\in\{n_u,\ m_u\},\qquad \kappa=\kappa_{\mathrm{rel}}\,\bar d
+\]
+<p>\(\kappa=0\)이 E6의 α=1, \(\kappa\to\infty\)가 α=0이다. \(d_u=m_u\)(표의 양)는 \(n_u\)(아이템 수)보다 정확한 분모다: 아이템이 많아도 문맥 에피소드 근처에 없는 사용자는 증거가 없는 것이다. H7a: 적당한 \(\kappa_{\mathrm{rel}}\)(0.3~3)에서 이지환은 구정모 쪽(−0.56 수준)을 유지하고 강신길·조현석은 큰 사용자(박재일·이지환) 쪽으로 돌아간다. H7b: 한 설정이 10폴드 전부에서 max(no_adapt, pooled) − 0.02 이상이고 macro 최종이 −0.62보다 좋다. H7c: \(d_u=m_u\)가 \(n_u\)보다 낫다.</p>
+<p class="label">설계</p>
+<p>코드: <code>adapt_norm_by</code> ("items" | "mass"), <code>adapt_shrink</code> (\(\kappa_{\mathrm{rel}}\)), adapt 스테이지 축 <code>adapt_sweep_norm_by</code>, <code>adapt_sweep_shrinks</code>. α=0 행은 분모·수축과 무관하므로 한 번만 돈다. 격자 α ∈ {0,1} × by ∈ {items, mass} × κ ∈ {0, 0.3, 1, 3} × τ ∈ {0.25, 0.5, 1, 2} = 36 설정, 약 25분.</p>
+<pre>.venv\Scripts\python.exe run_copl_loeo.py --stage adapt --set run_name=copl_loeo_adapt2 --set use_tuned=True --set tuned_from=outputs/copl_loeo_final/20261005_162500 --set adapt_sweep_norms="(0.0,1.0)" --set adapt_sweep_norm_by="('items','mass')" --set adapt_sweep_shrinks="(0.0,0.3,1.0,3.0)" --set adapt_sweep_temps="(0.25,0.5,1.0,2.0)"
+.venv\Scripts\python.exe run_copl_loeo.py --stage report --set run_name=copl_loeo_adapt2
+git add outputs
+git commit -m "Add copl_loeo_adapt2 run"
+git push origin claude_session</pre>
+<p>판정은 설정별 폴드 최솟값(가장 나쁜 폴드)과 macro로 한다. H7b가 성립하는 설정이 있으면 그 (α, by, κ)를 고정하고 τ만 포함한 tune_space로 재튜닝 → main(시드 3) → ablate → report(E6의 2단계 명령, run_name=copl_loeo_final2). 없으면 사용자 one-hot 대신 혼합을 강제하는 방향(상위 k명 평균, 또는 \(w_u\)에 균등 사전분포 혼합)을 다음 후보로 둔다.</p>
+
 <h2 id="status">가설 현황표</h2>
 <table>
   <thead><tr><th>ID</th><th>가설</th><th>판정</th><th>근거</th><th>논문 반영</th></tr></thead>
@@ -312,7 +349,8 @@ git push origin claude_session</pre>
     <tr><td>H3.1~H3.4</td><td>희소화와 k</td><td>기각 방향: k·규칙 무관(±0.01), item-item 전파 기여 없음</td><td>E4, E5 sweep·ablate</td><td>그래프 절 (부정 결과)</td></tr>
     <tr><td>RQ1</td><td>CoPL &gt; pooled / indep</td><td>미달: pooled와 동등, cold start는 kNN vote가 우세. 적응의 degree 편향이 원인</td><td>E2, E5</td><td>주 결과 (E6 후 재판정)</td></tr>
     <tr><td>RQ4</td><td>튜닝 설정의 일반화</td><td>기각: 내부 −0.55 vs 외부 −0.72~−1.09 (이지환), 폴드 간 튜닝값 불안정</td><td>E5 tune</td><td>부록</td></tr>
-    <tr><td>H6a~H6c</td><td>degree 정규화가 쏠림을 고치고 이지환 붕괴를 없앤다</td><td>예정</td><td>E6 adapt 스테이지</td><td>적응 절</td></tr>
+    <tr><td>H6a~H6c</td><td>degree 정규화가 쏠림을 고치고 이지환 붕괴를 없앤다</td><td>H6a 지지(이지환 −0.98 → −0.56), H6c 기각(강신길·조현석 악화: 작은 사용자로 쏠림)</td><td>E6</td><td>적응 절 (편향 분석)</td></tr>
+    <tr><td>H7a~H7c</td><td>pseudo-count 수축 + 표의 양 정규화가 폴드 무관하게 작동</td><td>예정</td><td>E7 adapt 스테이지</td><td>적응 절 (제안 규칙)</td></tr>
   </tbody>
 </table>
 </main>
