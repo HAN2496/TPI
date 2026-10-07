@@ -71,7 +71,7 @@ reward/copl/similarity/__init__.py                   레지스트리에 새 인�
     <tr><td><code>encoders</code></td><td>인코더 × 채널 집합마다 내재 지표. GCF·RM 학습 없음</td><td><code>folds/&lt;name&gt;_encoders.json</code>, <code>report/encoders.md</code></td><td>수십 분 (AE/VAE 학습이 대부분)</td></tr>
     <tr><td><code>tune</code></td><td>population 안 내부 LOEO 3폴드, 무작위 탐색 <code>tune_trials</code>회</td><td><code>folds/&lt;name&gt;_tune.json</code> (best)</td><td>큼: 폴드 10 × 내부 3 × 시도 40</td></tr>
     <tr><td><code>main</code></td><td>CoPL + Pooled/Indep/KNN-vote, 시드별</td><td><code>folds/&lt;name&gt;.json</code></td><td>폴드당 수 분 × 시드</td></tr>
-    <tr><td><code>ablate</code></td><td>no_item_item / no_adapt / oracle (시드 1)</td><td><code>folds/&lt;name&gt;_ablate.json</code></td><td>main의 3배 / 시드 1</td></tr>
+    <tr><td><code>ablate</code></td><td>no_item_item / no_adapt / oracle / no_mix / no_calib / vote_orig / vote_norm (시드 1)</td><td><code>folds/&lt;name&gt;_ablate.json</code></td><td>main의 3배 / 시드 1</td></tr>
     <tr><td><code>sweep</code></td><td>규칙 × k × λ_ii. 인코더는 폴드당 1회만 적합</td><td><code>folds/&lt;name&gt;_sweep.json</code></td><td>GCF+RM 재학습 × 격자 크기</td></tr>
     <tr><td><code>channels</code></td><td>LOCO 5 + a_z 단독 + IMU 3채널, 인코더부터 재적합</td><td><code>folds/&lt;name&gt;_channels.json</code></td><td>main × 7 / 시드 1</td></tr>
     <tr><td><code>adapt</code></td><td>적응 규칙 격자 (degree 정규화 α × 온도 τ × evidence). 인코더·GCF·RM은 폴드당 1회만 학습하고 테스트 시 투표→softmax 단계만 바꿈</td><td><code>folds/&lt;name&gt;_adapt.json</code> (w_u 포함)</td><td>폴드당 학습 1회 + 설정당 수 초</td></tr>
@@ -121,12 +121,12 @@ git push origin claude_session</pre>
     <tr><td><code>item_item_weight</code></td><td>0.5</td><td>GCF의 λ_ii</td></tr>
     <tr><td><code>rm_bayes</code></td><td>none</td><td>ensemble / mc_dropout이면 입자 지표(epistemic 등)와 신뢰 구간이 추가됨</td></tr>
     <tr><td><code>pooled_ft_epochs</code>, <code>pooled_ft_lr</code>, <code>pooled_ctx_weight</code></td><td>3, 1e-4, 1</td><td>Pooled-CNN을 (t, 오프셋)마다 population+context로 fine-tune</td></tr>
-    <tr><td><code>adapt_rule</code></td><td>vote</td><td>사용자 점수: vote = CoPL kNN 라벨 투표(그래프 필요), loglik = 보상 모형이 문맥 라벨에 주는 로그우도(그래프 불필요, 03의 E8). 두 점수 모두 아래 evidence·온도 처리를 거침</td></tr>
-    <tr><td><code>adapt_evidence</code>, <code>adapt_user_softmax_temp</code></td><td>none, 1.15</td><td>투표 점수의 t-의존 규칙(none = 원 CoPL, unit = 표준화, sqrt = 표준화 × √t)과 softmax 온도</td></tr>
+    <tr><td><code>adapt_rule</code></td><td>loglik</td><td>사용자 점수: loglik = 보상 모형이 문맥 라벨에 주는 로그우도(tempered posterior, 그래프 불필요; 03의 E8부터 기본), vote = CoPL kNN 라벨 투표(그래프 필요; ablation <code>vote_orig</code>, <code>vote_norm</code>). 두 점수 모두 아래 evidence·온도 처리를 거침</td></tr>
+    <tr><td><code>adapt_evidence</code>, <code>adapt_user_softmax_temp</code></td><td>none, 5.0</td><td>투표 점수의 t-의존 규칙(none = 원 CoPL, unit = 표준화, sqrt = 표준화 × √t)과 softmax 온도</td></tr>
     <tr><td><code>adapt_degree_norm</code>, <code>adapt_norm_by</code>, <code>adapt_shrink</code></td><td>0, items, 0</td><td>사용자 점수에 ((d̄+κ)/(d_u+κ))^α를 곱한다. d_u = 아이템 수(items) 또는 도달한 표의 양(mass), κ = adapt_shrink × d̄. α=0 = 원 합(큰 사용자로 쏠림, 03의 E5), α=1·κ=0 = 평균 일치도(작은 사용자로 쏠림, E6), κ&gt;0 = 수축(E7)</td></tr>
     <tr><td><code>adapt_sweep_rules</code>, <code>adapt_sweep_norms</code>, <code>adapt_sweep_norm_by</code>, <code>adapt_sweep_shrinks</code>, <code>adapt_sweep_temps</code>, <code>adapt_sweep_evidence</code></td><td>("vote",), (0,0.5,1), ("items",), (0,), (0.25,…,4), ("none",)</td><td><code>adapt</code> 스테이지 격자. α=0 행은 by·κ와 무관하므로 한 번만 돌고, loglik 행은 투표 전용 축(α, by, κ)을 무시한다</td></tr>
-    <tr><td><code>tune_space</code>, <code>tune_trials</code>, <code>tune_inner_folds</code>, <code>tune_budgets</code></td><td>9개 축, 40, 3, (0,5,10,20)</td><td>튜닝 탐색 공간과 예산. 축: gcf_emb_dim, item_item_weight, knn_k, 온도, evidence, degree_norm, neg_weight, gcf_lr, rm_lr</td></tr>
-    <tr><td><code>use_tuned</code>, <code>tuned_from</code></td><td>False, ""</td><td>폴드별 튜닝 결과 적용 / 다른 run 폴더의 튜닝 결과 적용</td></tr>
+    <tr><td><code>tune_space</code>, <code>tune_trials</code>, <code>tune_inner_folds</code>, <code>tune_budgets</code></td><td>5개 축, 40, 3, (0,5,10,20)</td><td>튜닝 탐색 공간과 예산. 축: gcf_emb_dim, 온도 τ, evidence, gcf_lr, rm_lr (그래프 축은 E5에서 무관하여 제거). <code>--set tune_space="{...}"</code>로 좁힐 수 있다</td></tr>
+    <tr><td><code>use_tuned</code>, <code>tuned_from</code></td><td>False, ""</td><td>폴드별 튜닝 결과 적용 / 다른 run 폴더의 튜닝 결과 적용. tune 스테이지에 둘을 주면 그 튜닝값을 base로 깔고 tune_space 축만 다시 고르며, 결과 json에 <code>base</code>와 <code>best</code>를 함께 저장해 이후 스테이지가 둘을 합쳐 적용한다</td></tr>
     <tr><td><code>seeds</code></td><td>(42,)</td><td>인코더·GCF·RM·baseline 모두 시드별 재학습</td></tr>
     <tr><td><code>folds</code></td><td>()</td><td>디버그용 held-out 부분집합, 예: <code>--set folds="('강신길',)"</code></td></tr>
   </tbody>

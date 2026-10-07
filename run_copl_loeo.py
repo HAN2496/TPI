@@ -4,7 +4,8 @@ Stages
   encoders  intrinsic graph metrics per encoder x channel set (no GCF / RM training; fast)
   tune      inner LOEO inside each population set, random search over Config.tune_space
   main      CoPL + baselines (pooled fine-tuned CNN, independent CNN, k-NN vote) per fold and seed
-  ablate    no item-item graph / no adaptation / oracle embedding (seed 0)
+  ablate    no item-item graph / no adaptation / oracle embedding / no mixture training / no calibration /
+            vote-based adaptation rules (seed 0)
   sweep     graph rule x k x item_item_weight, encoder fitted once per fold (seed 0)
   channels  leave-one-channel-out + a_z only + IMU only, end to end (seed 0)
   adapt     adaptation-rule grid (degree normalization x temperature x evidence) on models trained
@@ -57,24 +58,31 @@ def _write(obj, path):
     R.write_json(obj, path)
 
 
-def _tuned(cfg, run, name):
-    """Apply folds/<name>_tune.json (from this run, or from cfg.tuned_from) if requested and present.
+def _tuned_params(cfg, run, name):
+    """Parameters from folds/<name>_tune.json (this run, or cfg.tuned_from): the tune's own base
+    (parameters it inherited from an earlier tune) overlaid with its best trial.
 
     Fields the caller set explicitly on the command line (different from the Config default) are kept:
     they are the probe, the tuned values fill in the rest.
     """
-    if not cfg.use_tuned:
-        return cfg
     base = Path(cfg.tuned_from) if cfg.tuned_from else run.dir
     p = base / "folds" / f"{name}_tune.json"
     rec = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
     if "best" not in rec:
         raise SystemExit(f"use_tuned=True but {p} has no result; run --stage tune first (same run folder or tuned_from)")
+    tuned = {**rec.get("base", {}), **rec["best"]}
     dflt = replace(Config(), **FAST) if cfg.fast else Config()
-    best = {k: v for k, v in rec["best"].items() if getattr(cfg, k) == getattr(dflt, k)}
-    kept = {k: getattr(cfg, k) for k in rec["best"] if k not in best}
-    log(cfg, f"[tune] {name}: using {best}" + (f"  (kept from command line: {kept})" if kept else ""))
-    return replace(cfg, **best)
+    use = {k: v for k, v in tuned.items() if getattr(cfg, k) == getattr(dflt, k)}
+    kept = {k: getattr(cfg, k) for k in tuned if k not in use}
+    log(cfg, f"[tune] {name}: using {use}" + (f"  (kept from command line: {kept})" if kept else ""))
+    return use
+
+
+def _tuned(cfg, run, name):
+    """Apply the tuned parameters if requested."""
+    if not cfg.use_tuned:
+        return cfg
+    return replace(cfg, **_tuned_params(cfg, run, name))
 
 
 # ----------------------------------------------------------------------------- stage: main
@@ -83,21 +91,24 @@ def stage_main(cfg, run, data, channels, fs, names, device):
         out = run.dir / "folds" / f"{name}.json"
         if out.exists():
             log(cfg, f"[main] {name}: exists, skipping"); continue
-        cfg_f = _tuned(cfg, run, name)
+        params = _tuned_params(cfg, run, name) if cfg.use_tuned else {}
+        cfg_f = replace(cfg, **params)
         fold = FD.run_fold(cfg_f, name, data, channels, fs, device, log=lambda *a: log(cfg, *a))
-        fold["cfg_used"] = {k: v for k, v in asdict(cfg_f).items() if k in cfg.tune_space or k in ("encoder", "graph_rule")}
+        keys = set(cfg.tune_space) | set(params) | {"encoder", "graph_rule", "adapt_rule"}
+        fold["cfg_used"] = {k: v for k, v in asdict(cfg_f).items() if k in keys}
         _write(fold, out)
         log(cfg, f"[main] {name}: done in {fold['seconds']:.0f}s")
 
 
 # ----------------------------------------------------------------------------- stage: ablate
 ABLATIONS = {"no_item_item": dict(use_item_item=False), "no_adapt": dict(use_adapt=False), "oracle": dict(oracle=True),
-             "unit_adapt": dict(adapt_evidence="unit"),            # standardized, no evidence growth
-             "sqrt_adapt": dict(adapt_evidence="sqrt"),            # standardized * sqrt(t)
              "no_mix": dict(rm_mix_prob=0.0),                      # reward model trained on true users only
              "no_calib": dict(rm_calibrate=False, rm_select="auc"),  # original model selection, no temperature
-             "degree_norm": dict(adapt_degree_norm=1.0),           # per-item mean agreement instead of the raw sum
-             "loglik_adapt": dict(adapt_rule="loglik")}            # reward-model likelihood instead of the graph vote
+             # adaptation rules (default = reward-model likelihood posterior, 03 log E8):
+             "vote_orig": dict(adapt_rule="vote", adapt_degree_norm=0.0, adapt_evidence="none",
+                               adapt_user_softmax_temp=0.5),       # original CoPL vote (E5 setting)
+             "vote_norm": dict(adapt_rule="vote", adapt_degree_norm=1.0, adapt_evidence="none",
+                               adapt_user_softmax_temp=1.0)}       # degree-normalized vote (best vote rule, E7)
 
 
 def _variant_record(fold):
@@ -288,6 +299,11 @@ def stage_tune(cfg, run, data, channels, fs, names, device):
         else:
             inner = by_len[: cfg.tune_inner_folds]
         rec["inner"] = inner
+        # a tune can start from an earlier tune (use_tuned + tuned_from): those parameters are the base
+        # of every trial and are stored with the result so that later stages apply base + best together
+        base_params = _tuned_params(cfg, run, name) if cfg.use_tuned else {}
+        rec["base"] = base_params
+        base = replace(cfg, **base_params)
         seed = cfg.seeds[0]
         cache = {}
         for i, tr in enumerate(trials):
@@ -300,9 +316,9 @@ def stage_tune(cfg, run, data, channels, fs, names, device):
                 in_data = {n: pop_data[n] for n in in_pop}
                 if inner_name not in cache:
                     seed_all(seed)
-                    cache[inner_name] = FD.prepare_fold(replace(cfg, seed=seed), in_data, in_pop, channels, fs, device)
+                    cache[inner_name] = FD.prepare_fold(replace(base, seed=seed), in_data, in_pop, channels, fs, device)
                 fd = cache[inner_name]
-                c = replace(cfg, **tr, graph_rule="topk", cross_min=0, rm_bayes=cfg.tune_rm_bayes)
+                c = replace(base, **tr, graph_rule="topk", cross_min=0, rm_bayes=cfg.tune_rm_bayes)
                 if (c.knn_k, c.graph_rule, c.cross_min) != (fd.cfg.knn_k, fd.cfg.graph_rule, fd.cfg.cross_min):
                     fd.rebuild_graph(c)                     # trials are all scored on the same rule
                 models = FD.train_models(c, fd, device, seed, verbose=0)

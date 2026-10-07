@@ -103,8 +103,9 @@ class Config:
     rm_select: str = "loss"                    # early stopping on validation BCE ('loss') or AUROC ('auc')
     rm_calibrate: bool = True                  # temperature scaling fitted on the population validation set
     # ---- adaptation (score population users from the context labels -> softmax -> mixed embedding)
-    adapt_rule: str = "vote"                   # "vote" = CoPL kNN label vote on the item graph;
-                                               # "loglik" = reward-model log-likelihood of the context labels per user (E8)
+    adapt_rule: str = "loglik"                 # "loglik" = reward-model log-likelihood of the context labels per user
+                                               # (tempered posterior over population users; default since 03 log E8);
+                                               # "vote" = CoPL kNN label vote on the item graph (E5-E7: unstable)
     adapt_normalize: bool = True               # standardize the vote scores c_u before the softmax
     adapt_evidence: str = "none"               # "none" = original CoPL scale (grows with t; best in E4 at tau ~ 1),
                                                # "unit" = standardized (independent of t), "sqrt" = standardized * sqrt(t)
@@ -127,7 +128,7 @@ class Config:
     adapt_topk: int = 30
     adapt_use_neg: bool = True
     adapt_neg_weight: float = 1.0
-    adapt_user_softmax_temp: float = 1.15
+    adapt_user_softmax_temp: float = 5.0       # loglik: 1 = exact posterior, >1 = tempered (E8: 5-10 safest); vote: ~1
     # ---- ablations (stage "ablate" toggles these one at a time)
     use_item_item: bool = True
     use_adapt: bool = True
@@ -150,14 +151,10 @@ class Config:
     tune_budgets: tuple = (0, 5, 10, 20)
     tune_seed: int = 7
     tune_rm_bayes: str = "none"                # single reward model during tuning (cost); main uses rm_bayes
-    tune_space: dict = field(default_factory=lambda: {
+    tune_space: dict = field(default_factory=lambda: {   # graph axes dropped after E5 (k, rule, lambda_ii irrelevant)
         "gcf_emb_dim": [16, 32, 64],
-        "item_item_weight": [0.25, 0.5, 1.0, 2.0],
-        "knn_k": [10, 30, 100],
-        "adapt_user_softmax_temp": [0.25, 0.5, 1.0, 2.0, 4.0],
-        "adapt_evidence": ["none", "unit", "sqrt"],
-        "adapt_degree_norm": [0.0, 0.5, 1.0],
-        "adapt_neg_weight": [0.0, 0.5, 1.0],
+        "adapt_user_softmax_temp": [1.0, 2.0, 5.0, 10.0, 30.0],
+        "adapt_evidence": ["none", "unit"],
         "gcf_lr": [2e-4, 7e-4, 2e-3],
         "rm_lr": [1e-4, 3e-4, 1e-3],
     })

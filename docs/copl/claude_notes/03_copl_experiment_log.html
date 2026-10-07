@@ -357,7 +357,7 @@ git push origin claude_session</pre>
 </ul>
 <p><span class="verdict bad-v">판정</span>: 투표 통계 \(c_u\)는 어떻게 정규화해도 "이지환에게 맞는 사용자"와 "강신길에게 맞지 않는 사용자"를 동시에 가려내지 못한다. 그래프 투표는 라벨 일치를 kNN 부착이라는 대리 지표로 재기 때문이다. 다음은 대리 지표를 버리고 보상 모형 자체로 적합도를 재는 규칙이다(E8). 투표 규칙은 α=1, κ=0으로 고정해 보고한다.</p>
 
-<h2 id="E8">E8. 우도 기반 사용자 posterior 적응 <span class="verdict todo-v">구현 완료, 실행 대기</span></h2>
+<h2 id="E8">E8. 우도 기반 사용자 posterior 적응 <span class="verdict ok-v">H8a·H8c 지지, H8b 근접(9/10), 기본 규칙으로 채택</span></h2>
 <p class="label">가설</p>
 <p>보상 모형 \(r(\cdot\,;\,e)\)가 있으므로 "새 평가자가 population 사용자 \(u\)라면 문맥 라벨이 얼마나 그럴듯한가"를 직접 잴 수 있다.</p>
 \[
@@ -375,6 +375,46 @@ git commit -m "Add copl_loeo_adapt3 run"
 git push origin claude_session</pre>
 <p>14 설정 × 10폴드, 약 15분. 판정은 E7과 같다(폴드 최솟값과 macro). H8b가 성립하면 <code>adapt_rule=loglik</code>을 기본으로 두고 τ만 tune_space에 남겨 재튜닝 → main(시드 3) → ablate(투표 규칙 α=1이 ablation의 비교 대상) → report. 성립하지 않으면 두 점수의 결합(투표를 사전분포로, 우도를 증거로)을 마지막 후보로 둔다.</p>
 
+<p class="label">결과 (<code>outputs/copl_loeo_adapt3/20261007_222655</code>, 14 설정 × 10폴드, 시드 42, E5 튜닝값; 기준 = max(pooled, no_adapt) 최종 macro −0.661)</p>
+<table>
+  <thead><tr><th>설정</th><th class="num">macro 최종</th><th class="num">가장 나쁜 폴드 Δ</th><th class="num">기준−0.02 이상</th><th class="num">t=5</th><th class="num">t=10</th><th class="num">t=20</th></tr></thead>
+  <tbody>
+    <tr><td>loglik, τ=10, none</td><td class="num"><strong>−0.610</strong></td><td class="num">−0.051 (김진명)</td><td class="num">8/10</td><td class="num">−0.685</td><td class="num">−0.651</td><td class="num">−0.614</td></tr>
+    <tr><td>loglik, τ=5, none</td><td class="num">−0.611</td><td class="num">−0.111 (김진명)</td><td class="num">8/10</td><td class="num">−0.672</td><td class="num">−0.639</td><td class="num">−0.582</td></tr>
+    <tr><td>loglik, τ=30, none</td><td class="num">−0.625</td><td class="num">−0.045 (김재호)</td><td class="num">9/10</td><td class="num">−0.700</td><td class="num">−0.667</td><td class="num">−0.659</td></tr>
+    <tr><td>loglik, τ=2, none</td><td class="num">−0.625</td><td class="num">−0.244 (김진명)</td><td class="num">8/10</td><td class="num">−0.660</td><td class="num">−0.631</td><td class="num">−0.563</td></tr>
+    <tr><td>loglik, τ=1, none (정확한 posterior)</td><td class="num">−0.636</td><td class="num">−0.321 (김진명)</td><td class="num">8/10</td><td class="num">−0.669</td><td class="num">−0.640</td><td class="num"><strong>−0.560</strong></td></tr>
+    <tr><td>loglik, τ=1, unit</td><td class="num">−0.623</td><td class="num">−0.187 (김진명)</td><td class="num">8/10</td><td class="num">−0.658</td><td class="num">−0.626</td><td class="num">−0.570</td></tr>
+    <tr><td>투표 최선 (E7: α=1, κ=0, τ=1)</td><td class="num">−0.632</td><td class="num">−0.058 (강신길)</td><td class="num">7/10</td><td class="num">−0.694</td><td class="num">−0.656</td><td class="num">−0.653</td></tr>
+    <tr><td>pooled</td><td class="num">−0.713</td><td class="num"></td><td class="num"></td><td class="num">−0.731</td><td class="num">−0.649</td><td class="num">−0.633</td></tr>
+    <tr><td>no_adapt (cold start 고정)</td><td class="num">−0.708</td><td class="num"></td><td class="num"></td><td class="num">−0.708</td><td class="num">−0.676</td><td class="num">−0.691</td></tr>
+  </tbody>
+</table>
+<p class="label">폴드별 (τ=1, none; 최종 MLPD, 최종 w_u 최대)</p>
+<p>이지환 −0.570 (김래영 0.42; pooled −0.622, oracle −0.554) · 박재일 −0.484 (한규택 0.99) · 한규택 −0.552 (박재일 1.0) · 조현석 −0.455 (이지환 1.0; oracle −0.453) · 강신길 −0.591 (김재호 0.44; = pooled) · 김진명 −0.987 (pooled −0.747, oracle −0.862) · 이강근 −0.863 (pooled −1.473) · 신민철 −0.563 · 김태근 −0.676 · 김재호 −0.622 (pooled −0.565).</p>
+<ul>
+  <li><strong>H8a 지지.</strong> 이지환은 어느 τ에서도 −0.57~−0.58로 pooled 위, oracle 근처다. 투표 규칙에서 서로 반대로 움직이던 이지환과 강신길이 같은 규칙에서 둘 다 pooled 이상이 된다. 조현석은 τ ≤ 5에서 oracle 수준(−0.44~−0.46).</li>
+  <li><strong>H8c 지지.</strong> t=20에서 τ ≤ 5가 모두 pooled(−0.633)보다 좋다: τ=1에서 −0.560, 5명 모두 개선. CoPL이 처음으로 작은 예산에서 pooled를 넘는다. t=5·10에서도 pooled 이상이다.</li>
+  <li><strong>H8b 근접.</strong> 10폴드 전부는 없고 τ=30에서 9/10. 유일하게 일관되게 손해인 폴드는 김진명(라벨 30, holdout 15)으로, T-IV 쪽 E5에서도 어느 모형으로도 pooled 이상 예측되지 않던 평가자다. 김재호의 −0.05는 pooled가 유독 좋은 폴드다.</li>
+  <li><strong>τ의 역할.</strong> τ=1은 긴 스트림에서 최선(t=20 −0.560)이지만 짧은 스트림에서 과확신(김진명 −0.99), τ=10은 그 반대(최종 −0.610, t=20 −0.614). 모형 오지정 하에서 posterior를 식히는 tempered posterior의 표준적 상황이고, τ는 내부 폴드로 고른다.</li>
+  <li><strong>H8d 혼합.</strong> τ=1~2에서는 unit이, τ ≥ 5에서는 none이 낫다. 둘 다 튜닝 축으로 둔다.</li>
+</ul>
+<p><span class="verdict ok-v">판정</span>: <code>adapt_rule=loglik</code>을 기본으로 채택한다. 투표 규칙(α=0 원형, α=1 정규화)은 ablation으로만 남긴다. E9로 확정 실행.</p>
+
+<h2 id="E9">E9. 확정 실행 3차: τ 튜닝 → main(시드 3) → ablate <span class="verdict todo-v">설계 완료, 실행 대기</span></h2>
+<p class="label">가설</p>
+<p>H9a (RQ4 재판정): 내부 폴드로 고른 τ가 외부에서도 작동한다. 폴드별 내부 최적 점수와 외부 MLPD(t ∈ {5,10,20} 평균)의 차이가 E5(이지환 0.2~0.5)보다 작고 부호가 폴드마다 뒤집히지 않는다. H9b (RQ1 재판정): 시드 3 평균에서 CoPL − pooled 가 t=20에서 평가자 단위 paired SE 이상 양수이고 t=5, 10에서 음수가 아니다. H9c: ablation 순서 loglik &gt; vote_norm &gt; vote_orig, no_item_item ≈ 기본, no_mix·no_calib는 기본보다 나쁨(E5 재현).</p>
+<p class="label">설계</p>
+<p>GCF·RM 하이퍼파라미터는 E5 튜닝값을 그대로 쓴다(<code>tuned_from</code>; 적응 규칙과 무관한 축이고 다시 5시간을 쓸 이유가 없다). 새 튜닝은 τ ∈ {1, 2, 5, 10, 30} × evidence ∈ {none, unit} 격자 10개 전부를 내부 3폴드(E5와 같은 선택)에서 채점한다. 튜닝 결과 json은 <code>base</code>(E5 값)와 <code>best</code>(τ, evidence)를 함께 저장하고 main/ablate는 둘을 합쳐 적용한다. ablation은 7종(no_item_item, no_adapt, oracle, no_mix, no_calib, vote_orig, vote_norm). 비용: tune 약 75분(10 × 3 × 10 × 15초), main 약 10분, ablate 약 45분.</p>
+<pre>.venv\Scripts\python.exe run_copl_loeo.py --stage tune   --set run_name=copl_loeo_final2 --set use_tuned=True --set tuned_from=outputs/copl_loeo_final/20261005_162500 --set tune_space="{'adapt_user_softmax_temp':[1.0,2.0,5.0,10.0,30.0],'adapt_evidence':['none','unit']}" --set tune_trials=10
+.venv\Scripts\python.exe run_copl_loeo.py --stage main   --set run_name=copl_loeo_final2 --set use_tuned=True --set seeds="(42,43,44)"
+.venv\Scripts\python.exe run_copl_loeo.py --stage ablate --set run_name=copl_loeo_final2 --set use_tuned=True
+.venv\Scripts\python.exe run_copl_loeo.py --stage report --set run_name=copl_loeo_final2
+git add outputs
+git commit -m "Add copl_loeo_final2 runs (tune tau, main, ablate)"
+git push origin claude_session</pre>
+<p>sweep·channels는 E5 결과를 그대로 쓴다(그래프 희소화는 GCF 임베딩에만 영향을 주고 E5에서 무관했다; loglik 규칙은 그래프를 쓰지 않으므로 더욱 무관하다). 채널 분리 실험(H3b.2/3)은 main 결과가 확정된 뒤 별도로 판단한다.</p>
+
 <h2 id="status">가설 현황표</h2>
 <table>
   <thead><tr><th>ID</th><th>가설</th><th>판정</th><th>근거</th><th>논문 반영</th></tr></thead>
@@ -390,7 +430,8 @@ git push origin claude_session</pre>
     <tr><td>RQ4</td><td>튜닝 설정의 일반화</td><td>기각: 내부 −0.55 vs 외부 −0.72~−1.09 (이지환), 폴드 간 튜닝값 불안정</td><td>E5 tune</td><td>부록</td></tr>
     <tr><td>H6a~H6c</td><td>degree 정규화가 쏠림을 고치고 이지환 붕괴를 없앤다</td><td>H6a 지지(이지환 −0.98 → −0.56), H6c 기각(강신길·조현석 악화: 작은 사용자로 쏠림)</td><td>E6</td><td>적응 절 (편향 분석)</td></tr>
     <tr><td>H7a~H7c</td><td>pseudo-count 수축 + 표의 양 정규화가 폴드 무관하게 작동</td><td>기각: 수축은 이지환을 다시 무너뜨림, 어떤 설정도 10폴드 전부 통과 못 함(최선 8/10, α=1·κ=0·τ=1 최종 −0.632)</td><td>E7</td><td>적응 절 (투표 규칙의 한계)</td></tr>
-    <tr><td>H8a~H8d</td><td>보상 모형 우도 posterior가 그래프 투표를 대체</td><td>예정</td><td>E8 adapt 스테이지</td><td>적응 절 (제안 규칙)</td></tr>
+    <tr><td>H8a~H8d</td><td>보상 모형 우도 posterior가 그래프 투표를 대체</td><td>H8a·H8c 지지(t=20 −0.560 vs pooled −0.633, 이지환·강신길 동시 해결), H8b 9/10(김진명만 손해), H8d 혼합. 기본 규칙 채택</td><td>E8</td><td>적응 절 (제안 규칙), 주 결과</td></tr>
+    <tr><td>H9a~H9c</td><td>τ 튜닝의 일반화, 시드 3 주 결과, ablation 순서</td><td>예정</td><td>E9</td><td>주 결과, ablation 표, 부록(튜닝)</td></tr>
   </tbody>
 </table>
 </main>
