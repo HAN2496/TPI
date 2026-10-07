@@ -320,7 +320,7 @@ git push origin claude_session</pre>
 </ul>
 <p><span class="verdict mix-v">판정</span>: 2단계(재튜닝)로 가지 않는다. 정규화 축 하나로는 안 되고, 작은 사용자를 중립으로 당기는 수축이 필요하다. E7.</p>
 
-<h2 id="E7">E7. 수축된 일치도 (pseudo-count) 적응 <span class="verdict todo-v">설계 완료, 실행 대기</span></h2>
+<h2 id="E7">E7. 수축된 일치도 (pseudo-count) 적응 <span class="verdict bad-v">H7a·H7b·H7c 기각: 투표 통계 자체가 불안정</span></h2>
 <p class="label">가설</p>
 <p>사용자 \(u\)에 도달한 표의 양을 \(m_u=\sum_{i\in I_u}|v_i|\)라 하자. \(c_u/m_u\in[-1,1]\)은 부호 있는 일치율이고 그 분산은 \(1/m_u\)에 비례한다. 분산이 큰 작은 사용자를 중립(0)으로 당기는 수축 추정량은</p>
 \[
@@ -336,6 +336,45 @@ git commit -m "Add copl_loeo_adapt2 run"
 git push origin claude_session</pre>
 <p>판정은 설정별 폴드 최솟값(가장 나쁜 폴드)과 macro로 한다. H7b가 성립하는 설정이 있으면 그 (α, by, κ)를 고정하고 τ만 포함한 tune_space로 재튜닝 → main(시드 3) → ablate → report(E6의 2단계 명령, run_name=copl_loeo_final2). 없으면 사용자 one-hot 대신 혼합을 강제하는 방향(상위 k명 평균, 또는 \(w_u\)에 균등 사전분포 혼합)을 다음 후보로 둔다.</p>
 
+<p class="label">결과 (<code>outputs/copl_loeo_adapt2/20261007_220443</code>, 36 설정 × 10폴드, 시드 42, E5 튜닝값; 기준 = max(pooled, no_adapt) 최종 macro −0.661)</p>
+<table>
+  <thead><tr><th>설정 (evidence none)</th><th class="num">macro 최종</th><th class="num">가장 나쁜 폴드 Δ</th><th class="num">기준−0.02 이상인 폴드</th><th class="num">macro t=20</th><th class="num">t=5</th><th>이지환 최종 w_u</th></tr></thead>
+  <tbody>
+    <tr><td>α=1, items, κ=0, τ=1</td><td class="num"><strong>−0.632</strong></td><td class="num">−0.058 (강신길)</td><td class="num">7/10</td><td class="num">−0.653</td><td class="num">−0.694</td><td>구정모 1.0 → −0.564</td></tr>
+    <tr><td>α=1, items, κ=0, τ=2</td><td class="num">−0.632</td><td class="num">−0.093 (조현석)</td><td class="num">8/10</td><td class="num">−0.672</td><td class="num">−0.699</td><td>구정모 → −0.570</td></tr>
+    <tr><td>α=1, mass, κ=0, τ=1</td><td class="num">−0.635</td><td class="num">−0.051 (조현석)</td><td class="num">8/10</td><td class="num">−0.660</td><td class="num">−0.696</td><td>→ −0.594</td></tr>
+    <tr><td>α=1, items, κ=0.3, τ=0.25</td><td class="num">−0.641</td><td class="num">−0.301 (이지환)</td><td class="num">7/10</td><td class="num">−0.633</td><td class="num">−0.685</td><td>강신길 0.92 → −0.922</td></tr>
+    <tr><td>α=1, κ ∈ {1, 3} (모든 τ, by)</td><td class="num">−0.660 ~ −0.677</td><td class="num">−0.44 ~ −0.59 (이지환)</td><td class="num">6~8</td><td class="num"></td><td class="num"></td><td>박재일·강신길 → −1.0 수준</td></tr>
+    <tr><td>α=0 (원 규칙), τ=0.5</td><td class="num">−0.680</td><td class="num">−0.436 (이지환)</td><td class="num">6/10</td><td class="num">−0.641</td><td class="num">−0.697</td><td>박재일 1.0 → −1.058</td></tr>
+    <tr><td>pooled</td><td class="num">−0.713</td><td class="num"></td><td class="num"></td><td class="num">−0.633</td><td class="num">−0.731</td><td></td></tr>
+  </tbody>
+</table>
+<ul>
+  <li><strong>H7a 기각.</strong> 수축은 아무리 작아도(κ = 0.3 d̄) 이지환을 구정모에서 떼어 강신길(good 0.62)이나 박재일로 보내고, 그러면 −0.92~−1.06으로 다시 무너진다. 이지환에게 맞는 사용자는 아이템이 가장 적은 축에 있고, 작은 사용자를 중립으로 당기는 어떤 규칙도 그 사용자를 지운다. 강신길이 신민철(아이템 10개)에 붙어 손해 보는 것과 정확히 반대 요구다.</li>
+  <li><strong>H7b 기각.</strong> 10폴드 전부에서 기준 − 0.02 이상인 설정은 없다. 최선은 8/10이고 가장 나쁜 폴드에서 −0.05~−0.09 nat.</li>
+  <li><strong>H7c 기각.</strong> 표의 양(mass) 분모는 아이템 수 분모와 같거나 조금 나쁘다.</li>
+  <li><strong>남는 것.</strong> α=1, κ=0, τ=1~2가 E5~E7을 통틀어 최선이다: 최종 macro −0.632 (pooled −0.713, oracle 임베딩 −0.625), 최악 폴드 −0.06~−0.09. t=20에서는 어느 설정도 pooled(−0.633)를 넘지 못하고, t=5에서는 모두 pooled(−0.731)보다 좋지만 no_adapt(−0.709)와 비슷하다.</li>
+</ul>
+<p><span class="verdict bad-v">판정</span>: 투표 통계 \(c_u\)는 어떻게 정규화해도 "이지환에게 맞는 사용자"와 "강신길에게 맞지 않는 사용자"를 동시에 가려내지 못한다. 그래프 투표는 라벨 일치를 kNN 부착이라는 대리 지표로 재기 때문이다. 다음은 대리 지표를 버리고 보상 모형 자체로 적합도를 재는 규칙이다(E8). 투표 규칙은 α=1, κ=0으로 고정해 보고한다.</p>
+
+<h2 id="E8">E8. 우도 기반 사용자 posterior 적응 <span class="verdict todo-v">구현 완료, 실행 대기</span></h2>
+<p class="label">가설</p>
+<p>보상 모형 \(r(\cdot\,;\,e)\)가 있으므로 "새 평가자가 population 사용자 \(u\)라면 문맥 라벨이 얼마나 그럴듯한가"를 직접 잴 수 있다.</p>
+\[
+\ell_u=\sum_{i\le t}\Big[y_i\log\sigma\big(r(x_i;e_u)\big)+(1-y_i)\log\big(1-\sigma(r(x_i;e_u))\big)\Big],\qquad
+w_u=\frac{\exp(\ell_u/\tau)}{\sum_{u'}\exp(\ell_{u'}/\tau)},\qquad
+\hat e_\star=\sum_u w_u e_u
+\]
+<p>\(\tau=1\)이면 균등 사전분포 아래의 정확한 posterior다. 아이템 그래프와 kNN 부착이 필요 없고 degree 편향이 없으며, 증거는 라벨 수에 비례해 쌓인다(원 규칙의 좋은 성질). 보상 모형이 온도 보정되어 있으므로 \(\ell_u\)의 척도는 nat이다. H8a: τ=1 근처에서 이지환은 oracle 수준(−0.56), 강신길·조현석은 큰 사용자 쪽으로 가며 pooled 이상이 된다. H8b: 한 설정이 10폴드 전부에서 max(pooled, no_adapt) − 0.02 이상이고 macro 최종이 −0.63보다 좋다. H8c: t=20에서 pooled(−0.633) 이상이 된다. H8d: 표준화(unit)보다 원 척도(none)가 낫다(증거 축적 보존).</p>
+<p class="label">설계</p>
+<p>코드: <code>adapt_rule</code> ("vote" | "loglik"), <code>fold.user_loglik_scores</code>, <code>adapt_user</code>는 두 규칙의 점수를 같은 evidence·온도 처리로 보낸다. adapt 스테이지 축 <code>adapt_sweep_rules</code>(loglik 행은 투표 전용 축을 무시), ablation <code>loglik_adapt</code>. 비용: 사용자 수 × 문맥 길이의 순전파, 설정당 수 초.</p>
+<pre>.venv\Scripts\python.exe run_copl_loeo.py --stage adapt --set run_name=copl_loeo_adapt3 --set use_tuned=True --set tuned_from=outputs/copl_loeo_final/20261005_162500 --set adapt_sweep_rules="('loglik',)" --set adapt_sweep_temps="(0.25,0.5,1.0,2.0,5.0,10.0,30.0)" --set adapt_sweep_evidence="('none','unit')"
+.venv\Scripts\python.exe run_copl_loeo.py --stage report --set run_name=copl_loeo_adapt3
+git add outputs
+git commit -m "Add copl_loeo_adapt3 run"
+git push origin claude_session</pre>
+<p>14 설정 × 10폴드, 약 15분. 판정은 E7과 같다(폴드 최솟값과 macro). H8b가 성립하면 <code>adapt_rule=loglik</code>을 기본으로 두고 τ만 tune_space에 남겨 재튜닝 → main(시드 3) → ablate(투표 규칙 α=1이 ablation의 비교 대상) → report. 성립하지 않으면 두 점수의 결합(투표를 사전분포로, 우도를 증거로)을 마지막 후보로 둔다.</p>
+
 <h2 id="status">가설 현황표</h2>
 <table>
   <thead><tr><th>ID</th><th>가설</th><th>판정</th><th>근거</th><th>논문 반영</th></tr></thead>
@@ -350,7 +389,8 @@ git push origin claude_session</pre>
     <tr><td>RQ1</td><td>CoPL &gt; pooled / indep</td><td>미달: pooled와 동등, cold start는 kNN vote가 우세. 적응의 degree 편향이 원인</td><td>E2, E5</td><td>주 결과 (E6 후 재판정)</td></tr>
     <tr><td>RQ4</td><td>튜닝 설정의 일반화</td><td>기각: 내부 −0.55 vs 외부 −0.72~−1.09 (이지환), 폴드 간 튜닝값 불안정</td><td>E5 tune</td><td>부록</td></tr>
     <tr><td>H6a~H6c</td><td>degree 정규화가 쏠림을 고치고 이지환 붕괴를 없앤다</td><td>H6a 지지(이지환 −0.98 → −0.56), H6c 기각(강신길·조현석 악화: 작은 사용자로 쏠림)</td><td>E6</td><td>적응 절 (편향 분석)</td></tr>
-    <tr><td>H7a~H7c</td><td>pseudo-count 수축 + 표의 양 정규화가 폴드 무관하게 작동</td><td>예정</td><td>E7 adapt 스테이지</td><td>적응 절 (제안 규칙)</td></tr>
+    <tr><td>H7a~H7c</td><td>pseudo-count 수축 + 표의 양 정규화가 폴드 무관하게 작동</td><td>기각: 수축은 이지환을 다시 무너뜨림, 어떤 설정도 10폴드 전부 통과 못 함(최선 8/10, α=1·κ=0·τ=1 최종 −0.632)</td><td>E7</td><td>적응 절 (투표 규칙의 한계)</td></tr>
+    <tr><td>H8a~H8d</td><td>보상 모형 우도 posterior가 그래프 투표를 대체</td><td>예정</td><td>E8 adapt 스테이지</td><td>적응 절 (제안 규칙)</td></tr>
   </tbody>
 </table>
 </main>

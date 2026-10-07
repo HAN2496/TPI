@@ -183,8 +183,35 @@ def calibrate(model, loader, E_u, device):
 
 
 # ----------------------------------------------------------------------------- adaptation
-def adapt_user(cfg, gds, y_ctx, neigh_idx, neigh_w, E_u, device):
-    """CoPL vote -> softmax over population users.
+def _rm_mean_probs(rm, emb, obs):
+    """Calibrated mean probability of the (possibly Bayesian) reward model, shape (n,)."""
+    if isinstance(rm, BayesianRM):
+        return rm.sample_probs(emb, obs).mean(dim=0)
+    return torch.sigmoid(rm(emb, obs))
+
+
+def user_loglik_scores(rm, E_u, X_ctx, y_ctx, device):
+    """log p(y_ctx | X_ctx, E_u) for every population user u: the log posterior (uniform prior) over
+    'which population user the new evaluator is', measured by the reward model itself."""
+    y = torch.as_tensor(np.asarray(y_ctx), dtype=torch.float32, device=device)
+    obs = torch.as_tensor(X_ctx, dtype=torch.float32, device=device)
+    ll = torch.empty(E_u.shape[0], device=device)
+    with torch.no_grad():
+        for u in range(E_u.shape[0]):
+            p = _rm_mean_probs(rm, E_u[u].unsqueeze(0).expand(len(y), -1), obs).clamp(1e-6, 1 - 1e-6)
+            ll[u] = (y * torch.log(p) + (1 - y) * torch.log(1 - p)).sum()
+    return ll
+
+
+def adapt_user(cfg, gds, y_ctx, neigh_idx, neigh_w, E_u, device, rm=None, X_ctx=None):
+    """Test-time adaptation: score every population user from the context labels, softmax, mix E_u.
+
+    adapt_rule = "vote" (CoPL) scores by the kNN-attached label vote; "loglik" scores by the reward
+    model's log-likelihood of the context labels under each user's embedding (user_loglik_scores),
+    which needs no item graph, has no degree bias, and sharpens with t like a posterior.  Both
+    scores then go through the same evidence rule and temperature.
+
+    Vote: CoPL vote -> softmax over population users.
 
     The vote v puts +w (good) / -adapt_neg_weight*w (bad) on the k nearest population items of each
     context episode, and the user score c_u = (A_pos - A_neg) v sums v over the items of user u.
@@ -205,19 +232,28 @@ def adapt_user(cfg, gds, y_ctx, neigh_idx, neigh_w, E_u, device):
     alpha = 0 and adapt_evidence = "none" reproduce the original CoPL rule exactly.
     """
     y_ctx = np.asarray(y_ctx).astype(np.int64)
-    v = np.zeros((gds.Apos_bin.size(1),), dtype=np.float32)
-    pos, neg = y_ctx == 1, y_ctx == 0
-    if pos.any():
-        np.add.at(v, neigh_idx[pos].reshape(-1), neigh_w[pos].reshape(-1))
-    if cfg.adapt_use_neg and neg.any():
-        np.add.at(v, neigh_idx[neg].reshape(-1), -cfg.adapt_neg_weight * neigh_w[neg].reshape(-1))
-    v_t = torch.tensor(v, dtype=torch.float32, device=device)
-    Apos = gds.Apos_bin.to(device)
-    Aneg = gds.Aneg_bin.to(device) if (cfg.adapt_use_neg and gds.Aneg_bin is not None) else None
-    c_u = torch.spmm(Apos, v_t.unsqueeze(-1)).squeeze(-1)
-    if Aneg is not None:
-        c_u = c_u - torch.spmm(Aneg, v_t.unsqueeze(-1)).squeeze(-1)
-    alpha = float(getattr(cfg, "adapt_degree_norm", 0.0))
+    rule = getattr(cfg, "adapt_rule", "vote")
+    if rule == "loglik":
+        if rm is None or X_ctx is None:
+            raise ValueError("adapt_rule='loglik' needs the reward model and the context observations")
+        c_u = user_loglik_scores(rm, E_u, X_ctx, y_ctx, device)
+        alpha = 0.0
+    elif rule == "vote":
+        v = np.zeros((gds.Apos_bin.size(1),), dtype=np.float32)
+        pos, neg = y_ctx == 1, y_ctx == 0
+        if pos.any():
+            np.add.at(v, neigh_idx[pos].reshape(-1), neigh_w[pos].reshape(-1))
+        if cfg.adapt_use_neg and neg.any():
+            np.add.at(v, neigh_idx[neg].reshape(-1), -cfg.adapt_neg_weight * neigh_w[neg].reshape(-1))
+        v_t = torch.tensor(v, dtype=torch.float32, device=device)
+        Apos = gds.Apos_bin.to(device)
+        Aneg = gds.Aneg_bin.to(device) if (cfg.adapt_use_neg and gds.Aneg_bin is not None) else None
+        c_u = torch.spmm(Apos, v_t.unsqueeze(-1)).squeeze(-1)
+        if Aneg is not None:
+            c_u = c_u - torch.spmm(Aneg, v_t.unsqueeze(-1)).squeeze(-1)
+        alpha = float(getattr(cfg, "adapt_degree_norm", 0.0))
+    else:
+        raise ValueError(f"unknown adapt_rule {rule!r}")
     if alpha > 0:
         Aneg_all = gds.Aneg_bin.to(device) if gds.Aneg_bin is not None else None
         if getattr(cfg, "adapt_norm_by", "items") == "mass":
@@ -306,6 +342,7 @@ def evaluate_copl(cfg, fd, models, X_held, y_held, seed, device, budgets=None, o
     y_held = np.asarray(y_held).astype(int)
     ctx_idx, hold_idx = P.split_stream(len(y_held), cfg.ctx_frac)
     Xg_ctx, y_ctx = Xg[ctx_idx], y_held[ctx_idx]
+    Xr_ctx = Xr[ctx_idx]
     y_hold = y_held[hold_idx]
     n_ctx = len(y_ctx)
     ts, offs = P._budgets_and_offsets(cfg, budgets if budgets is not None else P.budget_grid(cfg, n_ctx), n_ctx)
@@ -326,8 +363,11 @@ def evaluate_copl(cfg, fd, models, X_held, y_held, seed, device, budgets=None, o
                 lo, hi = o, min(o + t, n_ctx)
                 if hi - lo < t and o > 0:
                     continue
-                _, nidx, nw = gds.attach_test_items(Xg_ctx[lo:hi], E_i.cpu(), topk=cfg.adapt_topk, device=device)
-                e_u, w_u = adapt_user(cfg, gds, y_ctx[lo:hi], nidx, nw, E_u, device)
+                if getattr(cfg, "adapt_rule", "vote") == "vote":
+                    _, nidx, nw = gds.attach_test_items(Xg_ctx[lo:hi], E_i.cpu(), topk=cfg.adapt_topk, device=device)
+                else:
+                    nidx = nw = None
+                e_u, w_u = adapt_user(cfg, gds, y_ctx[lo:hi], nidx, nw, E_u, device, rm=rm, X_ctx=Xr_ctx[lo:hi])
             emb = e_u.unsqueeze(0).expand(len(y_hold), -1)
             with torch.no_grad():
                 if isinstance(rm, BayesianRM):

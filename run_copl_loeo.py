@@ -96,7 +96,8 @@ ABLATIONS = {"no_item_item": dict(use_item_item=False), "no_adapt": dict(use_ada
              "sqrt_adapt": dict(adapt_evidence="sqrt"),            # standardized * sqrt(t)
              "no_mix": dict(rm_mix_prob=0.0),                      # reward model trained on true users only
              "no_calib": dict(rm_calibrate=False, rm_select="auc"),  # original model selection, no temperature
-             "degree_norm": dict(adapt_degree_norm=1.0)}           # per-item mean agreement instead of the raw sum
+             "degree_norm": dict(adapt_degree_norm=1.0),           # per-item mean agreement instead of the raw sum
+             "loglik_adapt": dict(adapt_rule="loglik")}            # reward-model likelihood instead of the graph vote
 
 
 def _variant_record(fold):
@@ -185,19 +186,23 @@ def stage_adapt(cfg, run, data, channels, fs, names, device):
         X_held, y_held = data[name]
         seed = cfg.seeds[0]
         fd = models = None
-        for alpha, by, kap, temp, ev in itertools.product(cfg.adapt_sweep_norms, cfg.adapt_sweep_norm_by,
-                                                          cfg.adapt_sweep_shrinks, cfg.adapt_sweep_temps,
-                                                          cfg.adapt_sweep_evidence):
-            if alpha == 0 and (by != cfg.adapt_sweep_norm_by[0] or kap != cfg.adapt_sweep_shrinks[0]):
+        for rule, alpha, by, kap, temp, ev in itertools.product(cfg.adapt_sweep_rules, cfg.adapt_sweep_norms,
+                                                                cfg.adapt_sweep_norm_by, cfg.adapt_sweep_shrinks,
+                                                                cfg.adapt_sweep_temps, cfg.adapt_sweep_evidence):
+            first = (alpha == cfg.adapt_sweep_norms[0], by == cfg.adapt_sweep_norm_by[0], kap == cfg.adapt_sweep_shrinks[0])
+            if rule != "vote" and not all(first):
+                continue                                      # loglik has no vote-only axes
+            if rule == "vote" and alpha == 0 and not (first[1] and first[2]):
                 continue                                      # alpha = 0 ignores the size and the shrinkage
-            label = f"norm={alpha}/by={by}/shrink={kap}/temp={temp}/ev={ev}"
+            label = (f"norm={alpha}/by={by}/shrink={kap}/temp={temp}/ev={ev}" if rule == "vote"
+                     else f"rule={rule}/temp={temp}/ev={ev}")
             if label in rec["adapt"]:
                 continue
             if fd is None:
                 seed_all(seed)
                 fd = FD.prepare_fold(replace(cfg_f, seed=seed), pop_data, pop_names, channels, fs, device)
                 models = FD.train_models(cfg_f, fd, device, seed, verbose=0)
-            c = replace(cfg_f, adapt_degree_norm=float(alpha), adapt_norm_by=by, adapt_shrink=float(kap),
+            c = replace(cfg_f, adapt_rule=rule, adapt_degree_norm=float(alpha), adapt_norm_by=by, adapt_shrink=float(kap),
                         adapt_user_softmax_temp=float(temp), adapt_evidence=ev)
             tic = time.time()
             res, lpd, info, wu = FD.evaluate_copl(c, fd, models, X_held, y_held, seed, device)

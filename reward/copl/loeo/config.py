@@ -102,7 +102,9 @@ class Config:
     rm_ensemble_k: int = 3
     rm_select: str = "loss"                    # early stopping on validation BCE ('loss') or AUROC ('auc')
     rm_calibrate: bool = True                  # temperature scaling fitted on the population validation set
-    # ---- adaptation (CoPL vote -> softmax over population users)
+    # ---- adaptation (score population users from the context labels -> softmax -> mixed embedding)
+    adapt_rule: str = "vote"                   # "vote" = CoPL kNN label vote on the item graph;
+                                               # "loglik" = reward-model log-likelihood of the context labels per user (E8)
     adapt_normalize: bool = True               # standardize the vote scores c_u before the softmax
     adapt_evidence: str = "none"               # "none" = original CoPL scale (grows with t; best in E4 at tau ~ 1),
                                                # "unit" = standardized (independent of t), "sqrt" = standardized * sqrt(t)
@@ -116,6 +118,7 @@ class Config:
     adapt_sweep_evidence: tuple = ("none",)
     adapt_sweep_norm_by: tuple = ("items",)
     adapt_sweep_shrinks: tuple = (0.0,)
+    adapt_sweep_rules: tuple = ("vote",)       # "loglik" rows ignore the vote-only axes (norm, by, shrink)
     # ---- mixture-consistent reward-model training: the reward model is queried with convex mixtures of
     # population embeddings (cold start = mean, adaptation = softmax mixture), so it is trained on them too
     rm_mix_prob: float = 0.5                   # fraction of training rows whose user embedding is replaced by a mixture
