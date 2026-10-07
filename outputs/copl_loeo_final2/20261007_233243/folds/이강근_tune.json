@@ -1,0 +1,145 @@
+{
+  "name": "이강근",
+  "trials": {
+    "{\"adapt_evidence\": \"none\", \"adapt_user_softmax_temp\": 30.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 30.0,
+        "adapt_evidence": "none"
+      },
+      "scores": {
+        "이지환": -0.7443579370078798,
+        "박재일": -0.6174472455384048,
+        "신민철": -0.42389219946815965
+      },
+      "score": -0.5952324606714815
+    },
+    "{\"adapt_evidence\": \"none\", \"adapt_user_softmax_temp\": 1.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 1.0,
+        "adapt_evidence": "none"
+      },
+      "scores": {
+        "이지환": -0.6790576432584783,
+        "박재일": -0.5530994763239512,
+        "신민철": -0.5345423117344889
+      },
+      "score": -0.5888998104389728
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_user_softmax_temp\": 10.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 10.0,
+        "adapt_evidence": "unit"
+      },
+      "scores": {
+        "이지환": -0.7162649087722883,
+        "박재일": -0.6742228810538803,
+        "신민철": -0.4653289375580413
+      },
+      "score": -0.6186055757947367
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_user_softmax_temp\": 1.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 1.0,
+        "adapt_evidence": "unit"
+      },
+      "scores": {
+        "이지환": -0.6565337666322252,
+        "박재일": -0.5669962024312193,
+        "신민철": -0.43654743762003745
+      },
+      "score": -0.5533591355611606
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_user_softmax_temp\": 2.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_evidence": "unit"
+      },
+      "scores": {
+        "이지환": -0.686296934547038,
+        "박재일": -0.6076020823824932,
+        "신민철": -0.4548133383409897
+      },
+      "score": -0.582904118423507
+    },
+    "{\"adapt_evidence\": \"none\", \"adapt_user_softmax_temp\": 10.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 10.0,
+        "adapt_evidence": "none"
+      },
+      "scores": {
+        "이지환": -0.7182118460044687,
+        "박재일": -0.6274787617330929,
+        "신민철": -0.45522103406529857
+      },
+      "score": -0.6003038806009534
+    },
+    "{\"adapt_evidence\": \"none\", \"adapt_user_softmax_temp\": 2.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_evidence": "none"
+      },
+      "scores": {
+        "이지환": -0.7097653046726329,
+        "박재일": -0.5660355323459569,
+        "신민철": -0.5002707450405094
+      },
+      "score": -0.5920238606863664
+    },
+    "{\"adapt_evidence\": \"none\", \"adapt_user_softmax_temp\": 5.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 5.0,
+        "adapt_evidence": "none"
+      },
+      "scores": {
+        "이지환": -0.7127971153947172,
+        "박재일": -0.6167777775413873,
+        "신민철": -0.43966061737480777
+      },
+      "score": -0.5897451701036375
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_user_softmax_temp\": 5.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 5.0,
+        "adapt_evidence": "unit"
+      },
+      "scores": {
+        "이지환": -0.7446802645459016,
+        "박재일": -0.6641825298024284,
+        "신민철": -0.4510150283838529
+      },
+      "score": -0.6199592742440609
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_user_softmax_temp\": 30.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 30.0,
+        "adapt_evidence": "unit"
+      },
+      "scores": {
+        "이지환": -0.7280994762962176,
+        "박재일": -0.6900789600389299,
+        "신민철": -0.4316252833437737
+      },
+      "score": -0.6166012398929738
+    }
+  },
+  "inner": [
+    "이지환",
+    "박재일",
+    "신민철"
+  ],
+  "base": {
+    "gcf_emb_dim": 64,
+    "item_item_weight": 0.25,
+    "knn_k": 10,
+    "adapt_user_softmax_temp": 1.0,
+    "adapt_evidence": "unit",
+    "adapt_neg_weight": 1.0,
+    "gcf_lr": 0.0002,
+    "rm_lr": 0.001
+  },
+  "best": {
+    "adapt_user_softmax_temp": 1.0,
+    "adapt_evidence": "unit"
+  },
+  "best_score": -0.5533591355611606
+}

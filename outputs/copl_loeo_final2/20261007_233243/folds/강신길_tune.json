@@ -1,0 +1,145 @@
+{
+  "name": "강신길",
+  "trials": {
+    "{\"adapt_evidence\": \"none\", \"adapt_user_softmax_temp\": 30.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 30.0,
+        "adapt_evidence": "none"
+      },
+      "scores": {
+        "이지환": -0.7088683131201179,
+        "박재일": -0.6947738699200434,
+        "신민철": -0.47252528075075206
+      },
+      "score": -0.6253891545969711
+    },
+    "{\"adapt_evidence\": \"none\", \"adapt_user_softmax_temp\": 1.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 1.0,
+        "adapt_evidence": "none"
+      },
+      "scores": {
+        "이지환": -0.6745808852673204,
+        "박재일": -0.5746075681879205,
+        "신민철": -0.45864241551184337
+      },
+      "score": -0.5692769563223614
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_user_softmax_temp\": 10.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 10.0,
+        "adapt_evidence": "unit"
+      },
+      "scores": {
+        "이지환": -0.7071956482981817,
+        "박재일": -0.7676934784410253,
+        "신민철": -0.4592637122914377
+      },
+      "score": -0.6447176130102149
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_user_softmax_temp\": 1.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 1.0,
+        "adapt_evidence": "unit"
+      },
+      "scores": {
+        "이지환": -0.6416163374322821,
+        "박재일": -0.6121689441052272,
+        "신민철": -0.43111952575171386
+      },
+      "score": -0.5616349357630743
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_user_softmax_temp\": 2.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_evidence": "unit"
+      },
+      "scores": {
+        "이지환": -0.683633800317273,
+        "박재일": -0.6391151413366021,
+        "신민철": -0.409831631371245
+      },
+      "score": -0.5775268576750401
+    },
+    "{\"adapt_evidence\": \"none\", \"adapt_user_softmax_temp\": 10.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 10.0,
+        "adapt_evidence": "none"
+      },
+      "scores": {
+        "이지환": -0.7241412046491531,
+        "박재일": -0.6784948068530594,
+        "신민철": -0.44290516007874037
+      },
+      "score": -0.6151803905269843
+    },
+    "{\"adapt_evidence\": \"none\", \"adapt_user_softmax_temp\": 2.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_evidence": "none"
+      },
+      "scores": {
+        "이지환": -0.6621957698765979,
+        "박재일": -0.5853558036407022,
+        "신민철": -0.43585176070028436
+      },
+      "score": -0.5611344447391947
+    },
+    "{\"adapt_evidence\": \"none\", \"adapt_user_softmax_temp\": 5.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 5.0,
+        "adapt_evidence": "none"
+      },
+      "scores": {
+        "이지환": -0.6829911015476308,
+        "박재일": -0.6340019318743018,
+        "신민철": -0.48744488640202616
+      },
+      "score": -0.6014793066079862
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_user_softmax_temp\": 5.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 5.0,
+        "adapt_evidence": "unit"
+      },
+      "scores": {
+        "이지환": -0.7116909810090984,
+        "박재일": -0.6790220033907224,
+        "신민철": -0.484508585875865
+      },
+      "score": -0.625073856758562
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_user_softmax_temp\": 30.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 30.0,
+        "adapt_evidence": "unit"
+      },
+      "scores": {
+        "이지환": -0.7210177561012865,
+        "박재일": -0.7121859832925583,
+        "신민철": -0.46260496849303734
+      },
+      "score": -0.6319362359622941
+    }
+  },
+  "inner": [
+    "이지환",
+    "박재일",
+    "신민철"
+  ],
+  "base": {
+    "gcf_emb_dim": 64,
+    "item_item_weight": 1.0,
+    "knn_k": 30,
+    "adapt_user_softmax_temp": 0.5,
+    "adapt_evidence": "none",
+    "adapt_neg_weight": 0.5,
+    "gcf_lr": 0.0002,
+    "rm_lr": 0.001
+  },
+  "best": {
+    "adapt_user_softmax_temp": 2.0,
+    "adapt_evidence": "none"
+  },
+  "best_score": -0.5611344447391947
+}

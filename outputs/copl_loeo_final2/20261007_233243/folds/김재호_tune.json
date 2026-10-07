@@ -1,0 +1,145 @@
+{
+  "name": "김재호",
+  "trials": {
+    "{\"adapt_evidence\": \"none\", \"adapt_user_softmax_temp\": 30.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 30.0,
+        "adapt_evidence": "none"
+      },
+      "scores": {
+        "이지환": -0.6317383494868566,
+        "박재일": -0.6807179839078469,
+        "신민철": -0.49996706990647044
+      },
+      "score": -0.6041411344337246
+    },
+    "{\"adapt_evidence\": \"none\", \"adapt_user_softmax_temp\": 1.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 1.0,
+        "adapt_evidence": "none"
+      },
+      "scores": {
+        "이지환": -0.6267670911351959,
+        "박재일": -0.5604940662709621,
+        "신민철": -0.5054099551626854
+      },
+      "score": -0.5642237041896144
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_user_softmax_temp\": 10.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 10.0,
+        "adapt_evidence": "unit"
+      },
+      "scores": {
+        "이지환": -0.6330984075736368,
+        "박재일": -0.6805917510013229,
+        "신민철": -0.5047811628695102
+      },
+      "score": -0.6061571071481566
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_user_softmax_temp\": 1.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 1.0,
+        "adapt_evidence": "unit"
+      },
+      "scores": {
+        "이지환": -0.6238507904628531,
+        "박재일": -0.5870768560028377,
+        "신민철": -0.5116254524059837
+      },
+      "score": -0.5741843662905581
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_user_softmax_temp\": 2.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_evidence": "unit"
+      },
+      "scores": {
+        "이지환": -0.6236116321472073,
+        "박재일": -0.6251170692859461,
+        "신민철": -0.5105602746423192
+      },
+      "score": -0.5864296586918242
+    },
+    "{\"adapt_evidence\": \"none\", \"adapt_user_softmax_temp\": 10.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 10.0,
+        "adapt_evidence": "none"
+      },
+      "scores": {
+        "이지환": -0.6320044521452926,
+        "박재일": -0.6345322103151017,
+        "신민철": -0.49774510968795893
+      },
+      "score": -0.588093924049451
+    },
+    "{\"adapt_evidence\": \"none\", \"adapt_user_softmax_temp\": 2.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_evidence": "none"
+      },
+      "scores": {
+        "이지환": -0.6273266731054585,
+        "박재일": -0.5820514645398468,
+        "신민철": -0.5043562554549587
+      },
+      "score": -0.571244797700088
+    },
+    "{\"adapt_evidence\": \"none\", \"adapt_user_softmax_temp\": 5.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 5.0,
+        "adapt_evidence": "none"
+      },
+      "scores": {
+        "이지환": -0.6274144050058622,
+        "박재일": -0.6256097266971905,
+        "신민철": -0.5036063077937055
+      },
+      "score": -0.5855434798322529
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_user_softmax_temp\": 5.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 5.0,
+        "adapt_evidence": "unit"
+      },
+      "scores": {
+        "이지환": -0.6280759458763536,
+        "박재일": -0.6634654327186662,
+        "신민철": -0.5059848636667029
+      },
+      "score": -0.5991754140872408
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_user_softmax_temp\": 30.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 30.0,
+        "adapt_evidence": "unit"
+      },
+      "scores": {
+        "이지환": -0.6343789398375088,
+        "박재일": -0.6906390892987618,
+        "신민철": -0.5012744861852918
+      },
+      "score": -0.6087641717738542
+    }
+  },
+  "inner": [
+    "이지환",
+    "박재일",
+    "신민철"
+  ],
+  "base": {
+    "gcf_emb_dim": 64,
+    "item_item_weight": 0.5,
+    "knn_k": 30,
+    "adapt_user_softmax_temp": 2.0,
+    "adapt_evidence": "none",
+    "adapt_neg_weight": 1.0,
+    "gcf_lr": 0.0002,
+    "rm_lr": 0.0001
+  },
+  "best": {
+    "adapt_user_softmax_temp": 1.0,
+    "adapt_evidence": "none"
+  },
+  "best_score": -0.5642237041896144
+}

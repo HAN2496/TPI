@@ -1,0 +1,145 @@
+{
+  "name": "김태근",
+  "trials": {
+    "{\"adapt_evidence\": \"none\", \"adapt_user_softmax_temp\": 30.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 30.0,
+        "adapt_evidence": "none"
+      },
+      "scores": {
+        "이지환": -0.6347182854550353,
+        "박재일": -0.6597485015754426,
+        "신민철": -0.4927913220013071
+      },
+      "score": -0.595752703010595
+    },
+    "{\"adapt_evidence\": \"none\", \"adapt_user_softmax_temp\": 1.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 1.0,
+        "adapt_evidence": "none"
+      },
+      "scores": {
+        "이지환": -0.620988021368795,
+        "박재일": -0.5554355200961116,
+        "신민철": -0.4961701459696161
+      },
+      "score": -0.557531229144841
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_user_softmax_temp\": 10.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 10.0,
+        "adapt_evidence": "unit"
+      },
+      "scores": {
+        "이지환": -0.630858450813467,
+        "박재일": -0.6585463941599369,
+        "신민철": -0.48537166915049723
+      },
+      "score": -0.5915921713746337
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_user_softmax_temp\": 1.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 1.0,
+        "adapt_evidence": "unit"
+      },
+      "scores": {
+        "이지환": -0.6161314321931733,
+        "박재일": -0.5738967713424253,
+        "신민철": -0.5030812635073323
+      },
+      "score": -0.5643698223476437
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_user_softmax_temp\": 2.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_evidence": "unit"
+      },
+      "scores": {
+        "이지환": -0.6196888446267199,
+        "박재일": -0.6066525491152263,
+        "신민철": -0.500955779118922
+      },
+      "score": -0.5757657242869562
+    },
+    "{\"adapt_evidence\": \"none\", \"adapt_user_softmax_temp\": 10.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 10.0,
+        "adapt_evidence": "none"
+      },
+      "scores": {
+        "이지환": -0.6317179318787877,
+        "박재일": -0.632370743439195,
+        "신민철": -0.485563613238484
+      },
+      "score": -0.5832174295188222
+    },
+    "{\"adapt_evidence\": \"none\", \"adapt_user_softmax_temp\": 2.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 2.0,
+        "adapt_evidence": "none"
+      },
+      "scores": {
+        "이지환": -0.6222579371249882,
+        "박재일": -0.5712259721264439,
+        "신민철": -0.49975358779936374
+      },
+      "score": -0.5644124990169319
+    },
+    "{\"adapt_evidence\": \"none\", \"adapt_user_softmax_temp\": 5.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 5.0,
+        "adapt_evidence": "none"
+      },
+      "scores": {
+        "이지환": -0.6274093690118767,
+        "박재일": -0.6069282667401164,
+        "신민철": -0.49697685688965587
+      },
+      "score": -0.5771048308805496
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_user_softmax_temp\": 5.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 5.0,
+        "adapt_evidence": "unit"
+      },
+      "scores": {
+        "이지환": -0.6268052092179992,
+        "박재일": -0.642473037884037,
+        "신민철": -0.500348904395244
+      },
+      "score": -0.58987571716576
+    },
+    "{\"adapt_evidence\": \"unit\", \"adapt_user_softmax_temp\": 30.0}": {
+      "params": {
+        "adapt_user_softmax_temp": 30.0,
+        "adapt_evidence": "unit"
+      },
+      "scores": {
+        "이지환": -0.6347717294116618,
+        "박재일": -0.6729239451403779,
+        "신민철": -0.4886724996093288
+      },
+      "score": -0.5987893913871228
+    }
+  },
+  "inner": [
+    "이지환",
+    "박재일",
+    "신민철"
+  ],
+  "base": {
+    "gcf_emb_dim": 64,
+    "item_item_weight": 0.5,
+    "knn_k": 30,
+    "adapt_user_softmax_temp": 2.0,
+    "adapt_evidence": "none",
+    "adapt_neg_weight": 1.0,
+    "gcf_lr": 0.0002,
+    "rm_lr": 0.0001
+  },
+  "best": {
+    "adapt_user_softmax_temp": 1.0,
+    "adapt_evidence": "none"
+  },
+  "best_score": -0.557531229144841
+}
