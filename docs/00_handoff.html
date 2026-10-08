@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>00 · 인수인계 문서</title>
+<script>
+  MathJax = { tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+              options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] } };
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<style>
+  :root {
+    --bg: #fbfbf9; --fg: #1d1f24; --muted: #5d6270; --line: #e3e3dc;
+    --card: #ffffff; --accent: #1f5f8b; --accent-soft: #e4eef6;
+    --warn: #8a4b08; --warn-soft: #fbeedc; --ok: #2b6a3f; --ok-soft: #e3f1e6;
+    --bad: #8b2b2b; --bad-soft: #f6e3e3; --code: #f1f1ec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14161a; --fg: #e6e6e1; --muted: #a0a4ad; --line: #2c3037;
+      --card: #1b1e24; --accent: #7fb3d9; --accent-soft: #1f2c39;
+      --warn: #e2a463; --warn-soft: #332614; --ok: #8fd19f; --ok-soft: #16301e;
+      --bad: #e08a8a; --bad-soft: #3a1f1f; --code: #23272e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --fg: #e6e6e1; --muted: #a0a4ad; --line: #2c3037;
+    --card: #1b1e24; --accent: #7fb3d9; --accent-soft: #1f2c39;
+    --warn: #e2a463; --warn-soft: #332614; --ok: #8fd19f; --ok-soft: #16301e;
+    --bad: #e08a8a; --bad-soft: #3a1f1f; --code: #23272e;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 16px/1.7 -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", Roboto, sans-serif; }
+  main { max-width: 980px; margin: 0 auto; padding: 32px 16px 64px; }
+  header { border-bottom: 1px solid var(--line); padding-bottom: 16px; margin-bottom: 28px; }
+  h1 { font-size: 1.7rem; margin: 0 0 6px; line-height: 1.3; }
+  .meta { color: var(--muted); font-size: 0.92rem; }
+  h2 { font-size: 1.3rem; margin: 44px 0 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+  h3 { font-size: 1.05rem; margin: 26px 0 8px; }
+  p { margin: 10px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; margin: 14px 0; }
+  th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }
+  pre { background: var(--code); padding: 12px 14px; border-radius: 8px; overflow-x: auto; font-size: 0.86rem; line-height: 1.5; }
+  ul, ol { padding-left: 22px; }
+  li { margin: 4px 0; }
+  .note { background: var(--accent-soft); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 6px; margin: 14px 0; }
+  .warn { background: var(--warn-soft); border-left: 3px solid var(--warn); padding: 10px 14px; border-radius: 6px; margin: 14px 0; }
+  .ok { color: var(--ok); font-weight: 600; } .bad { color: var(--bad); font-weight: 600; } .part { color: var(--warn); font-weight: 600; }
+  .toc { columns: 2; column-gap: 32px; font-size: 0.95rem; }
+  .toc li { break-inside: avoid; }
+  mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; margin: 10px 0 !important; }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>00 · 인수인계 문서</h1>
+  <div class="meta">
+    2026-09-28 ~ 2026-10-08 세션(claude.ai/code, 클라우드)에서 한 일의 전체 상태 · 작성 2026-10-08 ·
+    브랜치 <code>claude_session</code> · 이 문서는 새 세션이 가장 먼저 읽는 문서다. 이후 생기는 변화는 각 프로젝트의 번호 붙은 노트에 덧붙이고, 이 문서의 "상태" 절만 갱신한다.
+  </div>
+</header>
+
+<ul class="toc">
+  <li><a href="#how">0. 읽는 순서</a></li>
+  <li><a href="#rules">1. 협업 규칙 (사용자가 정한 것)</a></li>
+  <li><a href="#repo">2. 저장소 지도</a></li>
+  <li><a href="#data">3. 데이터</a></li>
+  <li><a href="#tiv">4. 프로젝트 A: T-IV 논문 (계층 베이지안)</a></li>
+  <li><a href="#copl">5. 프로젝트 B: CoPL 논문</a></li>
+  <li><a href="#sep">6. 두 논문의 분리 규칙</a></li>
+  <li><a href="#cmd">7. 명령 모음과 결과 공유 절차</a></li>
+  <li><a href="#pitfalls">8. 알려진 함정과 수정 이력</a></li>
+  <li><a href="#open">9. 열린 질문</a></li>
+  <li><a href="#timeline">10. 타임라인</a></li>
+  <li><a href="#start">11. 새 세션 시작 프롬프트</a></li>
+  <li><a href="#transcript">12. 이전 세션 기록 파일</a></li>
+</ul>
+
+<h2 id="how">0. 읽는 순서</h2>
+<ol>
+  <li>이 문서 1~3절 (규칙, 저장소, 데이터).</li>
+  <li>작업할 논문의 절 (4 또는 5)과 그 논문의 노트 디렉터리. T-IV는 <code>docs/fully_bayesian/my_papers/claude_notes/07_final_notes.html</code>이 요약, <code>05_experiment_log.html</code>이 실험별 가설·판정 원본. CoPL은 <code>docs/copl/claude_notes/03_copl_experiment_log.html</code>(E1~E9)과 <code>04_copl_paper_outline.html</code>.</li>
+  <li>수치를 쓸 일이 있으면 반드시 <code>outputs/&lt;run&gt;/&lt;timestamp&gt;/report/</code>의 표에서 다시 읽는다. 노트의 수치는 거기서 옮긴 것이다.</li>
+</ol>
+<p>노트는 번호 순서가 시간 순서다. 같은 프로젝트 안에서는 번호를 이어 붙이고(T-IV 다음은 08, CoPL 다음은 05), 제목은 <code>NN · 제목</code> 꼴, 파일명은 <code>NN_snake_case.html</code>, 스타일은 기존 노트의 <code>&lt;style&gt;</code>을 복사해 쓴다. 수식은 MathJax(<code>\(</code>…<code>\)</code>, <code>\[</code>…<code>\]</code>).</p>
+
+<h2 id="rules">1. 협업 규칙 (사용자가 정한 것)</h2>
+<p>아래는 사용자가 명시적으로 말했거나 반복해서 요구한 것이다. 새 세션도 그대로 따른다.</p>
+<table>
+  <tr><th style="width:26%">항목</th><th>규칙</th></tr>
+  <tr><td>언어</td><td>대화는 한국어. 논문·코드·커밋 메시지는 영어.</td></tr>
+  <tr><td>문체</td><td>"미사여구 쓰지 말 것." 결론 먼저, 수치는 표로, 한 문장에 한 가지. 사용자가 "뭐라는지 모르겠다"고 하면 다이어그램(SVG가 들어간 HTML 노트)이나 표로 다시 설명한다.</td></tr>
+  <tr><td>수식 표기</td><td>저장소의 <code>AGENTS.md</code>는 "ASCII 한 줄"을 요구하지만, 사용자가 채팅에서는 <code>$$…$$</code>와 <code>$…$</code>로 감싼 LaTeX를 명시적으로 요청했다("수식을 $$~$$ 안에 감싸서"). 채팅에서는 LaTeX, 노트는 MathJax. 이 결정은 AGENTS.md보다 우선한다.</td></tr>
+  <tr><td>브랜치</td><td>모든 작업은 <code>claude_session</code> 브랜치. <code>main</code>에 직접 푸시하지 않는다. 사용자도 같은 브랜치에 실행 결과를 푸시한다.</td></tr>
+  <tr><td>커밋</td><td>메시지 첫 줄은 <code>Add:</code> / <code>Edit:</code> / <code>Fix:</code> / <code>Move:</code> 접두어 + 무엇을 왜. 세션이 요구하는 attribution 줄(Co-Authored-By, Claude-Session)을 끝에 붙인다. 모델 식별자는 커밋·코드·논문에 넣지 않는다.</td></tr>
+  <tr><td>실행 분담</td><td>GPU 실행은 사용자의 Windows 데스크톱(<code>.venv\Scripts\python.exe</code>, 저장소 루트). 클라우드 컨테이너에는 <code>datasets/</code>가 없고(gitignore) GPU도 없다. 합성 데이터 스모크 테스트(<code>--data synthetic --fast</code>)만 컨테이너에서 가능하다.</td></tr>
+  <tr><td>실행 지시 형식</td><td>사용자에게 실행을 부탁할 때는 항상 세 가지를 한 블록에: 실행 명령, report 명령, 그리고 <code>git add outputs</code> → <code>git commit -m "Add &lt;run&gt; run"</code> → <code>git push origin claude_session</code>. 사용자는 "돌렸어, 확인해봐"라고만 말하므로 세션은 <code>git fetch</code>·<code>merge --ff-only</code> 후 <code>outputs/</code>를 읽어 분석한다.</td></tr>
+  <tr><td>결과 추적</td><td><code>outputs/loeo*/</code>, <code>outputs/copl_loeo*/</code>는 git 추적(<code>.pt</code>, joblib 제외). run_name은 각각 <code>loeo</code>, <code>copl_loeo</code>로 시작해야 추적된다.</td></tr>
+  <tr><td>수치 원칙</td><td>논문·노트의 모든 수치는 고정된 실행 폴더에서만 가져온다. 2026년 8월의 탐색 실행 수치는 절대 쓰지 않는다(프로토콜이 다르다). 시드 1개 결과와 시드 3개 결과를 섞지 않는다.</td></tr>
+  <tr><td>엄밀성</td><td>"되도록 엄밀함을 기준으로, 오래 걸려도 괜찮다." 튜닝은 폴드마다 내부 LOEO, 비교는 평가자 단위 SE와 paired ΔELPD, 가설은 데이터를 보기 전에 노트에 적고 판정한다.</td></tr>
+  <tr><td>코드 검토</td><td>새 코드가 생기면 서브에이전트로 검토·테스트한다(사용자가 요청). 합성 데이터 스모크 테스트를 먼저 돌린다.</td></tr>
+  <tr><td>두 논문</td><td>T-IV 논문과 CoPL 논문은 완전히 별개로 낸다. CoPL 논문 안에서 T-IV 결과를 비교하거나 인용하지 않는다(6절).</td></tr>
+  <tr><td>라벨 의미</td><td>저장된 라벨 <code>True</code> = good(승차감이 좋음). 사용자가 확인했다.</td></tr>
+  <tr><td>평가자</td><td>사용자는 누가 전문가인지 모른다. 전원 데이터를 쓰기로 했다. 논문에서는 가명 E1~E10(3절)만 쓴다.</td></tr>
+  <tr><td>질문 방식</td><td>사용자는 결정이 필요한 지점에서 "어떤 걸 해봐야 하지?", "네 생각엔 어때?"라고 묻는다. 선택지를 늘어놓지 말고 추천 하나와 근거를 말한다. 사용자가 결정하면 그대로 간다.</td></tr>
+</table>
+
+<h2 id="repo">2. 저장소 지도</h2>
+<table>
+  <tr><th style="width:36%">경로</th><th>내용</th></tr>
+  <tr><td><code>AGENTS.md</code></td><td>프로젝트 지침. 이 인수인계 문서를 가리킨다.</td></tr>
+  <tr><td><code>run_loeo.py</code></td><td>T-IV 실험 드라이버. 스테이지 main / select / sensors / report / compare / all. 옵션은 <code>--stage</code>, <code>--set key=value</code>(ast.literal_eval), <code>--timestamp</code>, <code>--fast</code>.</td></tr>
+  <tr><td><code>reward/fully_bayesian/</code></td><td>계층 베이지안 모형: <code>model.py</code>(PG Gibbs, NIW, spike-and-slab, cold start, 개인화), <code>features.py</code>(피처 bank), <code>projpred.py</code>, <code>conditional_mi.py</code>(미사용), <code>loeo/</code>(data, bank, protocol, baselines, metrics, selection, report).</td></tr>
+  <tr><td><code>run_copl_loeo.py</code></td><td>CoPL 실험 드라이버. 스테이지 encoders / tune / main / ablate / sweep / channels / adapt / report / all.</td></tr>
+  <tr><td><code>reward/copl/</code></td><td>CoPL 구현: <code>dataset.py</code>(그래프 데이터셋, kNN 부착, 원 투표), <code>gcf.py</code>(LightGCN식 전파), <code>rm.py</code>(CNN 보상 모형), <code>trainer.py</code>(GCF/RM 학습, mixture training), <code>bayesian_reward_models.py</code>(앙상블/MC dropout), <code>similarity/</code>(인코더 원본), <code>loeo/</code>(config, data, encoders, graph, fold, baselines, report).</td></tr>
+  <tr><td><code>outputs/</code></td><td>실행 결과. 폴더 = <code>&lt;run_name&gt;/&lt;timestamp&gt;/</code>, 안에 <code>cfg*.json</code>, <code>folds/*.json</code>, <code>report/</code>. 확정 실행 목록은 4.5절, 5.6절.</td></tr>
+  <tr><td><code>docs/fully_bayesian/my_papers/</code></td><td>T-IV 원고 <code>main.tex</code>, <code>refs.bib</code>, <code>IEEEtrans.cls</code>, <code>figures/</code>(make_results.py, make_framework.py), <code>claude_notes/01~07</code>.</td></tr>
+  <tr><td><code>docs/copl/my_papers/</code></td><td>CoPL 원고 <code>main.tex</code>, <code>refs.bib</code>, <code>IEEEtran.cls</code>, <code>figures/</code>(make_overview.py, make_curves.py, make_wu.py).</td></tr>
+  <tr><td><code>docs/copl/claude_notes/01~04</code></td><td>CoPL 계획, 실행 가이드, 실험 기록, 논문 개요.</td></tr>
+  <tr><td><code>docs/copl.md</code>, <code>docs/claude_explanation/</code>, <code>docs/fully_bayesian/{features,reconstruction,toygame,gpu}</code></td><td>이 세션 이전의 문서들(CoPL 구현 설명, 피치·재구성 실험 등). 이번 세션에서는 건드리지 않았다. 재구성(Kalman, half-car) 작업은 2026-09-15까지의 커밋에 있고 두 논문과 무관하다.</td></tr>
+  <tr><td><code>datasets/</code></td><td>gitignore. 사용자 데스크톱에만 있다. 로더는 <code>dataset_root="datasets"</code>.</td></tr>
+  <tr><td><code>lab/</code>, <code>core/run.py</code></td><td>실험 공통 유틸(<code>Run</code> 클래스가 outputs 폴더와 타임스탬프를 만든다).</td></tr>
+</table>
+
+<h2 id="data">3. 데이터</h2>
+<ul>
+  <li>실차 과속방지턱 통과 에피소드. 채널 5개: IMU 종·횡·수직 가속도(<code>IMU_LongAccelVal</code>, <code>IMU_LatAccelVal</code>, <code>IMU_VerAccelVal</code>), 6D 센서 bounce rate·pitch rate(<code>Bounce_rate_6D</code>, <code>Pitch_rate_6D</code>). 창 −2~+2 s, 10 Hz 저역통과, 2배 다운샘플 → 50 Hz, T=200.</li>
+  <li>라벨: 에피소드 직후 탑승자의 good/bad. <code>True</code> = good.</li>
+  <li>적격(held-out 대상) 규칙: 라벨 ≥ 10이고 클래스당 ≥ 3 → 10명. 그 외는 population에만 들어간다.</li>
+  <li>population 수가 두 파이프라인에서 다르다: T-IV 로더는 17명(두 클래스 라벨이 있는 사람), CoPL 로더는 18명(2682 에피소드; 비적격 8명 55개). 한 명이 단일 클래스 라벨만 가진 것으로 추정되며 원 카탈로그에서 확인하지 않았다(9절).</li>
+  <li>차량·도로·센서 사양, 모집·윤리, 전체 카탈로그 크기는 저장소에 없다. 두 원고 모두 draftnote로 비어 있다. 사용자에게 받아야 한다.</li>
+</ul>
+<table>
+  <tr><th>가명</th><th>실명(저장소 내부·outputs 폴더명)</th><th class="num">에피소드</th><th class="num">good</th><th class="num">bad</th><th class="num">good 비율</th><th class="num">문맥/holdout</th></tr>
+  <tr><td>E1</td><td>이지환</td><td class="num">1056</td><td class="num">436</td><td class="num">620</td><td class="num">0.41</td><td class="num">528 / 528</td></tr>
+  <tr><td>E2</td><td>박재일</td><td class="num">591</td><td class="num">452</td><td class="num">139</td><td class="num">0.76</td><td class="num">295 / 296</td></tr>
+  <tr><td>E3</td><td>한규택</td><td class="num">369</td><td class="num">280</td><td class="num">89</td><td class="num">0.76</td><td class="num">184 / 185</td></tr>
+  <tr><td>E4</td><td>조현석</td><td class="num">279</td><td class="num">66</td><td class="num">213</td><td class="num">0.24</td><td class="num">139 / 140</td></tr>
+  <tr><td>E5</td><td>강신길</td><td class="num">205</td><td class="num">128</td><td class="num">77</td><td class="num">0.62</td><td class="num">102 / 103</td></tr>
+  <tr><td>E6</td><td>김태근</td><td class="num">35</td><td class="num">18</td><td class="num">17</td><td class="num">0.51</td><td class="num">17 / 18</td></tr>
+  <tr><td>E7</td><td>김재호</td><td class="num">34</td><td class="num">16</td><td class="num">18</td><td class="num">0.47</td><td class="num">17 / 17</td></tr>
+  <tr><td>E8</td><td>김진명</td><td class="num">30</td><td class="num">14</td><td class="num">16</td><td class="num">0.47</td><td class="num">15 / 15</td></tr>
+  <tr><td>E9</td><td>이강근</td><td class="num">18</td><td class="num">15</td><td class="num">3</td><td class="num">0.83</td><td class="num">9 / 9</td></tr>
+  <tr><td>E10</td><td>신민철</td><td class="num">10</td><td class="num">6</td><td class="num">4</td><td class="num">0.60</td><td class="num">5 / 5</td></tr>
+  <tr><td colspan="7">비적격 population 사용자(CoPL 로더 기준 8명): 이학진, 구정모, 정준호, 이혜인, 김래영, 박예슬, 김성재, 서호원. 논문 그림에서는 P1~P8.</td></tr>
+</table>
+<div class="warn">실명은 저장소 내부(폴드 json 파일명, 노트)에만 쓴다. 논문과 외부 공유 문서에는 가명만 쓴다. 두 논문의 가명 매핑은 같다.</div>
+
+<h2 id="tiv">4. 프로젝트 A: T-IV 논문 (계층 완전 베이지안 선호 모형)</h2>
+
+<h3>4.1 상태</h3>
+<div class="note">
+원고 <code>docs/fully_bayesian/my_papers/main.tex</code>는 수치가 전부 채워진 완성 초안이다(IEEEtran journal, T-IV = IEEE Transactions on Intelligent Vehicles 목표). 남은 것은 사용자가 줘야 하는 메타데이터, 로컬 LaTeX 빌드와 수식 넘침 정리(사용자가 로컬 LLM으로 하기로 했고 프롬프트를 줬다), 수렴 trace 그림, 부록 A(조건부 MI) 실행 또는 삭제, framework 그림의 벡터 정식화다. 실험은 더 돌릴 것이 없다.
+</div>
+
+<h3>4.2 방법 요약</h3>
+<p>평가자 \(u\)의 로지스틱 계수 \(\boldsymbol\theta_u\)에 population 정규 사전분포를 두고 NIW와 그룹 spike-and-slab까지 전부 Gibbs로 적분한다.</p>
+\[
+y_{ui}\sim\mathrm{Bern}\big(\sigma(\boldsymbol\theta_u^\top\mathbf z_{ui})\big),\quad
+\boldsymbol\theta_u=\boldsymbol\gamma\odot\tilde{\boldsymbol\theta}_u,\quad
+\tilde{\boldsymbol\theta}_u\sim\mathcal N(\boldsymbol\mu,\boldsymbol\Sigma),\quad
+(\boldsymbol\mu,\boldsymbol\Sigma)\sim\mathrm{NIW}(\mathbf 0,1,d+2,\lambda_0\mathbf I),\quad
+\gamma_g\sim\mathrm{Bern}(\pi),\ \pi\sim\mathrm{Beta}(1,1)
+\]
+<p>Pólya–Gamma 증강으로 계수 갱신, NIW 닫힌 갱신, 그룹 포함 지표는 증강 우도의 log Bayes factor로 Bernoulli 갱신. burn-in 500, 보존 1500 sweep. 새 평가자는 particle마다 \(\tilde{\boldsymbol\theta}^{(m)}_\star\sim\mathcal N(\boldsymbol\mu^{(m)},\boldsymbol\Sigma^{(m)})\)로 cold start, 문맥 라벨로 PG sweep 8회 갱신. 예측은 particle 평균. 불확실성은 \(\hat p(1-\hat p)=\mathbb E_m[p^{(m)}(1-p^{(m)})]+\mathrm{Var}_m(p^{(m)})\)로 aleatoric/epistemic 분해, 평가자 단위 신뢰 구간은 particle × bootstrap AUROC의 2.5/97.5 백분위(\(w_{\max}=0.3\)). 피처는 ISO 기반 통계 bank를 상관 0.95로 가지치기해 40개 + 절편. 선택은 PIP와 projection-predictive forward search + 폴드 내 재적합 + one-SE 규칙, 센서는 31개 부분집합 전수 재적합. 역할 분류는 \(q_j=\mathbb E_m[\Phi(|\mu_j|/\sqrt{\Sigma_{jj}})]\ge0.9\)이면 common.</p>
+
+<h3>4.3 실험 이력 (05 문서 E1~E9)</h3>
+<table>
+  <tr><th>번호</th><th>실행</th><th>결론</th></tr>
+  <tr><td>E1</td><td><code>loeo/20261001_170056</code></td><td>기본 LOEO. cold start ≈ pooled, 개인화 지지, 이득은 긴 스트림에 집중, epistemic은 t≥10부터 오답 예측, 신뢰 폭 0.15 불만족, \(k^\ast=1\), 수직 가속도만 필요.</td></tr>
+  <tr><td>E2</td><td><code>loeo_lam01</code>, <code>loeo_lam001</code></td><td>\(\lambda_0\) 민감도: 예측 불변, epistemic·공통/개인 분류는 민감. 기본 \(\lambda_0=1\), 0.01을 민감도로 보고.</td></tr>
+  <tr><td>E3</td><td><code>loeo_selb20</code></td><td>선택 예산 {0,10,20}으로 넓혀도 \(k^\ast=1\). 확정 설정.</td></tr>
+  <tr><td>E4</td><td><code>loeo_final/20261002_165129</code></td><td>시드 3개 확정 실행. 시드 sd &lt; 평가자 SE. 논문 수치의 출처.</td></tr>
+  <tr><td>E5</td><td><code>loeo_k1/20261002_222009</code></td><td>소수 라벨 3명 무이득 원인: E7은 차원 효과, E6·E8은 어떤 모형으로도 예측 불가. 예측은 전체 bank가 조금 낫다.</td></tr>
+  <tr><td>E6</td><td>E4 재분석</td><td>cold start 과소 확신은 Jensen 수축. 수축이 log score에 유익 → posterior mean 유지.</td></tr>
+  <tr><td>E7</td><td>E4 재분석</td><td>신뢰 규칙 \(w_{\max}=0.3\) 채택.</td></tr>
+  <tr><td>E8</td><td>—</td><td>prequential 곡선: 점수는 report에 저장됨, 그림·논문 미반영(선택).</td></tr>
+  <tr><td>E9</td><td><code>loeo_pop10/20261003_141011</code></td><td>population을 적격 10명으로 제한해도 MLPD 불변, epistemic·신뢰 비율만 변함. 전원 유지.</td></tr>
+</table>
+
+<h3>4.4 확정 수치 (loeo_final, 시드 3)</h3>
+<table>
+  <tr><th>MLPD</th><th class="num">t=0</th><th class="num">5</th><th class="num">20 (5명)</th><th class="num">최종</th></tr>
+  <tr><td>Proposed</td><td class="num">−0.692 ± 0.044</td><td class="num">−0.622 ± 0.019</td><td class="num">−0.550 ± 0.019</td><td class="num">−0.562 ± 0.028</td></tr>
+  <tr><td>HB-full (포함 사전분포 없음)</td><td class="num">−0.695</td><td class="num">−0.629</td><td class="num">−0.561</td><td class="num">−0.558</td></tr>
+  <tr><td>EB-MAP</td><td class="num">−0.720</td><td class="num">−0.641</td><td class="num">−0.566</td><td class="num">−0.570</td></tr>
+  <tr><td>Pooled (로지스틱)</td><td class="num">−0.717</td><td class="num">−0.714</td><td class="num">−0.692</td><td class="num">−0.691</td></tr>
+  <tr><td>Indep</td><td class="num">—</td><td class="num">−0.824</td><td class="num">−0.839</td><td class="num">−0.673</td></tr>
+</table>
+<p>t=20에서 Pooled 대비 +0.142 ± 0.029 (paired ELPD +180 ± 14). epistemic 0.071 → 0.035 (t=0 → 20), aleatoric 0.15~0.16 평탄, 오답 예측 AUROC 0.52 → 0.62, reliable 비율 0/9/28/58 %. 피처: \(a_z\) peak-to-peak PIP 0.93, common 유일; \(k^\ast=1\); 수직 가속도계 하나로 충분(제거 시 −0.034 ± 0.023, 나머지 채널은 SE 안). 전체는 07 노트 8절.</p>
+
+<h3>4.5 실행 식별자</h3>
+<ul>
+  <li><code>outputs/loeo_final/20261002_165129</code> — 시드 42–44, \(\lambda_0=1\), \(w_{\max}=0.3\), main+select+sensors+report. 표·그림 전부.</li>
+  <li><code>outputs/loeo_final_lam001/20261002_182245</code> (시드 3, \(\lambda_0=0.01\)), <code>outputs/loeo_lam01/20261002_003556</code> (시드 1, 0.1) — 부록 C 표.</li>
+  <li><code>outputs/loeo_k1/20261002_222009</code> — 단일 피처 재실행.</li>
+  <li><code>outputs/loeo_pop10/20261003_141011</code> — population 제한.</li>
+  <li><code>outputs/loeo/20261001_170056</code>, <code>outputs/loeo_selb20</code>, <code>outputs/loeo_compare</code> — E1, E3, compare 스테이지 출력(미사용).</li>
+</ul>
+
+<h3>4.6 원고와 그림</h3>
+<ul>
+  <li><code>main.tex</code>: 초록, 서론(결과 미리보기), 관련 연구, III 문제, IV 모형, V 피처·선택, VI 실험(표 tab:data, tab:main, tab:per-evaluator, tab:reliability, tab:feature-classes, tab:sensors; 그림 fig:framework, fig:sequential, fig:uncertainty, fig:pip, fig:projpred), VII 논의, VIII 결론, 부록 A(조건부 MI, 미실행), B(bank 표), C(시드·\(\lambda_0\)·population 민감도), D(재현). 넓은 수식 5개는 <code>split</code>으로 감쌌다. 남은 <code>\draftnote</code>: 소속, plate diagram(framework 그림으로 대체 가능), 센서 모델, 카탈로그 크기, 모집·윤리, 하드웨어, prune report, 수렴 trace, CMI 부록.</li>
+  <li>그림 재생성: <code>python docs/fully_bayesian/my_papers/figures/make_results.py</code>(fig_sequential/uncertainty/selection/pip; 2026-10-08에 세션 기록에서 복원), <code>python docs/fully_bayesian/my_papers/figures/make_framework.py</code>(fig_framework). matplotlib mathtext는 <code>\big</code>, <code>\underbrace</code>, <code>\le</code>를 모른다(<code>\leq</code> 사용).</li>
+  <li>로컬 빌드: <code>pdflatex main; bibtex main; pdflatex main; pdflatex main</code>. 넘침 확인: <code>grep -n "Overfull \\hbox" main.log</code>.</li>
+  <li>class 파일 이름이 <code>IEEEtrans.cls</code>(s가 붙음)이지만 내용은 공식 IEEEtran V1.8b. <code>\documentclass{IEEEtran}</code>은 TeX Live의 것을 쓴다.</li>
+</ul>
+
+<h3>4.7 결정 사항</h3>
+<ul>
+  <li>\(\lambda_0=1\) 기본, 0.01 민감도. \(w_{\max}=0.3\). 선택 예산 {0,10,20}. population 17명 전원. 비선형 pooled(GBT)는 돌리지 않고 한계로 적음. 조건부 MI는 미실행(부록 A를 돌리거나 지울 것).</li>
+  <li>이득이 없는 짧은 스트림 3명은 "예측 가능한 평가자에게 이득이 집중된다"로 서술. cold start 과소 확신은 "보호적 수축"으로 서술.</li>
+</ul>
+
+<h2 id="copl">5. 프로젝트 B: CoPL 논문</h2>
+
+<h3>5.1 상태</h3>
+<div class="note">
+확정 실행 <code>copl_loeo_final2/20261007_233243</code>가 끝났고(2026-10-08), 우도 기반 적응으로 CoPL이 pooled를 t=20에서 0.08 nat(2 SE) 앞선다. 원고 <code>docs/copl/my_papers/main.tex</code>(IEEEtran conference, IV 2027 목표)를 2026-10-08에 전 절 작성했고 그림 3개 스크립트가 있다. 컴파일은 컨테이너에 LaTeX가 없어 하지 못했다. 남은 것: 로컬 빌드와 6쪽 맞추기, 메타데이터, 제목 결정, CoPL 서지 확인, 데이터 수 17/18 확인. T-ITS 확장 실험 2개는 선택.
+</div>
+
+<h3>5.2 방법 요약과 수정 이력</h3>
+<p>CoPL(Choi et al., EMNLP 2025, arXiv:2503.01658): 사용자–아이템 이분 그래프(good 간선 \(A_+\), bad 간선 \(A_-\)) + 아이템–아이템 kNN 그래프 \(A_{ii}\) 위 LightGCN식 전파로 \(e_u, e_i\); CNN 보상 모형 \(r(x;e)\); 새 사용자는 문맥 라벨로 population 사용자 가중치 \(w_u\)를 만들어 \(\hat e_\star=\sum_u w_ue_u\). 핵심 관찰: 에피소드는 한 사람 것이라 그래프가 별들의 합이고 사용자 간 다리는 \(A_{ii}\)뿐.</p>
+<p><strong>학습 쪽 수정(E2~E4):</strong> 검증 AUROC 선택 → 검증 BCE 선택, 온도 보정, 앙상블 3, mixture-consistent training(학습 행의 절반을 \((1-\lambda)e_u+\lambda\sum_{u'}\pi_{u'}e_{u'}\), \(\pi\sim\mathrm{Dir}(1)\), \(\lambda\sim U(0,1)\)로 대체). 인코더는 Gabor scattering(E1: held-out 투표 AUROC 0.719, AE 0.546, VAE 0.542).</p>
+<p><strong>적응 쪽 수정(E5~E8):</strong> 원 투표 \(c_u=\sum_{i\in I_u}s_iv_i\)는 \(\mathbb E[c_u]\propto n_u\)라 라벨이 가장 많은 사용자로 쏠린다(E5: 10명 전부). degree 정규화 \(c_u(\bar n/n_u)^\alpha\)는 작은 사용자로 쏠리고(E6), 수축 \(c_u\frac{\bar d+\kappa}{d_u+\kappa}\)는 36 설정 중 10폴드 통과 없음(E7). 대체 규칙(E8, 채택):</p>
+\[
+\ell_u=\sum_{i\le t}\Big[y_i\log\sigma(r(x_i;e_u))+(1-y_i)\log\big(1-\sigma(r(x_i;e_u))\big)\Big],\qquad
+w_u=\frac{e^{\ell_u/\tau}}{\sum_{u'}e^{\ell_{u'}/\tau}}
+\]
+<p>\(\tau=1\)이 균등 사전분포 아래의 정확한 posterior, \(\tau>1\)이 tempered posterior. 그래프 불필요, degree 편향 없음, 증거가 \(t\)에 비례해 쌓임. \(\tau\)와 표준화 여부는 내부 LOEO로 선택(E9: 8폴드 \(\tau=1\), 2폴드 2).</p>
+
+<h3>5.3 실험 이력 (03 문서 E0~E9)</h3>
+<table>
+  <tr><th>번호</th><th>실행</th><th>결론</th></tr>
+  <tr><td>E1</td><td><code>copl_loeo/20261005_022135</code> (encoders)</td><td>scatter 최선, AE/VAE 최하위, 내재 지표(population 투표 AUROC)와 외재 성능 Spearman 0.78. 인코더 = scatter.</td></tr>
+  <tr><td>E0</td><td><code>copl_loeo_tuneprobe/20261005_021615</code></td><td>튜닝 비용 15 s/학습, 전체 튜닝 5~6시간 가능.</td></tr>
+  <tr><td>E2</td><td><code>copl_loeo/20261005_022135</code> (tune+main)</td><td>cold start −0.80 붕괴: 보정 붕괴, 시드 분산, 적응 정지. 수정 4종.</td></tr>
+  <tr><td>E3</td><td><code>copl_loeo_fix/20261005_153803</code></td><td>보정 효과 확인, 표준화 적응은 t=5에서 해로움. cold start 임베딩이 학습 분포 밖 → mixture training.</td></tr>
+  <tr><td>E4</td><td><code>copl_loeo_fix2/20261005_155145</code></td><td>mixture training 지지(cold start −0.737 → −0.670), \(\sqrt t\) 적응 과집중, 원 규칙 최선. 아이템–아이템 전파 기여 없음.</td></tr>
+  <tr><td>E5</td><td><code>copl_loeo_final/20261005_162500</code></td><td>tune(40×3×10)→main(시드 3)→ablate/sweep/channels. CoPL ≈ pooled, cold start는 kNN vote가 우세. 적응의 degree 편향 발견, 튜닝 일반화 실패. sweep: 규칙·k 무관(±0.01). channels: IMU/\(a_z\) 단독 ≥ 전체(시드 1).</td></tr>
+  <tr><td>E6</td><td><code>copl_loeo_adapt/20261006_230451</code></td><td>degree 정규화: E1 회복(−0.56), E5 악화(−0.72). 편향 방향만 바뀜.</td></tr>
+  <tr><td>E7</td><td><code>copl_loeo_adapt2/20261007_220443</code></td><td>pseudo-count 수축 36 설정: 어떤 설정도 10폴드 통과 못 함. 투표 통계 자체가 불안정.</td></tr>
+  <tr><td>E8</td><td><code>copl_loeo_adapt3/20261007_222655</code></td><td>우도 posterior 14 설정: \(\tau=1\)에서 t=20 −0.560(pooled −0.633), E1·E5 동시 해결, E8(김진명)만 손해. 기본 규칙 채택.</td></tr>
+  <tr><td>E9</td><td><code>copl_loeo_final2/20261007_233243</code></td><td>τ 격자 10 × 내부 3폴드 → main(시드 3) → ablate. 주 결과 확정(5.4절).</td></tr>
+</table>
+
+<h3>5.4 확정 수치 (copl_loeo_final2)</h3>
+<table>
+  <tr><th>MLPD ± 평가자 SE</th><th class="num">t=0 (10)</th><th class="num">5 (10)</th><th class="num">10 (8)</th><th class="num">20 (5)</th><th class="num">최종 (10)</th></tr>
+  <tr><td>CoPL-LP (loglik 적응, τ 튜닝, 시드 3)</td><td class="num">−0.722 ± 0.057</td><td class="num">−0.670 ± 0.042</td><td class="num">−0.626 ± 0.040</td><td class="num">−0.555 ± 0.038</td><td class="num">−0.629 ± 0.047</td></tr>
+  <tr><td>Pooled-CNN (보정, fine-tune)</td><td class="num">−0.728 ± 0.082</td><td class="num">−0.736 ± 0.090</td><td class="num">−0.647 ± 0.023</td><td class="num">−0.637 ± 0.025</td><td class="num">−0.718 ± 0.094</td></tr>
+  <tr><td>kNN vote (문맥 무관)</td><td class="num">−0.677 ± 0.029</td><td class="num">−0.677</td><td class="num">−0.697</td><td class="num">−0.727</td><td class="num">−0.677</td></tr>
+  <tr><td>Indep-CNN</td><td class="num">—</td><td class="num">−1.161</td><td class="num">−1.113</td><td class="num">−0.849</td><td class="num">−0.917</td></tr>
+  <tr><td>CoPL-LP − Pooled (paired)</td><td class="num">+0.007 ± 0.032</td><td class="num">+0.066 ± 0.076</td><td class="num">+0.021 ± 0.034</td><td class="num">+0.082 ± 0.038</td><td class="num">+0.089 ± 0.071</td></tr>
+</table>
+<p>ablation(시드 42, 기준 −0.705/−0.667/−0.629/−0.561/−0.632): no_adapt −0.702(t=20), vote_orig −0.644, vote_norm −0.658, no_item_item −0.553(≈ 기준), no_mix −0.615, no_calib −0.570, oracle 최종 −0.614. 긴 스트림 t=20 paired ΔELPD: E2 +60 ± 9, E3 +21 ± 8, E4 +10 ± 4, E5 +5 ± 4, E1 −16 ± 7(E1은 t=5 +34, 최종 +32). 짧은 스트림 최종: E8 −0.897 vs −0.724(손해), E9 −0.873 vs −1.548, E10 −0.571 vs −0.621, E6·E7 −0.03~−0.06. 시드 sd 0.011~0.025. 앙상블 3개의 epistemic은 0.005로 신호 없음.</p>
+
+<h3>5.5 코드 현재 기본값 (reward/copl/loeo/config.py)</h3>
+<ul>
+  <li><code>encoder="scatter"</code>, <code>knn_k=30</code>, <code>graph_rule="topk"</code>, <code>gcf_emb_dim=32</code>, <code>item_item_weight=0.5</code>, <code>gcf_loss_type="bce_diversity"</code>.</li>
+  <li><code>rm_model="cnn"</code>, <code>rm_bayes="ensemble"</code>, <code>rm_ensemble_k=3</code>, <code>rm_select="loss"</code>, <code>rm_calibrate=True</code>, <code>rm_mix_prob=0.5</code>, <code>rm_mix_alpha=1.0</code>.</li>
+  <li><code>adapt_rule="loglik"</code>(E8부터), <code>adapt_user_softmax_temp=5.0</code>, <code>adapt_evidence="none"</code>; 투표 전용: <code>adapt_degree_norm</code>, <code>adapt_norm_by</code>, <code>adapt_shrink</code>, <code>adapt_neg_weight</code>, <code>adapt_topk=30</code>.</li>
+  <li>튜닝: <code>tune_space</code> = {gcf_emb_dim, τ ∈ {1,2,5,10,30}, evidence ∈ {none, unit}, gcf_lr, rm_lr}, <code>tune_trials=40</code>, 내부 폴드 = 가장 긴 2 + 가장 짧은 적격 1, 목적 = t ∈ {0,5,10,20} MLPD 평균, <code>tune_rm_bayes="none"</code>. <code>use_tuned</code>, <code>tuned_from</code>(다른 run의 튜닝 재사용; tune 스테이지에 주면 base로 깔고 결과 json에 <code>base</code>+<code>best</code> 저장).</li>
+  <li>ablation 7종: no_item_item, no_adapt, oracle, no_mix, no_calib, vote_orig(α=0, τ=0.5), vote_norm(α=1, τ=1).</li>
+  <li>adapt 스테이지 격자: <code>adapt_sweep_rules × adapt_sweep_norms × adapt_sweep_norm_by × adapt_sweep_shrinks × adapt_sweep_temps × adapt_sweep_evidence</code>. 폴드당 학습 1회.</li>
+</ul>
+
+<h3>5.6 실행 식별자</h3>
+<p>5.3절 표의 폴더들. 주 결과·ablation·τ 튜닝은 <code>copl_loeo_final2/20261007_233243</code>, 투표 적응·sweep·channels는 <code>copl_loeo_final/20261005_162500</code>, 인코더는 <code>copl_loeo/20261005_022135</code>, 적응 규칙 격자는 <code>copl_loeo_adapt{,2,3}</code>. <code>copl_smoke*</code>는 합성 스모크 테스트.</p>
+
+<h3>5.7 원고 상태</h3>
+<ul>
+  <li><code>docs/copl/my_papers/main.tex</code>: 제목 후보, 초록, I 서론(기여 3개), II 관련 연구, III 문제·파이프라인(별 그래프, 인코더, 전파, RM 학습 세부, CoPL 투표), IV degree 편향, V 우도 posterior, VI 실험(표 I 데이터, 표 II 주 결과, 표 III ablation, 그림 1~3, 짧은 스트림), VII 논의·한계, VIII 결론. draftnote 8개. 정적 검사(괄호·환경·인용 키·라벨) 통과, 컴파일 미확인.</li>
+  <li><code>refs.bib</code> 28항목. <code>choi2025copl</code>의 저자·쪽수는 확인 필요.</li>
+  <li><code>IEEEtran.cls</code>는 T-IV 폴더의 V1.8b 사본(클라우드 환경에서 CTAN·GitHub 다운로드가 egress 정책으로 403). <code>IEEEtran.bst</code>는 TeX Live.</li>
+  <li>그림: <code>figures/make_overview.py</code>(개요도), <code>make_curves.py</code>(MLPD/AUROC 대 t, final2 report), <code>make_wu.py</code>(투표 vs 우도 \(w_u\) 히트맵, final과 final2 폴드 json).</li>
+  <li>투고 계획: IV 2027(6쪽) → T-ITS 확장. T-ITS 추가 실험: 짧은 스트림용 τ(t) 또는 내부 폴드 구성 변경, RM 채널 연구(시드 3), ablation 시드 3. 04 노트 6·8절.</li>
+</ul>
+
+<h3>5.8 결정 사항과 결정 필요 사항</h3>
+<ul>
+  <li>결정됨: 라벨 good/bad, 채널 5개 T-IV와 동일, LOEO, pooled는 예산마다 fine-tune, 엄밀 튜닝, 인코더 scatter, 적응 규칙 loglik, 투표 규칙은 ablation으로만, 그래프 희소화·채널은 E5 결과 재사용.</li>
+  <li>결정 필요: 제목, 제안 규칙 이름(가칭 CoPL-LP), IV 2027 CFP 분량·마감, T-IV와 동시 투고 여부(동시면 상호 인용 없음).</li>
+</ul>
+
+<h2 id="sep">6. 두 논문의 분리 규칙</h2>
+<ul>
+  <li>CoPL 원고의 베이스라인은 Pooled-CNN, Indep-CNN, kNN vote만. 계층 베이지안 모형과 비교하지 않고 "우리의 다른 논문"을 언급하지 않는다.</li>
+  <li>같은 데이터·프로토콜이지만 문장을 공유하지 않는다. 가명 매핑은 같다.</li>
+  <li>CoPL 원고는 피처 bank를 쓰지 않고(파형 입력), 불확실성을 주장하지 않으며, 센서 결론은 IV 버전에서 뺀다.</li>
+  <li>T-IV 원고는 CoPL을 언급하지 않는다.</li>
+</ul>
+
+<h2 id="cmd">7. 명령 모음과 결과 공유 절차</h2>
+<p>사용자 데스크톱, 저장소 루트, <code>claude_session</code> 브랜치에서.</p>
+<pre># T-IV
+.venv\Scripts\python.exe run_loeo.py --stage all --set run_name=loeo_final --set seeds="(42,43,44)"
+.venv\Scripts\python.exe run_loeo.py --stage report --set run_name=loeo_final          # --timestamp 생략 시 최신 폴더
+.venv\Scripts\python.exe run_loeo.py --stage main --set feature_subset="('IMU_VerAccelVal__p2p',)" --set hb_full=False --set sensor_pip=False --set run_name=loeo_k1
+.venv\Scripts\python.exe run_loeo.py --stage compare --set run_name=loeo_compare --set compare_runs="('outputs/loeo_final/20261002_165129','outputs/loeo_k1/20261002_222009')"
+
+# CoPL
+.venv\Scripts\python.exe run_copl_loeo.py --stage encoders --set run_name=copl_loeo
+.venv\Scripts\python.exe run_copl_loeo.py --stage tune   --set run_name=copl_loeo_final2 --set use_tuned=True --set tuned_from=outputs/copl_loeo_final/20261005_162500 --set tune_space="{'adapt_user_softmax_temp':[1.0,2.0,5.0,10.0,30.0],'adapt_evidence':['none','unit']}" --set tune_trials=10
+.venv\Scripts\python.exe run_copl_loeo.py --stage main   --set run_name=copl_loeo_final2 --set use_tuned=True --set seeds="(42,43,44)"
+.venv\Scripts\python.exe run_copl_loeo.py --stage ablate --set run_name=copl_loeo_final2 --set use_tuned=True
+.venv\Scripts\python.exe run_copl_loeo.py --stage adapt  --set run_name=copl_loeo_adapt3 --set use_tuned=True --set tuned_from=outputs/copl_loeo_final/20261005_162500 --set adapt_sweep_rules="('loglik',)" --set adapt_sweep_temps="(0.25,0.5,1.0,2.0,5.0,10.0,30.0)" --set adapt_sweep_evidence="('none','unit')"
+.venv\Scripts\python.exe run_copl_loeo.py --stage report --set run_name=copl_loeo_final2
+
+# 결과 공유 (사용자가 실행)
+git add outputs
+git commit -m "Add copl_loeo_final2 runs"
+git push origin claude_session
+
+# 세션 쪽 (컨테이너)
+git fetch origin claude_session && git merge --ff-only origin/claude_session
+python run_copl_loeo.py --stage main --data synthetic --fast --set run_name=copl_loeo_test --set seeds="(42,)"   # 스모크 테스트 후 폴더 삭제
+python docs/copl/my_papers/figures/make_curves.py
+python docs/fully_bayesian/my_papers/figures/make_results.py</pre>
+
+<h2 id="pitfalls">8. 알려진 함정과 수정 이력</h2>
+<ul>
+  <li><code>--fast</code>는 기본값인 필드에만 FAST 프리셋을 적용한다(명시한 <code>--set</code>을 덮지 않음). 두 드라이버 공통.</li>
+  <li>read-only 스테이지(report/select/sensors/ablate/sweep/channels/adapt/tune)와 <code>use_tuned</code>(tuned_from 없을 때)는 <code>--timestamp</code> 생략 시 같은 run_name의 최신 폴더를 쓴다. 폴드 json이 없는 빈 폴더는 건너뛴다.</li>
+  <li><code>_tuned</code>는 명령줄에서 기본값과 다르게 준 필드를 튜닝값으로 덮지 않는다(명령줄이 probe). FAST 모드에서는 FAST가 바꾼 필드도 "명령줄"로 간주된다.</li>
+  <li>CoPL 데이터셋의 검증 분할: 라벨 2개 미만이거나 클래스당 2개 미만인 사용자는 학습 전용(계층 분할이 실패하던 버그 수정).</li>
+  <li>kNN vote 베이스라인은 문맥을 쓰지 않는다(설계상). 모든 예산에서 같은 값.</li>
+  <li><code>cross_forced</code> 그래프 규칙은 중복 간선을 coalesce로 합산(수정됨). <code>dense</code> 규칙은 느리고 기본이 아니다.</li>
+  <li>인코더 내재 지표는 사용자별 macro로 계산해야 한다(한 덩어리로 섞으면 base rate 차이에 왜곡).</li>
+  <li>hamiltorch는 선택 의존성(없어도 import 됨).</li>
+  <li>matplotlib mathtext: <code>\big</code>, <code>\underbrace</code>, <code>\le</code>, <code>\textstyle</code> 불가. 합 기호는 <code>\Sigma_u</code>로 쓰면 줄 높이가 안 깨진다.</li>
+  <li>클라우드 컨테이너의 네트워크: PyPI·npm은 직접, GitHub은 세션 프록시(허용된 저장소만), CTAN·raw.githubusercontent의 임의 저장소는 403. 외부 파일은 사용자에게 받거나 저장소에 넣는다.</li>
+  <li>T-IV 그림 4장의 생성 코드는 원래 세션에서 inline으로 실행되어 저장소에 없었다. 2026-10-08 세션 기록에서 복원해 <code>make_results.py</code>로 저장했고 PNG가 동일함을 확인했다.</li>
+  <li><code>outputs/</code>의 폴더 삭제는 <code>git rm -r</code>로. 실패했거나 대체된 실행(<code>copl_loeo/20261004_*</code>)은 이미 지웠다.</li>
+  <li>E5의 적응 가중치 붕괴를 분석할 때 "폴드별 최선 설정"은 테스트 폴드로 고른 것이므로 상한으로만 쓰고 결과로 쓰지 않는다.</li>
+</ul>
+
+<h2 id="open">9. 열린 질문</h2>
+<ol>
+  <li>population 수 17(T-IV) vs 18(CoPL): 단일 클래스 라벨 사용자 1명 여부를 원 카탈로그에서 확인하고 두 원고의 데이터 서술을 맞출 것.</li>
+  <li>두 원고의 메타데이터 공란(차량, 도로, 센서 사양·장착·샘플링, 모집·동의·윤리 식별자, 하드웨어·패키지 버전, 소속).</li>
+  <li>T-IV: 부록 A(조건부 MI)를 확정 폴드에서 돌릴지 삭제할지. 수렴 trace·\(\hat R\)·ESS 그림. E8 prequential 그림(선택).</li>
+  <li>CoPL: 제목, 규칙 이름, 투고 순서·동시 투고, IV 2027 CFP. 6쪽 초과 시 VI-D·VII부터 축약.</li>
+  <li>CoPL T-ITS 확장: 짧은 스트림용 τ(t) 또는 내부 폴드 구성(긴 1 + 짧은 2), RM 채널 연구(시드 3), ablation 시드 3.</li>
+  <li>두 논문의 "짧은 스트림 5명" 결론이 서로 일관되는지 최종 교차 확인(둘 다 E6·E8은 어떤 모형으로도 예측되지 않음).</li>
+</ol>
+
+<h2 id="timeline">10. 타임라인</h2>
+<table>
+  <tr><th>날짜</th><th>일</th></tr>
+  <tr><td>~09-15</td><td>이전 작업: Kalman 재구성, half-car, pitch 실험 (두 논문과 무관).</td></tr>
+  <tr><td>09-28 ~ 09-30</td><td>T-IV 초안 구조화, refs.bib, 노트 01·02(지표·피처 선택 조사), run_loeo.py와 LOEO 드라이버, 노트 03 실행 가이드.</td></tr>
+  <tr><td>10-01 ~ 10-02</td><td>E1 기본 실행, 노트 04·05, E2 \(\lambda_0\), E3 선택 예산, E4 확정 3시드, E5 k=1, E6·E7 재분석, main.tex 수치 채움.</td></tr>
+  <tr><td>10-03</td><td>E9 population 제한, 서론·논의 정렬, 수식 split, 노트 06 다이어그램, CoPL 계획(→ copl/01).</td></tr>
+  <tr><td>10-04 ~ 10-05</td><td>run_copl_loeo.py, E1 인코더, E0 비용, E2 첫 main 붕괴, E3·E4 수정 probe, T-IV framework 그림, T-IV 노트 07.</td></tr>
+  <tr><td>10-06 ~ 10-07</td><td>E5 확정 실행 분석(degree 편향), E6 정규화, E7 수축, E8 우도 posterior, 기본 규칙 변경, E9 설계.</td></tr>
+  <tr><td>10-08</td><td>E9 분석(RQ1 지지), copl/04 논문 개요, CoPL 원고·refs·그림 스크립트, 이 인수인계 문서, make_results.py 복원.</td></tr>
+</table>
+
+<h2 id="start">11. 새 세션 시작 프롬프트</h2>
+<pre>docs/00_handoff.html을 읽고, 이어서 docs/copl/claude_notes/03과 04, docs/fully_bayesian/my_papers/claude_notes/07을 읽어.
+작업 규칙은 00_handoff 1절을 따르고, 수치는 outputs/의 report에서만 가져와.
+오늘 할 일: [예: CoPL 원고를 로컬에서 빌드한 결과 main.log를 붙여 줄 테니 넘침과 6쪽 초과를 정리해.]</pre>
+<p>클라우드 세션을 열 때 저장소는 <code>han2496/tpi</code>, 브랜치 <code>claude_session</code>. 새 계정이면 GitHub 연결과 Claude GitHub App의 저장소 접근이 먼저 필요하다.</p>
+
+<h2 id="transcript">12. 이전 세션 기록 파일</h2>
+<p>이 문서를 쓴 클라우드 세션의 전체 기록(<code>session_fcda192d_transcript.jsonl</code>, 34 MB)은 사용자에게 파일로 전달했다. 저장소에는 넣지 않았다(실명·중간 결과 포함). 로컬 CLI에서 열려면 <code>~/.claude/projects/&lt;클론 경로를 대시로 바꾼 이름&gt;/fcda192d-34e9-57aa-ba3f-a59f650e1969.jsonl</code>로 두고 <code>claude --resume fcda192d-34e9-57aa-ba3f-a59f650e1969</code>. 공식 지원 경로는 아니며, 기록은 중간에 한 번 압축(요약)되었다.</p>
+</main>
+</body>
+</html>

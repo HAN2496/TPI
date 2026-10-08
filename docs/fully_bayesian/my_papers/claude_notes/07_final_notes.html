@@ -197,7 +197,7 @@ S_j=\mathbb E_m\big[(\mu^{(m)}_j)^2+\Sigma^{(m)}_{jj}\big]
   <tr><td><code>reward/fully_bayesian/loeo/report.py</code></td><td>폴드 json → macro 표, 평가자별 표, paired ΔELPD, 피처 역할표, 곡선 png</td></tr>
   <tr><td><code>run_loeo.py</code></td><td>드라이버. <code>--stage main|select|sensors|report|compare|all</code>, <code>--set key=value</code>, <code>--fast</code>(기본값 필드에만 적용), <code>--timestamp</code> 생략 시 최신 폴더</td></tr>
   <tr><td><code>outputs/&lt;run_name&gt;/&lt;timestamp&gt;/</code></td><td><code>cfg.json</code>, <code>folds/*.json</code>, <code>report/</code>(main.md, main_macro.csv, select.md, feature_roles_*.csv, curve_*.png, prequential_cumulative.json). git 추적(.pt 제외)</td></tr>
-  <tr><td><code>docs/fully_bayesian/my_papers/figures/</code></td><td><code>make_*.py</code> → fig_sequential, fig_uncertainty, fig_selection, fig_pip, fig_framework (pdf/png/svg)</td></tr>
+  <tr><td><code>docs/fully_bayesian/my_papers/figures/</code></td><td><code>make_results.py</code> → fig_sequential, fig_uncertainty, fig_selection, fig_pip (pdf/png); <code>make_framework.py</code> → fig_framework (pdf/png/svg)</td></tr>
 </table>
 <p>관련 노트: 01 평가 지표 조사, 02 피처 선택 조사, 03 실행 가이드, 04 1차 결과, 05 가설·판정 기록, 06 실험 구성 다이어그램.</p>
 
