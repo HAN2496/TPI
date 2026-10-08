@@ -256,10 +256,11 @@ w_u=\frac{\exp(\ell_u/\tau)}{\sum_{u'}\exp(\ell_{u'}/\tau)}
 <h2 id="todo">8. 투고 전 남은 일</h2>
 <p class="label">IV 버전 (추가 실험 없음)</p>
 <ol>
-  <li>ablation 기준 행을 시드 42로 통일하거나 각주 처리.</li>
-  <li>그림 1 초안 스크립트(<code>docs/copl/my_papers/figures/make_overview.py</code>), 그림 2 재생성(선 스타일·범례), 그림 3 열 정렬 수정 후 두 실행 히트맵 나란히.</li>
-  <li>원고 디렉터리 <code>docs/copl/my_papers/</code> (IEEEtran conference), 참고문헌 (CoPL, LightGCN, 보정 Guo 2017, tempered posterior Grünwald, 승차감 평가 문헌은 T-IV와 겹치되 독립적으로 선택).</li>
-  <li>메타데이터 공란: 차량·도로·센서 사양, 모집·윤리, 하드웨어. T-IV와 같은 항목.</li>
+  <li><s>ablation 기준 행을 시드 42로 통일</s> — 원고 표 III은 시드 42 기준(−0.705 / −0.667 / −0.629 / −0.561 / −0.632).</li>
+  <li><s>그림 1~3 초안</s> — <code>docs/copl/my_papers/figures/make_overview.py</code>, <code>make_curves.py</code>, <code>make_wu.py</code>. 실행 산출물에서 재생성한다.</li>
+  <li><s>원고 디렉터리</s> — <code>docs/copl/my_papers/main.tex</code> (IEEEtran conference, 전 절 작성, draftnote 8개), <code>refs.bib</code> (28 항목), <code>IEEEtran.cls</code> (V1.8b, 저장소 사본; CTAN·GitHub는 작업 환경의 egress 정책에 막혀 받지 못함. <code>IEEEtran.bst</code>는 TeX Live에 포함). 로컬 빌드: <code>pdflatex main; bibtex main; pdflatex main; pdflatex main</code>.</li>
+  <li>메타데이터 공란: 차량·도로·센서 사양, 모집·윤리, 하드웨어, 소속, 제목 확정. CoPL 서지(저자·쪽수) 확인.</li>
+  <li>데이터 서술 확인: CoPL 파이프라인의 population은 18명(2682 에피소드, 비적격 8명 55개)이고 T-IV 쪽 기술은 "두 클래스 라벨이 있는 17명"이다. 한 명이 단일 클래스 라벨만 가진 것으로 보이며, 원고에는 18명으로 적었다. 원 카탈로그에서 확인할 것.</li>
 </ol>
 <p class="label">T-ITS 확장 (추가 실험 2개, 각 1~2시간)</p>
 <ol>
